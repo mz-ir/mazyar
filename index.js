@@ -1,9 +1,10 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.1
+// @version      0.2
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
+// @license      MIT
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
