@@ -1,17 +1,20 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.2
+// @version      0.3
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
+// @match        https://www.managerzone.com/?p=federations&sub=clash
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @grant        none
 // ==/UserScript==
 (function () {
     "use strict";
+
+    /* *********************** Squad Summary ********************************** */
 
     function formatBigNumber(number) {
         let numberString = number.toString();
@@ -113,7 +116,7 @@
             .reduce((a, b) => a + b, 0);
     }
 
-    function inject() {
+    function injectSquadSummary() {
         const currency = getCurrency();
         const rows = [];
         const players = getPlayers(currency);
@@ -157,6 +160,50 @@
             });
         }
         insertAsTable(rows, currency);
+    }
+
+    /* *********************** Clash ********************************** */
+
+    function extractTeamID(link) {
+        let regex = /tid=(\d+)/;
+        let match = regex.exec(link);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
+    }
+
+    function getSqudSummaryLink(url) {
+        const tid = extractTeamID(url);
+        return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+    }
+
+    function addButton(target) {
+        const button = document.createElement('button');
+        button.innerText = `Squad`;
+        button.onclick = () => {
+            window.open(getSqudSummaryLink(target.href));
+        };
+        button.style.marginLeft = "10px";
+        target.parentNode.appendChild(button);
+    }
+
+    function injectToClash(){
+        const teams = document.querySelectorAll('a.team-name');
+        for (const team of teams) {
+            addButton(team);
+        }
+    }
+
+    /* *********************** Inject ********************************** */
+
+    function inject() {
+        if(document.baseURI === 'https://www.managerzone.com/?p=federations&sub=clash') {
+            injectToClash();
+        } else {
+            injectSquadSummary();
+        }
     }
 
     if (document.readyState === "loading") {
