@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         MZValues
+// @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
 // @version      0.1
 // @description  Add a table to show squad value in squad summary tab
