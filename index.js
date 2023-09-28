@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      0.4
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
-// @match        https://www.managerzone.com/?p=federations&sub=clash
+// @match        https://www.managerzone.com/?p=federations&sub=clash*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @grant        none
 // ==/UserScript==
@@ -199,7 +199,7 @@
     /* *********************** Inject ********************************** */
 
     function inject() {
-        if(document.baseURI === 'https://www.managerzone.com/?p=federations&sub=clash') {
+        if(document.baseURI.search('/?p=federations&sub=clash') > -1) {
             injectToClash();
         } else {
             injectSquadSummary();
