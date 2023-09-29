@@ -1,15 +1,16 @@
 // ==UserScript==
-// @name         MZ Player Values
+// @name         Test
 // @namespace    http://tampermonkey.net/
-// @version      0.4
+// @version      0.5
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
+// @grant        GM_xmlhttpRequest
+// @connect      self
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
-// @grant        none
 // ==/UserScript==
 (function () {
     "use strict";
@@ -26,7 +27,7 @@
         return formattedParts.join(" ");
     }
 
-    function insertAsTable(rows, currency) {
+    function createSquadTable(rows, currency) {
         const table = document.createElement("table");
         table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
         table.width = "30%";
@@ -66,14 +67,11 @@
         const info = document.createElement("div");
         info.appendChild(table);
         info.style = "margin: 10px 0px";
-        const place = document.querySelector("table#playerAltViewTable");
-        if (place) {
-            place.parentNode?.insertBefore(info, place);
-        }
+        return info;
     };
 
-    function getCurrency() {
-        const playerNode = document.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+    function getCurrency(doc) {
+        const playerNode = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
         if (playerNode && playerNode.length > 1) {
             const valueText = playerNode[1].querySelector("td:nth-child(3)")?.innerText;
             const parts = valueText?.split(' ');
@@ -82,9 +80,9 @@
         return '';
     }
 
-    function getPlayers(currency) {
+    function getPlayers(doc, currency) {
         const players = [];
-        const playerNodes = document.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
         for (const playerNode of [...playerNodes]) {
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
@@ -97,8 +95,6 @@
                 });
             }
         }
-        console.log(players.length);
-        console.log(players);
         return players;
     }
 
@@ -116,10 +112,10 @@
             .reduce((a, b) => a + b, 0);
     }
 
-    function injectSquadSummary() {
-        const currency = getCurrency();
+    function createSquadSummary(doc) {
+        const currency = getCurrency(doc);
         const rows = [];
-        const players = getPlayers(currency);
+        const players = getPlayers(doc, currency);
         if (players) {
             rows.push({
                 title: "All",
@@ -159,10 +155,40 @@
                 value: getTopPlayers(players, 11, 0, 18),
             });
         }
-        insertAsTable(rows, currency);
+        return createSquadTable(rows, currency);
     }
 
     /* *********************** Clash ********************************** */
+
+    function createModal() {
+        const modalContent = document.createElement("div");
+        modalContent.style.backgroundColor = "#fefefe";
+        modalContent.style.margin = "15% auto";
+        modalContent.style.padding = "20px";
+        modalContent.style.border = "1px solid #888";
+        modalContent.style.width = "15%";
+
+        const divContent = document.createElement("div");
+        divContent.id = "squad-display-modal-content";
+        modalContent.appendChild(divContent);
+
+        const modal = document.createElement("div");
+        modal.style.display = "none";
+        modal.style.position = "fixed";
+        modal.style.zIndex = "1";
+        modal.style.left = "0";
+        modal.style.top = "0";
+        modal.style.width = "100%";
+        modal.style.height = "100%";
+        modal.style.overflow = "auto";
+        modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+        modal.id= "squad-display-modal";
+        modal.appendChild(modalContent);
+        modal.onclick = () => {
+            modal.style.display = "none";
+        };
+        document.body.appendChild(modal);
+    }
 
     function extractTeamID(link) {
         let regex = /tid=(\d+)/;
@@ -174,22 +200,49 @@
         }
     }
 
-    function getSqudSummaryLink(url) {
+    function displayOnModal(url) {
+        const modal = document.getElementById('squad-display-modal');
+        const divContent = document.getElementById('squad-display-modal-content');
+        divContent.innerHTML = 'loading...';
+        modal.style.display = "block";
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const content = createSquadSummary(doc);
+                divContent.innerHTML = content.innerHTML;
+            }
+        });
+    }
+
+    function getSquadSummaryLink(url) {
         const tid = extractTeamID(url);
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
     function addButton(target) {
+        const url = getSquadSummaryLink(target.href);
         const button = document.createElement('button');
-        button.innerText = `Squad`;
-        button.onclick = () => {
-            window.open(getSqudSummaryLink(target.href));
-        };
+        button.innerText = `S`;
         button.style.marginLeft = "10px";
+        button.style.backgroundColor = "yellow";
+        button.style.color = "darkred";
+        button.style.borderRadius = "50%";
+        button.style.border = "dotted 2px black";
+        button.style.fontWeigth = "bold";
+        button.style.fontSize = "1.2em";
+        button.style.width = "20px";
+        button.style.heigth = "20px";
+        button.style.textAlign = "center";
         target.parentNode.appendChild(button);
+        button.onclick = () => {
+            displayOnModal(url);
+        };
     }
 
-    function injectToClash(){
+    function addSquadButtonsToClashPage(){
         const teams = document.querySelectorAll('a.team-name');
         for (const team of teams) {
             addButton(team);
@@ -200,9 +253,14 @@
 
     function inject() {
         if(document.baseURI.search('/?p=federations&sub=clash') > -1) {
-            injectToClash();
+            createModal();
+            addSquadButtonsToClashPage();
         } else {
-            injectSquadSummary();
+            const content = createSquadSummary(document);
+            const place = document.querySelector("table#playerAltViewTable");
+            if (place) {
+                place.parentNode?.insertBefore(content, place);
+            }
         }
     }
 
@@ -213,4 +271,5 @@
         // `DOMContentLoaded` has already fired
         inject();
     }
+
 })();
