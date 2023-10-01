@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.6
+// @version      0.7
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
+// @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @match        https://www.managerzone.com/?p=players&sub=alt
@@ -14,6 +15,41 @@
 // ==/UserScript==
 (function () {
     "use strict";
+
+    /* *********************** Styles ********************************** */
+
+    GM_addStyle(`
+    .donut {
+        width: 1.7em;
+        height: 1.7em;
+        margin-left: 5px;
+        border-radius: 50%;
+        text-align: center;
+        font-weigth = bold;
+        font-size = 1.2em;
+        padding: 3px;
+        background-color: yellow;
+        color: yellow;
+    }
+
+    .final-donut {
+        border: rgb(213, 232, 44) solid 2px;
+        color: inherit;
+        padding:0;
+    }
+
+    .loading-donut {
+        border-bottom-color: rgb(213, 232, 44);
+        animation: 1.5s donut-spin infinite linear;
+    }
+
+    @keyframes donut-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+    `);
+
 
     /* *********************** Squad Summary ********************************** */
 
@@ -29,12 +65,17 @@
 
     function createSquadTable(rows, currency) {
         const table = document.createElement("table");
-        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.classList.add(
+            "tablesorter",
+            "hitlist",
+            "marker",
+            "hitlist-compact-list-included"
+        );
         table.width = "30%";
         table.cellSpacing = "1px";
         table.cellPadding = "3px";
         table.border = "0";
-        table.align = 'center';
+        table.align = "center";
 
         const titleHeader = document.createElement("th");
         titleHeader.align = "center";
@@ -43,7 +84,7 @@
         const valueHeader = document.createElement("th");
         valueHeader.align = "center";
         valueHeader.classList.add("header");
-        valueHeader.innerHTML = 'Values';
+        valueHeader.innerHTML = "Values";
         const thead = document.createElement("thead");
         thead.appendChild(titleHeader);
         thead.appendChild(valueHeader);
@@ -56,8 +97,8 @@
             title.innerHTML = `${row.title}`;
             const value = document.createElement("td");
             value.innerText = `${formatBigNumber(row.value)} ${currency}`;
-            value.style.textAlign = 'end';
-            value.width = 'e';
+            value.style.textAlign = "end";
+            value.width = "e";
             tr.appendChild(title);
             tr.appendChild(value);
             tbody.appendChild(tr);
@@ -68,26 +109,38 @@
         info.appendChild(table);
         info.style = "margin: 10px 0px";
         return info;
-    };
+    }
 
     function getCurrency(doc) {
-        const playerNode = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        const playerNode = doc
+        .getElementById("playerAltViewTable")
+        ?.querySelectorAll("tr");
         if (playerNode && playerNode.length > 1) {
-            const valueText = playerNode[1].querySelector("td:nth-child(3)")?.innerText;
-            const parts = valueText?.split(' ');
+            const valueText =
+                  playerNode[1].querySelector("td:nth-child(3)")?.innerText;
+            const parts = valueText?.split(" ");
             return parts[parts.length - 1];
         }
-        return '';
+        return "";
     }
 
     function getPlayers(doc, currency) {
         const players = [];
-        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        const playerNodes = doc
+        .getElementById("playerAltViewTable")
+        ?.querySelectorAll("tr");
         for (const playerNode of [...playerNodes]) {
-            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
+            const age = playerNode
+            .querySelector("td:nth-child(5)")
+            ?.innerText.replace(/\s/g, "");
             if (age) {
-                const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
-                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
+                const value = playerNode
+                .querySelector("td:nth-child(3)")
+                ?.innerText.replaceAll(currency, "")
+                .replace(/\s/g, "");
+                const shirtNumber = playerNode
+                .querySelector("td:nth-child(0)")
+                ?.innerText.replace(/\s/g, "");
                 players.push({
                     shirtNumber,
                     age: parseInt(age, 10),
@@ -182,7 +235,7 @@
         modal.style.height = "100%";
         modal.style.overflow = "auto";
         modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-        modal.id= "squad-display-modal";
+        modal.id = "squad-display-modal";
         modal.appendChild(modalContent);
         modal.onclick = () => {
             modal.style.display = "none";
@@ -201,9 +254,9 @@
     }
 
     function displayOnModal(url) {
-        const modal = document.getElementById('squad-display-modal');
-        const divContent = document.getElementById('squad-display-modal-content');
-        divContent.innerHTML = 'loading...';
+        const modal = document.getElementById("squad-display-modal");
+        const divContent = document.getElementById("squad-display-modal-content");
+        divContent.innerHTML = "loading...";
         modal.style.display = "block";
         GM_xmlhttpRequest({
             method: "GET",
@@ -213,7 +266,7 @@
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const content = createSquadSummary(doc);
                 divContent.innerHTML = content.innerHTML;
-            }
+            },
         });
     }
 
@@ -222,37 +275,101 @@
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
-    function addButton(target) {
+
+    function getTopEleven(doc) {
+        const currency = getCurrency(doc);
+        const rows = [];
+        const players = getPlayers(doc, currency);
+        return players ? getTopPlayers(players, 11) : 0;
+    }
+
+    function calculateRankOfTeams(teams) {
+        const finals = [];
+        for (const team of teams) {
+            const url = getSquadSummaryLink(team.href);
+            finals.push({
+                target: team,
+                url,
+                values: 0,
+                done: false,
+            });
+            GM_xmlhttpRequest({
+                method: "GET",
+                url,
+                onload: function (resp) {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(resp.responseText, "text/html");
+                    const values = getTopEleven(doc);
+                    const fin = finals.find((p) => resp.finalUrl === p.url);
+                    fin.values = values;
+                    fin.done = true;
+                },
+            });
+        }
+
+        let timeout = 16000;
+        const step = 1000;
+        let interval = setInterval(() => {
+            if (finals.every((a) => a.done)) {
+                clearInterval(interval);
+                finals.sort((a, b) => b.values - a.values);
+                let rank = 0;
+                for (const team of finals) {
+                    rank++;
+                    const target = team.target.parentNode.querySelector("button.donut");
+                    target.classList.remove("loading-donut");
+                    target.classList.add("final-donut");
+                    target.innerText = `${rank}`;
+                }
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                    for (const team of finals) {
+                        const target = team.target.parentNode.querySelector("button.donut");
+                        target.classList.remove("loading-donut");
+                        target.classList.add("final-donut");
+                        target.innerText = `-`;
+                    }
+                }
+            }
+        }, step);
+    }
+
+
+    function addSquadButton(target) {
         const url = getSquadSummaryLink(target.href);
-        const button = document.createElement('button');
+        const button = document.createElement("button");
+        button.classList.add("donut", "final-donut");
         button.innerText = `S`;
-        button.style.marginLeft = "10px";
-        button.style.backgroundColor = "yellow";
-        button.style.color = "darkred";
-        button.style.borderRadius = "50%";
-        button.style.border = "dotted 2px black";
-        button.style.fontWeigth = "bold";
-        button.style.fontSize = "1.2em";
-        button.style.width = "20px";
-        button.style.heigth = "20px";
-        button.style.textAlign = "center";
+        button.style.color = "inherit";
         target.parentNode.appendChild(button);
         button.onclick = () => {
             displayOnModal(url);
         };
     }
 
-    function addSquadButtonsToClashPage(){
-        const teams = document.querySelectorAll('a.team-name');
+    function addRankView(target) {
+        const url = getSquadSummaryLink(target.href);
+        const rank = document.createElement("button");
+        rank.innerText = "_";
+        rank.classList.add("donut", "loading-donut");
+        target.parentNode.appendChild(rank);
+    }
+
+    function addSquadButtonsToClashPage() {
+        const teams = document.querySelectorAll("a.team-name");
         for (const team of teams) {
-            addButton(team);
+            addRankView(team);
+            addSquadButton(team);
         }
+        calculateRankOfTeams(teams);
     }
 
     /* *********************** Inject ********************************** */
 
     function inject() {
-        if(document.baseURI.search('/?p=federations&sub=clash') > -1) {
+        if (document.baseURI.search("/?p=federations&sub=clash") > -1) {
             createModal();
             addSquadButtonsToClashPage();
         } else {
@@ -271,5 +388,4 @@
         // `DOMContentLoaded` has already fired
         inject();
     }
-
 })();
