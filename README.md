@@ -1,11 +1,14 @@
 # MZ Player Values
-This is a userscript that adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 - U23'.  
-Also it adds a yellow 'S' button in front of each team in 'Clash' page to view 'squad summary' in place.
+This is a userscript to add some features to [www.managerzone.com](www.managerzone.com) pages.  
 
-### In Squad Summary
+## In Squad Summary
+
+Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 - U23'.  
 
 ![Squad Summary](./img/SquadSummary.png)
 
-### In Clash Page
+## In Clash Page
+Adds team rank in its federation, based on its Top 11 players.  
+Adds a yellow 'S' button in front of each team. Click to view the 'squad summary' in place.  
 
 ![Clash](./img/Clash.png)
