@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.7
+// @version      0.8
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -11,6 +11,8 @@
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
+// @match        https://www.managerzone.com/?p=federations
+// @match        https://www.managerzone.com/?p=federations&fid=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // ==/UserScript==
 (function () {
@@ -50,17 +52,16 @@
     }
     `);
 
-
     /* *********************** Squad Summary ********************************** */
 
-    function formatBigNumber(number) {
-        let numberString = number.toString();
+    function formatBigNumber(n, sep = " ") {
+        let numberString = n.toString();
         let formattedParts = [];
         for (let i = numberString.length - 1; i >= 0; i -= 3) {
             let part = numberString.substring(Math.max(i - 2, 0), i + 1);
             formattedParts.unshift(part);
         }
-        return formattedParts.join(" ");
+        return formattedParts.join(sep);
     }
 
     function createSquadTable(rows, currency) {
@@ -275,7 +276,6 @@
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
-
     function getTopEleven(doc) {
         const currency = getCurrency(doc);
         const rows = [];
@@ -336,7 +336,6 @@
         }, step);
     }
 
-
     function addSquadButton(target) {
         const url = getSquadSummaryLink(target.href);
         const button = document.createElement("button");
@@ -366,13 +365,129 @@
         calculateRankOfTeams(teams);
     }
 
+    /* *********************** Sort ********************************** */
+
+    function fetchTopEleven(context, tid) {
+        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context,
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const team = resp.context.teams.find(
+                    (t) => t.username === resp.context.username
+                );
+                const currency = getCurrency(doc);
+                team.values = getTopEleven(doc);
+                const value = document.createElement("div");
+                value.style.color = "blue";
+                //value.align = 'start';
+                value.innerText = `Top Eleven: ${formatBigNumber(
+                    team.values,
+                    ","
+                )} ${currency}`;
+                team.node.querySelector("td").appendChild(value);
+                team.done = true;
+            },
+        });
+    }
+
+    async function fetchTeamValue(teams, username) {
+        const url = `https://www.managerzone.com/xml/manager_data.php?username=${username}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: url,
+            context: { teams, username },
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/xml");
+                const teamId = doc
+                .querySelector('Team[sport="soccer"]')
+                .getAttribute("teamId");
+                fetchTopEleven(resp.context, teamId);
+            },
+        });
+    }
+
+    function getUsername(node) {
+        return node.querySelector("a").innerText;
+    }
+
+    function getTableHeader() {
+        const thead = document.querySelector(
+            "#federation_clash_members_list thead td"
+        );
+        return thead.innerText;
+    }
+
+    function setTableHeader(text) {
+        const thead = document.querySelector(
+            "#federation_clash_members_list thead td"
+        );
+        thead.innerText = text;
+    }
+
+    function sortByTopEleven() {
+        console.log("sorting in progress");
+        const tbody = document.querySelector(
+            "#federation_clash_members_list tbody"
+        );
+
+        const teams = [];
+        for (const child of tbody.children) {
+            const username = getUsername(child);
+            teams.push({
+                node: child,
+                username,
+                teamId: "",
+                values: 0,
+                done: false,
+            });
+            fetchTeamValue(teams, username);
+        }
+
+        let timeout = 60000;
+        const step = 1000;
+        const tableHeader = getTableHeader();
+        let dots = 0;
+        let interval = setInterval(() => {
+            if (teams.every((t) => t.done)) {
+                clearInterval(interval);
+                teams.sort((a, b) => b.values - a.values);
+                const newOrder = teams.map((t) => t.node);
+                tbody.replaceChildren(...newOrder);
+                console.log("done");
+                setTableHeader(tableHeader + " ▼");
+            } else {
+                timeout -= step;
+                setTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
+                dots++;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                    setTableHeader(tableHeader + " (failed)");
+                    console.log("timeout");
+                }
+            }
+        }, step);
+    }
+
     /* *********************** Inject ********************************** */
+
+    function isFederationFrontPage(uri) {
+        return (
+            uri.endsWith("/?p=federations") || uri.search("/?p=federations&fid=") > -1
+        );
+    }
 
     function inject() {
         if (document.baseURI.search("/?p=federations&sub=clash") > -1) {
             createModal();
             addSquadButtonsToClashPage();
-        } else {
+        } else if (isFederationFrontPage(document.baseURI)) {
+            sortByTopEleven();
+        } else if (document.baseURI.search("/?p=players&sub=alt") > -1) {
             const content = createSquadSummary(document);
             const place = document.querySelector("table#playerAltViewTable");
             if (place) {
