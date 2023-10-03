@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.8
+// @version      0.9
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -66,12 +66,7 @@
 
     function createSquadTable(rows, currency) {
         const table = document.createElement("table");
-        table.classList.add(
-            "tablesorter",
-            "hitlist",
-            "marker",
-            "hitlist-compact-list-included"
-        );
+        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
         table.width = "30%";
         table.cellSpacing = "1px";
         table.cellPadding = "3px";
@@ -113,12 +108,9 @@
     }
 
     function getCurrency(doc) {
-        const playerNode = doc
-        .getElementById("playerAltViewTable")
-        ?.querySelectorAll("tr");
+        const playerNode = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
         if (playerNode && playerNode.length > 1) {
-            const valueText =
-                  playerNode[1].querySelector("td:nth-child(3)")?.innerText;
+            const valueText = playerNode[1].querySelector("td:nth-child(3)")?.innerText;
             const parts = valueText?.split(" ");
             return parts[parts.length - 1];
         }
@@ -127,21 +119,15 @@
 
     function getPlayers(doc, currency) {
         const players = [];
-        const playerNodes = doc
-        .getElementById("playerAltViewTable")
-        ?.querySelectorAll("tr");
+        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
         for (const playerNode of [...playerNodes]) {
-            const age = playerNode
-            .querySelector("td:nth-child(5)")
-            ?.innerText.replace(/\s/g, "");
+            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
                 const value = playerNode
-                .querySelector("td:nth-child(3)")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "");
-                const shirtNumber = playerNode
-                .querySelector("td:nth-child(0)")
-                ?.innerText.replace(/\s/g, "");
+                    .querySelector("td:nth-child(3)")
+                    ?.innerText.replaceAll(currency, "")
+                    .replace(/\s/g, "");
+                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 players.push({
                     shirtNumber,
                     age: parseInt(age, 10),
@@ -376,18 +362,14 @@
             onload: function (resp) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
-                const team = resp.context.teams.find(
-                    (t) => t.username === resp.context.username
-                );
+                const team = resp.context.teams.find((t) => t.username === resp.context.username);
                 const currency = getCurrency(doc);
                 team.values = getTopEleven(doc);
                 const value = document.createElement("div");
                 value.style.color = "blue";
-                //value.align = 'start';
-                value.innerText = `Top Eleven: ${formatBigNumber(
-                    team.values,
-                    ","
-                )} ${currency}`;
+                //value.style.textAlign = 'left';
+                value.style.float = "inline-start";
+                value.innerText = `Top Eleven: ${formatBigNumber(team.values, ",")} ${currency}`;
                 team.node.querySelector("td").appendChild(value);
                 team.done = true;
             },
@@ -403,9 +385,7 @@
             onload: function (resp) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/xml");
-                const teamId = doc
-                .querySelector('Team[sport="soccer"]')
-                .getAttribute("teamId");
+                const teamId = doc.querySelector('Team[sport="soccer"]').getAttribute("teamId");
                 fetchTopEleven(resp.context, teamId);
             },
         });
@@ -416,24 +396,18 @@
     }
 
     function getTableHeader() {
-        const thead = document.querySelector(
-            "#federation_clash_members_list thead td"
-        );
+        const thead = document.querySelector("#federation_clash_members_list thead td");
         return thead.innerText;
     }
 
     function setTableHeader(text) {
-        const thead = document.querySelector(
-            "#federation_clash_members_list thead td"
-        );
+        const thead = document.querySelector("#federation_clash_members_list thead td");
         thead.innerText = text;
     }
 
     function sortByTopEleven() {
         console.log("sorting in progress");
-        const tbody = document.querySelector(
-            "#federation_clash_members_list tbody"
-        );
+        const tbody = document.querySelector("#federation_clash_members_list tbody");
 
         const teams = [];
         for (const child of tbody.children) {
@@ -476,9 +450,7 @@
     /* *********************** Inject ********************************** */
 
     function isFederationFrontPage(uri) {
-        return (
-            uri.endsWith("/?p=federations") || uri.search("/?p=federations&fid=") > -1
-        );
+        return uri.endsWith("/?p=federations") || uri.search("/?p=federations&fid=") > -1;
     }
 
     function inject() {
