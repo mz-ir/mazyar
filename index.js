@@ -367,8 +367,8 @@
                 team.values = getTopEleven(doc);
                 const value = document.createElement("div");
                 value.style.color = "blue";
-                //value.style.textAlign = 'left';
-                value.style.float = "inline-start";
+                value.style.width = "100%";
+                value.style.marginTop = "3px";
                 value.innerText = `Top Eleven: ${formatBigNumber(team.values, ",")} ${currency}`;
                 team.node.querySelector("td").appendChild(value);
                 team.done = true;
