@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.9
+// @version      0.10
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
