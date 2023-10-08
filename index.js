@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.10
+// @version      0.11
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -124,9 +124,9 @@
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
                 const value = playerNode
-                    .querySelector("td:nth-child(3)")
-                    ?.innerText.replaceAll(currency, "")
-                    .replace(/\s/g, "");
+                .querySelector("td:nth-child(3)")
+                ?.innerText.replaceAll(currency, "")
+                .replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 players.push({
                     shirtNumber,
@@ -353,6 +353,8 @@
 
     /* *********************** Sort ********************************** */
 
+    let currency = '';
+
     function fetchTopEleven(context, tid) {
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
         GM_xmlhttpRequest({
@@ -363,14 +365,27 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
-                const currency = getCurrency(doc);
+                if(!currency) {
+                    currency = getCurrency(doc);
+                }
                 team.values = getTopEleven(doc);
+
+                const name = document.createElement("div");
+                name.style.color = "blue";
+                name.style.width = "100%";
+                name.style.marginTop = "3px";
+                name.title = team.name;
+                const teamName = team.name.length > 20 ? team.name.substring(0,16) + ' >>>' : team.name;
+                name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
+                team.node.querySelector("td").appendChild(name);
+
                 const value = document.createElement("div");
                 value.style.color = "blue";
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
-                value.innerText = `Top Eleven: ${formatBigNumber(team.values, ",")} ${currency}`;
+                value.innerHTML= `<span style="color:red;">Top11: </span>${formatBigNumber(team.values, ",")} ${currency}`;
                 team.node.querySelector("td").appendChild(value);
+
                 team.done = true;
             },
         });
@@ -386,6 +401,8 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/xml");
                 const teamId = doc.querySelector('Team[sport="soccer"]').getAttribute("teamId");
+                const name = doc.querySelector('Team[sport="soccer"]').getAttribute("teamName");
+                resp.context.teams.find((t)=>t.username === resp.context.username).name = name;
                 fetchTopEleven(resp.context, teamId);
             },
         });
@@ -415,6 +432,7 @@
             teams.push({
                 node: child,
                 username,
+                name,
                 teamId: "",
                 values: 0,
                 done: false,
@@ -434,6 +452,19 @@
                 tbody.replaceChildren(...newOrder);
                 console.log("done");
                 setTableHeader(tableHeader + " ▼");
+
+                let totalValue = 0;
+                for (const team of teams) {
+                    totalValue += team.values;
+                }
+
+                const total = document.createElement("tr");
+                total.style.color = "blue";
+                total.style.width = "100%";
+                total.style.marginTop = "3px";
+                total.innerHTML= `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${currency}</td>`;
+                tbody.appendChild(total);
+
             } else {
                 timeout -= step;
                 setTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));

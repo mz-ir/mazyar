@@ -10,7 +10,7 @@ Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 
 
 ## In Federation Front Page
 
-Adds value of top 11 players of first team members and sorts the teams by their value.  
+Adds values of top 11 players of first team members and name of the teams. Then it sorts the teams by their value.  
 
 ![Front Page](./img/FrontPage.png)
 
