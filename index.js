@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.12
+// @version      0.13
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -242,7 +242,7 @@
             return null;
         }
     }
-    
+
     function extractPlayerID(link) {
         let regex = /pid=(\d+)/;
         let match = regex.exec(link);
@@ -493,6 +493,19 @@
 
     /* *********************** Match ********************************** */
 
+    function highlightLineupPlayers(team, players) {
+        const lineupNodes = team.querySelectorAll("tbody tr");
+        for(const player of lineupNodes) {
+            const link = player.querySelector("a").href;
+            const pid = extractPlayerID(link);
+            if(players.includes(pid) ){
+                const shirtNumber = player.querySelector("td");
+                shirtNumber.style.background = "yellow";
+                shirtNumber.style.fontWeight = "bold";
+            }
+        }
+    }
+
     function addLineupValues(team) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamID(teamLink);
@@ -510,19 +523,20 @@
 
                 const lineupNodes = team.querySelectorAll("tbody tr a");
                 const lineup = [...lineupNodes].map((player) => extractPlayerID(player.href));
-                const lineupValue = players
-                    .filter((player) => lineup.includes(player.id.toString()))
-                    .map((player) => player.value)
-                    .reduce((a, b) => a + b, 0);
+                const lineupPlayers = players.filter((player) => lineup.includes(player.id.toString()));
+                const lineupValue = lineupPlayers.map((player) => player.value).reduce((a, b) => a + b, 0);
 
                 const div = document.createElement("div");
-                div.innerHTML = `Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`;
+                div.innerHTML = `Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}<br>*note: Only <span style="background:yellow"><b>highlighted</b></span> players are included.`;
                 div.style.margin = "10px";
                 div.style.padding = "5px";
                 div.style.border = "2px solid green";
                 div.style.borderRadius = "10px";
                 const place = team.querySelector("table");
                 team.insertBefore(div, place);
+
+                const includedPlayers = lineupPlayers.map((player)=> player.id.toString());
+                highlightLineupPlayers(team, includedPlayers);
             },
         });
     }
