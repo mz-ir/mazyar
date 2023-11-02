@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.15
+// @version      0.16
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -549,9 +549,9 @@
                 team.querySelector("table tfoot tr td").colSpan += 1;
 
                 const lineupValue = getLineupPlayers(team, players)
-                    .filter((player) => player.starting && !player.explayer)
-                    .map((player) => player.value)
-                    .reduce((a, b) => a + b, 0);
+                .filter((player) => player.starting && !player.explayer)
+                .map((player) => player.value)
+                .reduce((a, b) => a + b, 0);
 
                 const div = document.createElement("div");
                 div.innerHTML = `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`
@@ -572,7 +572,9 @@
     function displayTeamValuesToMatchPage() {
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
-            addLineupValues(team);
+            if (team.querySelector("table")) {
+                addLineupValues(team);
+            }
         }
     }
 
