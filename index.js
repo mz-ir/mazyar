@@ -242,7 +242,7 @@
             return null;
         }
     }
-
+    
     function extractPlayerID(link) {
         let regex = /pid=(\d+)/;
         let match = regex.exec(link);
@@ -366,7 +366,7 @@
 
     /* *********************** Sort ********************************** */
 
-    let currency = "";
+    let currency = '';
 
     function fetchTopEleven(context, tid) {
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
@@ -378,7 +378,7 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
-                if (!currency) {
+                if(!currency) {
                     currency = getCurrency(doc);
                 }
                 team.values = getTopEleven(doc);
@@ -388,7 +388,7 @@
                 name.style.width = "100%";
                 name.style.marginTop = "3px";
                 name.title = team.name;
-                const teamName = team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name;
+                const teamName = team.name.length > 20 ? team.name.substring(0,16) + ' >>>' : team.name;
                 name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
                 team.node.querySelector("td").appendChild(name);
 
@@ -396,10 +396,7 @@
                 value.style.color = "blue";
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
-                value.innerHTML = `<span style="color:red;">Top11: </span>${formatBigNumber(
-                    team.values,
-                    ","
-                )} ${currency}`;
+                value.innerHTML= `<span style="color:red;">Top11: </span>${formatBigNumber(team.values, ",")} ${currency}`;
                 team.node.querySelector("td").appendChild(value);
 
                 team.done = true;
@@ -418,7 +415,7 @@
                 const doc = parser.parseFromString(resp.responseText, "text/xml");
                 const teamId = doc.querySelector('Team[sport="soccer"]').getAttribute("teamId");
                 const name = doc.querySelector('Team[sport="soccer"]').getAttribute("teamName");
-                resp.context.teams.find((t) => t.username === resp.context.username).name = name;
+                resp.context.teams.find((t)=>t.username === resp.context.username).name = name;
                 fetchTopEleven(resp.context, teamId);
             },
         });
@@ -478,11 +475,9 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(
-                    totalValue,
-                    ","
-                )} ${currency}</td>`;
+                total.innerHTML= `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${currency}</td>`;
                 tbody.appendChild(total);
+
             } else {
                 timeout -= step;
                 setTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
