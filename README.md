@@ -20,3 +20,11 @@ Adds team rank in its federation, based on its Top 11 players.
 Adds a yellow 'S' button in front of each team. Click to view the 'squad summary' in place.  
 
 ![Clash](./img/Clash.png)
+
+
+## In Match Page
+
+Adds starting lineup value.  
+Also adds a new column to display player values.
+
+![Match](./img/match-page.png)
