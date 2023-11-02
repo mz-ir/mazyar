@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.11
+// @version      0.12
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -13,6 +13,7 @@
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
 // @match        https://www.managerzone.com/?p=federations
 // @match        https://www.managerzone.com/?p=federations&fid=*
+// @match        https://www.managerzone.com/?p=match&sub=result&mid=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // ==/UserScript==
 (function () {
@@ -128,10 +129,12 @@
                 ?.innerText.replaceAll(currency, "")
                 .replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
+                const pid = playerNode.querySelector("a")?.href;
                 players.push({
                     shirtNumber,
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
+                    id: extractPlayerID(pid),
                 });
             }
         }
@@ -232,6 +235,16 @@
 
     function extractTeamID(link) {
         let regex = /tid=(\d+)/;
+        let match = regex.exec(link);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
+    }
+    
+    function extractPlayerID(link) {
+        let regex = /pid=(\d+)/;
         let match = regex.exec(link);
         if (match) {
             return match[1];
@@ -478,6 +491,49 @@
         }, step);
     }
 
+    /* *********************** Match ********************************** */
+
+    function addLineupValues(team) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamID(teamLink);
+        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context: team,
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const currency = getCurrency(doc);
+                const players = getPlayers(doc, currency);
+                const team = resp.context;
+
+                const lineupNodes = team.querySelectorAll("tbody tr a");
+                const lineup = [...lineupNodes].map((player) => extractPlayerID(player.href));
+                const lineupValue = players
+                    .filter((player) => lineup.includes(player.id.toString()))
+                    .map((player) => player.value)
+                    .reduce((a, b) => a + b, 0);
+
+                const div = document.createElement("div");
+                div.innerHTML = `Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`;
+                div.style.margin = "10px";
+                div.style.padding = "5px";
+                div.style.border = "2px solid green";
+                div.style.borderRadius = "10px";
+                const place = team.querySelector("table");
+                team.insertBefore(div, place);
+            },
+        });
+    }
+
+    function displayTeamValuesToMatchPage() {
+        const teams = document.querySelectorAll("div.team-table");
+        for (const team of teams) {
+            addLineupValues(team);
+        }
+    }
+
     /* *********************** Inject ********************************** */
 
     function isFederationFrontPage(uri) {
@@ -496,6 +552,8 @@
             if (place) {
                 place.parentNode?.insertBefore(content, place);
             }
+        } else if (document.baseURI.search("mid=") > -1) {
+            displayTeamValuesToMatchPage();
         }
     }
 
