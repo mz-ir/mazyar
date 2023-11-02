@@ -552,7 +552,7 @@
                 const lineupValue = lineup.map((player) => player.value).reduce((a, b) => a + b, 0);
 
                 const div = document.createElement("div");
-                div.innerHTML = `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b>${currency}`
+                div.innerHTML = `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`
                     + `<br><br>Note: <span style="background:lightgreen">YYY</span> are starting players and `
                     + `<span style="background:#DD0000">NNN</span> are ex-players.`
                     + `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
