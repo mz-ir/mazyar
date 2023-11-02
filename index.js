@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.13
+// @version      0.14
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -493,17 +493,38 @@
 
     /* *********************** Match ********************************** */
 
-    function highlightLineupPlayers(team, players) {
-        const lineupNodes = team.querySelectorAll("tbody tr");
-        for(const player of lineupNodes) {
-            const link = player.querySelector("a").href;
-            const pid = extractPlayerID(link);
-            if(players.includes(pid) ){
-                const shirtNumber = player.querySelector("td");
-                shirtNumber.style.background = "yellow";
-                shirtNumber.style.fontWeight = "bold";
+    function getLineupPlayers(teamNode, teamPlayers) {
+        const lineup = [];
+        const teamPlayerIDs = teamPlayers.map((p)=>p.id);
+        const lineupPlayers = teamNode.querySelectorAll("tbody tr");
+
+        for(const playerNode of lineupPlayers) {
+            const pos = playerNode.querySelector("td:nth-child(2)");
+            const order = Number(pos.querySelector("span").innerText);
+            const pid = extractPlayerID(playerNode.querySelector("a").href);
+            const playerInfo = {
+                id: pid,
+                order,
+                explayer: !teamPlayerIDs.includes(pid),
+                starting: order < 12,
+                value: teamPlayers.find((p) => p.id === pid)?.value ?? 0,
+            };
+
+            const shirtNumber = playerNode.querySelector("td");
+            if(playerInfo.starting){
+                shirtNumber.style.background = "lightgreen";
             }
+            if(playerInfo.explayer){
+                shirtNumber.style.background = "#DD0000";
+            }
+
+            const value = document.createElement("td");
+            value.innerText= `${playerInfo.value ? formatBigNumber(playerInfo.value, ',') : 'N/A'}`;
+            playerNode.appendChild(value);
+
+            lineup.push(playerInfo);
         }
+        return lineup;
     }
 
     function addLineupValues(team) {
@@ -521,22 +542,27 @@
                 const players = getPlayers(doc, currency);
                 const team = resp.context;
 
-                const lineupNodes = team.querySelectorAll("tbody tr a");
-                const lineup = [...lineupNodes].map((player) => extractPlayerID(player.href));
-                const lineupPlayers = players.filter((player) => lineup.includes(player.id.toString()));
-                const lineupValue = lineupPlayers.map((player) => player.value).reduce((a, b) => a + b, 0);
+                const valueHeader = document.createElement("td");
+                valueHeader.innerText= `Value`;
+                valueHeader.title = `Player Value (in ${currency})`;
+                team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
+                team.querySelector("table tfoot tr td").colSpan += 1;
+
+                const lineup = getLineupPlayers(team, players);
+                const lineupValue = lineup.map((player) => player.value).reduce((a, b) => a + b, 0);
 
                 const div = document.createElement("div");
-                div.innerHTML = `Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}<br>*note: Only <span style="background:yellow"><b>highlighted</b></span> players are included.`;
+                div.innerHTML = `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`
+                    + `<br><br>Note: <span style="background:lightgreen">YYY</span> are starting players and `
+                    + `<span style="background:#DD0000">NNN</span> are ex-players.`
+                    + `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
+
                 div.style.margin = "10px";
                 div.style.padding = "5px";
                 div.style.border = "2px solid green";
                 div.style.borderRadius = "10px";
                 const place = team.querySelector("table");
                 team.insertBefore(div, place);
-
-                const includedPlayers = lineupPlayers.map((player)=> player.id.toString());
-                highlightLineupPlayers(team, includedPlayers);
             },
         });
     }
