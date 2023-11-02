@@ -27,4 +27,4 @@ Adds a yellow 'S' button in front of each team. Click to view the 'squad summary
 Adds starting lineup value.  
 Also adds a new column to display player values.
 
-![Match](./img/match-page.png)
+![Match](./img/MatchPage.png)
