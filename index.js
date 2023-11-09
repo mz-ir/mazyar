@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.16
+// @version      0.17
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -508,6 +508,7 @@
                 explayer: !teamPlayerIDs.includes(pid),
                 starting: order < 12,
                 value: teamPlayers.find((p) => p.id === pid)?.value ?? 0,
+                age: teamPlayers.find((p) => p.id === pid)?.age,
             };
 
             const shirtNumber = playerNode.querySelector("td");
@@ -521,6 +522,10 @@
             const value = document.createElement("td");
             value.innerText= `${playerInfo.value ? formatBigNumber(playerInfo.value, ',') : 'N/A'}`;
             playerNode.appendChild(value);
+
+            const age = document.createElement("td");
+            age.innerText= `${playerInfo.age ?? 'N/A'}`;
+            playerNode.appendChild(age);
 
             lineup.push(playerInfo);
         }
@@ -547,6 +552,13 @@
                 valueHeader.title = `Player Value (in ${currency})`;
                 team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
                 team.querySelector("table tfoot tr td").colSpan += 1;
+
+                const ageHeader = document.createElement("td");
+                ageHeader.innerText= `Age`;
+                ageHeader.title = `Player Age`;
+                team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
+                team.querySelector("table tfoot tr td").colSpan += 1;
+                team.querySelector("table thead tr td").colSpan += 1;
 
                 const lineupValue = getLineupPlayers(team, players)
                 .filter((player) => player.starting && !player.explayer)
