@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.17
+// @version      0.18
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -282,16 +282,22 @@
         return players ? getTopPlayers(players, 11) : 0;
     }
 
-    function calculateRankOfTeams(teams) {
+    function calculateRankOfTeams() {
+        const tbody = document.querySelector("div.panel-2 table tbody");
+        const rows = tbody.querySelectorAll("tr");
+        const teams = document.querySelectorAll("a.team-name");
         const finals = [];
+        let i = 0;
         for (const team of teams) {
             const url = getSquadSummaryLink(team.href);
             finals.push({
                 target: team,
+                row: rows[i],
                 url,
                 values: 0,
                 done: false,
             });
+            i++;
             GM_xmlhttpRequest({
                 method: "GET",
                 url,
@@ -320,6 +326,8 @@
                     target.classList.add("final-donut");
                     target.innerText = `${rank}`;
                 }
+                const newOrder = finals.map((t) => t.row);
+                tbody.replaceChildren(...newOrder);
             } else {
                 timeout -= step;
                 if (timeout < 0) {
@@ -361,7 +369,7 @@
             addRankView(team);
             addSquadButton(team);
         }
-        calculateRankOfTeams(teams);
+        calculateRankOfTeams();
     }
 
     /* *********************** Sort ********************************** */
