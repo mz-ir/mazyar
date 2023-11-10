@@ -321,7 +321,7 @@
                 let rank = 0;
                 for (const team of finals) {
                     rank++;
-                    const target = team.target.parentNode.querySelector("button.donut");
+                    const target = team.target.parentNode.querySelector("button.donut.rank");
                     target.classList.remove("loading-donut");
                     target.classList.add("final-donut");
                     target.innerText = `${rank}`;
@@ -333,7 +333,7 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     for (const team of finals) {
-                        const target = team.target.parentNode.querySelector("button.donut");
+                        const target = team.target.parentNode.querySelector("button.donut.rank");
                         target.classList.remove("loading-donut");
                         target.classList.add("final-donut");
                         target.innerText = `-`;
@@ -346,10 +346,11 @@
     function addSquadButton(target) {
         const url = getSquadSummaryLink(target.href);
         const button = document.createElement("button");
-        button.classList.add("donut", "final-donut");
+        button.classList.add("donut", "final-donut", "squad");
         button.innerText = `S`;
         button.style.color = "inherit";
-        target.parentNode.appendChild(button);
+        const place = target.parentNode.firstChild;
+        place.parentNode.insertBefore(button, place);
         button.onclick = () => {
             displayOnModal(url);
         };
@@ -359,8 +360,9 @@
         const url = getSquadSummaryLink(target.href);
         const rank = document.createElement("button");
         rank.innerText = "_";
-        rank.classList.add("donut", "loading-donut");
-        target.parentNode.appendChild(rank);
+        rank.classList.add("donut", "loading-donut", "rank");
+        const place = target.parentNode.firstChild;
+        place.parentNode.insertBefore(rank, place);
     }
 
     function addSquadButtonsToClashPage() {
