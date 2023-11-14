@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.18
+// @version      0.19
 // @description  Add a table to show squad value in squad summary tab
 // @author       z7z
 // @license      MIT
@@ -53,7 +53,59 @@
     }
     `);
 
-    /* *********************** Squad Summary ********************************** */
+    /* *********************** Utils ********************************** */
+
+    function getSportType() {
+        const href = document.querySelector("#settings-wrapper a")?.href;
+        return (href?.indexOf('hockey') > -1) ? 'soccer': 'hockey';
+    }
+
+    function isNationalTeam(teamTable) {
+        const images = teamTable.getElementsByTagName("img");
+        if(images) {
+            return [...images].some((img)=>img.src.endsWith('mz.png'));
+        }
+        return false;
+    }
+
+    function getCurrency(doc) {
+        const playerNode = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        if (playerNode && playerNode.length > 1) {
+            const valueText = playerNode[1].querySelector("td:nth-child(3)")?.innerText;
+            const parts = valueText?.split(" ");
+            return parts[parts.length - 1];
+        }
+        return "";
+    }
+
+    function getNationalCurrency(doc) {
+        const playerNode = doc.getElementById("thePlayers_0")?.querySelector("table tbody tr:nth-child(6)");
+        if (playerNode) {
+            const parts = playerNode.innerText.split(" ");
+            return parts[parts.length - 1];
+        }
+        return "";
+    }
+
+    function extractTeamID(link) {
+        let regex = /tid=(\d+)/;
+        let match = regex.exec(link);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
+    }
+
+    function extractPlayerID(link) {
+        let regex = /pid=(\d+)/;
+        let match = regex.exec(link);
+        if (match) {
+            return match[1];
+        } else {
+            return null;
+        }
+    }
 
     function formatBigNumber(n, sep = " ") {
         let numberString = n.toString();
@@ -64,6 +116,68 @@
         }
         return formattedParts.join(sep);
     }
+
+
+    function getPlayers(doc, currency) {
+        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        if(!playerNodes) {
+            return [];
+        }
+
+        const players = [];
+        for (const playerNode of [...playerNodes]) {
+            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
+            if (age) {
+                const value = playerNode
+                .querySelector("td:nth-child(3)")
+                ?.innerText.replaceAll(currency, "")
+                .replace(/\s/g, "");
+                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
+                const pid = playerNode.querySelector("a")?.href;
+                players.push({
+                    shirtNumber,
+                    age: parseInt(age, 10),
+                    value: parseInt(value, 10),
+                    id: extractPlayerID(pid),
+                });
+            }
+        }
+        return players;
+    }
+
+    function getNumberOfFlags(infoTable) {
+        const images = infoTable.getElementsByTagName("img");
+        return images ? [...images].filter((img)=>img.src.indexOf('/flags/') > -1).length : 0;
+    }
+
+    function isDomesticPlayer(infoTable) {
+        return getNumberOfFlags(infoTable) === 1;
+    }
+
+    function getNationalPlayers(doc, currency) {
+        const players = [];
+        const playerNodes = doc.querySelectorAll("div.playerContainer");
+        if (playerNodes) {
+            for (const playerNode of [...playerNodes]) {
+                const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
+                const infoTable = playerNode.querySelector("div.dg_playerview_info table");
+                const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
+                const value = isDomesticPlayer(infoTable)
+                ? infoTable.querySelector("tbody tr:nth-child(5) td span")?.innerText.replaceAll(currency, "").replace(/\s/g, "")
+                : infoTable.querySelector("tbody tr:nth-child(6) td span")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
+                players.push({
+                    age: parseInt(age, 10),
+                    value: parseInt(value, 10),
+                    id,
+                });
+
+            }
+        }
+        return players;
+    }
+
+
+    /* *********************** Squad Summary ********************************** */
 
     function createSquadTable(rows, currency) {
         const table = document.createElement("table");
@@ -106,39 +220,6 @@
         info.appendChild(table);
         info.style = "margin: 10px 0px";
         return info;
-    }
-
-    function getCurrency(doc) {
-        const playerNode = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
-        if (playerNode && playerNode.length > 1) {
-            const valueText = playerNode[1].querySelector("td:nth-child(3)")?.innerText;
-            const parts = valueText?.split(" ");
-            return parts[parts.length - 1];
-        }
-        return "";
-    }
-
-    function getPlayers(doc, currency) {
-        const players = [];
-        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
-        for (const playerNode of [...playerNodes]) {
-            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
-            if (age) {
-                const value = playerNode
-                .querySelector("td:nth-child(3)")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "");
-                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
-                const pid = playerNode.querySelector("a")?.href;
-                players.push({
-                    shirtNumber,
-                    age: parseInt(age, 10),
-                    value: parseInt(value, 10),
-                    id: extractPlayerID(pid),
-                });
-            }
-        }
-        return players;
     }
 
     function getTotal(players) {
@@ -201,6 +282,14 @@
         return createSquadTable(rows, currency);
     }
 
+    function injectToSquadSummaryPage(){
+        const content = createSquadSummary(document);
+        const place = document.querySelector("table#playerAltViewTable");
+        if (place) {
+            place.parentNode?.insertBefore(content, place);
+        }
+    }
+
     /* *********************** Clash ********************************** */
 
     function createModal() {
@@ -233,26 +322,6 @@
         document.body.appendChild(modal);
     }
 
-    function extractTeamID(link) {
-        let regex = /tid=(\d+)/;
-        let match = regex.exec(link);
-        if (match) {
-            return match[1];
-        } else {
-            return null;
-        }
-    }
-
-    function extractPlayerID(link) {
-        let regex = /pid=(\d+)/;
-        let match = regex.exec(link);
-        if (match) {
-            return match[1];
-        } else {
-            return null;
-        }
-    }
-
     function displayOnModal(url) {
         const modal = document.getElementById("squad-display-modal");
         const divContent = document.getElementById("squad-display-modal-content");
@@ -277,7 +346,6 @@
 
     function getTopEleven(doc) {
         const currency = getCurrency(doc);
-        const rows = [];
         const players = getPlayers(doc, currency);
         return players ? getTopPlayers(players, 11) : 0;
     }
@@ -357,7 +425,6 @@
     }
 
     function addRankView(target) {
-        const url = getSquadSummaryLink(target.href);
         const rank = document.createElement("button");
         rank.innerText = "_";
         rank.classList.add("donut", "loading-donut", "rank");
@@ -365,7 +432,8 @@
         place.parentNode.insertBefore(rank, place);
     }
 
-    function addSquadButtonsToClashPage() {
+    function injectToClashPage() {
+        createModal();
         const teams = document.querySelectorAll("a.team-name");
         for (const team of teams) {
             addRankView(team);
@@ -374,9 +442,7 @@
         calculateRankOfTeams();
     }
 
-    /* *********************** Sort ********************************** */
-
-    let currency = '';
+    /* *********************** Federation Page ********************************** */
 
     function fetchTopEleven(context, tid) {
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
@@ -388,9 +454,7 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
-                if(!currency) {
-                    currency = getCurrency(doc);
-                }
+                team.currency = getCurrency(doc);
                 team.values = getTopEleven(doc);
 
                 const name = document.createElement("div");
@@ -406,7 +470,7 @@
                 value.style.color = "blue";
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
-                value.innerHTML= `<span style="color:red;">Top11: </span>${formatBigNumber(team.values, ",")} ${currency}`;
+                value.innerHTML= `<span style="color:red;">Top11: </span>${formatBigNumber(team.values, ",")} ${team.currency}`;
                 team.node.querySelector("td").appendChild(value);
 
                 team.done = true;
@@ -445,8 +509,7 @@
         thead.innerText = text;
     }
 
-    function sortByTopEleven() {
-        console.log("sorting in progress");
+    function sortFederationTeamsByTopEleven() {
         const tbody = document.querySelector("#federation_clash_members_list tbody");
 
         const teams = [];
@@ -458,6 +521,7 @@
                 name,
                 teamId: "",
                 values: 0,
+                currency: '',
                 done: false,
             });
             fetchTeamValue(teams, username);
@@ -473,7 +537,6 @@
                 teams.sort((a, b) => b.values - a.values);
                 const newOrder = teams.map((t) => t.node);
                 tbody.replaceChildren(...newOrder);
-                console.log("done");
                 setTableHeader(tableHeader + " ▼");
 
                 let totalValue = 0;
@@ -485,7 +548,7 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML= `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${currency}</td>`;
+                total.innerHTML= `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
                 tbody.appendChild(total);
 
             } else {
@@ -495,7 +558,6 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     setTableHeader(tableHeader + " (failed)");
-                    console.log("timeout");
                 }
             }
         }, step);
@@ -540,6 +602,56 @@
             lineup.push(playerInfo);
         }
         return lineup;
+    }
+
+    function addLineupValuesNational(team) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamID(teamLink);
+        const sport = getSportType();
+        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context: team,
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const currency = getNationalCurrency(doc);
+                const players = getNationalPlayers(doc, currency);
+                const team = resp.context;
+
+                const valueHeader = document.createElement("td");
+                valueHeader.innerText= `Value`;
+                valueHeader.title = `Player Value (in ${currency})`;
+                team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
+                team.querySelector("table tfoot tr td").colSpan += 1;
+
+                const ageHeader = document.createElement("td");
+                ageHeader.innerText= `Age`;
+                ageHeader.title = `Player Age`;
+                team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
+                team.querySelector("table tfoot tr td").colSpan += 1;
+                team.querySelector("table thead tr td").colSpan += 1;
+
+                const lineupValue = getLineupPlayers(team, players)
+                .filter((player) => player.starting && !player.explayer)
+                .map((player) => player.value)
+                .reduce((a, b) => a + b, 0);
+
+                const div = document.createElement("div");
+                div.innerHTML = `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ',')}</b> ${currency}`
+                    + `<br><br>Note: <span style="background:lightgreen">YYY</span> are starting players and `
+                    + `<span style="background:#DD0000">NNN</span> are ex-players.`
+                    + `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
+
+                div.style.margin = "10px";
+                div.style.padding = "5px";
+                div.style.border = "2px solid green";
+                div.style.borderRadius = "10px";
+                const place = team.querySelector("table");
+                team.insertBefore(div, place);
+            },
+        });
     }
 
     function addLineupValues(team) {
@@ -591,11 +703,15 @@
         });
     }
 
-    function displayTeamValuesToMatchPage() {
+    function injectTeamValuesToMatchPage() {
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
             if (team.querySelector("table")) {
-                addLineupValues(team);
+                if(isNationalTeam(team)) {
+                    addLineupValuesNational(team);
+                } else {
+                    addLineupValues(team);
+                }
             }
         }
     }
@@ -608,18 +724,13 @@
 
     function inject() {
         if (document.baseURI.search("/?p=federations&sub=clash") > -1) {
-            createModal();
-            addSquadButtonsToClashPage();
+            injectToClashPage();
         } else if (isFederationFrontPage(document.baseURI)) {
-            sortByTopEleven();
+            sortFederationTeamsByTopEleven();
         } else if (document.baseURI.search("/?p=players&sub=alt") > -1) {
-            const content = createSquadSummary(document);
-            const place = document.querySelector("table#playerAltViewTable");
-            if (place) {
-                place.parentNode?.insertBefore(content, place);
-            }
+            injectToSquadSummaryPage()
         } else if (document.baseURI.search("mid=") > -1) {
-            displayTeamValuesToMatchPage();
+            injectTeamValuesToMatchPage();
         }
     }
 
