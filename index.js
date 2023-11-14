@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.20
+// @version      0.21
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -25,8 +25,7 @@
     .donut {
         width: 1.7em;
         height: 1.7em;
-        margin-left: 3px;
-        margin-right: 2px;
+        margin-right: 5px;
         border-radius: 50%;
         text-align: center;
         font-weigth = bold;
