@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.21
+// @version      0.22
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -28,8 +28,7 @@
         margin-right: 5px;
         border-radius: 50%;
         text-align: center;
-        font-weigth = bold;
-        font-size = 1.2em;
+        font-size: 1.2em;
         padding: 3px;
         background-color: yellow;
         color: yellow;
@@ -55,8 +54,8 @@
 
     /* *********************** Utils ********************************** */
 
-    function getSportType() {
-        const href = document.querySelector("#settings-wrapper a")?.href;
+    function getSportType(doc = document) {
+        const href = doc.querySelector("#settings-wrapper a")?.href;
         return href?.indexOf("hockey") > -1 ? "soccer" : "hockey";
     }
 
@@ -155,13 +154,13 @@
                 const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
                 const value = isDomesticPlayer(infoTable)
                     ? infoTable
-                        .querySelector("tbody tr:nth-child(5) td span")
-                        ?.innerText.replaceAll(currency, "")
-                        .replace(/\s/g, "")
+                          .querySelector("tbody tr:nth-child(5) td span")
+                          ?.innerText.replaceAll(currency, "")
+                          .replace(/\s/g, "")
                     : infoTable
-                        .querySelector("tbody tr:nth-child(6) td span")
-                        ?.innerText.replaceAll(currency, "")
-                        .replace(/\s/g, "");
+                          .querySelector("tbody tr:nth-child(6) td span")
+                          ?.innerText.replaceAll(currency, "")
+                          .replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
@@ -217,12 +216,12 @@
         return info;
     }
 
-    function getTotal(players) {
+    function getTotalValueOfAllPlayers(players) {
         const values = players.map((player) => player.value);
         return values.reduce((a, b) => a + b, 0);
     }
 
-    function getTopPlayers(players, count, ageLow = 0, ageHigh = 99) {
+    function filterTopPlayers(players, count, ageLow = 0, ageHigh = 99) {
         return players
             .filter((player) => player.age <= ageHigh && player.age >= ageLow)
             .sort((a, b) => b.value - a.value)
@@ -235,44 +234,63 @@
         const currency = getCurrency(doc);
         const rows = [];
         const players = getPlayers(doc, currency);
+        const sport = getSportType(doc);
         if (players) {
             rows.push({
                 title: "All",
-                value: getTotal(players),
+                value: getTotalValueOfAllPlayers(players),
             });
-            rows.push({
-                title: "Top 16 - All",
-                value: getTopPlayers(players, 16),
-            });
-            rows.push({
-                title: "Top 11 - All",
-                value: getTopPlayers(players, 11),
-            });
-
-            rows.push({
-                title: "Top 16 - U23",
-                value: getTopPlayers(players, 16, 0, 23),
-            });
-            rows.push({
-                title: "Top 11 - U23",
-                value: getTopPlayers(players, 11, 0, 23),
-            });
-            rows.push({
-                title: "Top 16 - U21",
-                value: getTopPlayers(players, 16, 0, 21),
-            });
-            rows.push({
-                title: "Top 11 - U21",
-                value: getTopPlayers(players, 11, 0, 21),
-            });
-            rows.push({
-                title: "Top 16 - U18",
-                value: getTopPlayers(players, 16, 0, 18),
-            });
-            rows.push({
-                title: "Top 11 - U18",
-                value: getTopPlayers(players, 11, 0, 18),
-            });
+            if (sport === "hockey") {
+                rows.push({
+                    title: "Top 21 - All",
+                    value: filterTopPlayers(players, 21),
+                });
+                rows.push({
+                    title: "Top 21 - U23",
+                    value: filterTopPlayers(players, 21, 0, 23),
+                });
+                rows.push({
+                    title: "Top 21 - U21",
+                    value: filterTopPlayers(players, 21, 0, 21),
+                });
+                rows.push({
+                    title: "Top 21 - U18",
+                    value: filterTopPlayers(players, 21, 0, 18),
+                });
+            } else {
+                rows.push({
+                    title: "Top 16 - All",
+                    value: filterTopPlayers(players, 16),
+                });
+                rows.push({
+                    title: "Top 11 - All",
+                    value: filterTopPlayers(players, 11),
+                });
+                rows.push({
+                    title: "Top 16 - U23",
+                    value: filterTopPlayers(players, 16, 0, 23),
+                });
+                rows.push({
+                    title: "Top 11 - U23",
+                    value: filterTopPlayers(players, 11, 0, 23),
+                });
+                rows.push({
+                    title: "Top 16 - U21",
+                    value: filterTopPlayers(players, 16, 0, 21),
+                });
+                rows.push({
+                    title: "Top 11 - U21",
+                    value: filterTopPlayers(players, 11, 0, 21),
+                });
+                rows.push({
+                    title: "Top 16 - U18",
+                    value: filterTopPlayers(players, 16, 0, 18),
+                });
+                rows.push({
+                    title: "Top 11 - U18",
+                    value: filterTopPlayers(players, 11, 0, 18),
+                });
+            }
         }
         return createSquadTable(rows, currency);
     }
@@ -339,10 +357,12 @@
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
-    function getTopEleven(doc) {
+    function getTopPlyers(doc) {
         const currency = getCurrency(doc);
         const players = getPlayers(doc, currency);
-        return players ? getTopPlayers(players, 11) : 0;
+        const sport = getSportType(doc);
+        const count = sport === "soccer" ? 11 : 21;
+        return players ? filterTopPlayers(players, count) : 0;
     }
 
     function calculateRankOfTeams() {
@@ -367,7 +387,7 @@
                 onload: function (resp) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(resp.responseText, "text/html");
-                    const values = getTopEleven(doc);
+                    const values = getTopPlyers(doc);
                     const fin = finals.find((p) => resp.finalUrl === p.url);
                     fin.values = values;
                     fin.done = true;
@@ -439,7 +459,7 @@
 
     /* *********************** Federation Page ********************************** */
 
-    function fetchTopEleven(context, tid) {
+    function fetchTopPlayers(context, tid) {
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
         GM_xmlhttpRequest({
             method: "GET",
@@ -450,7 +470,7 @@
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
                 team.currency = getCurrency(doc);
-                team.values = getTopEleven(doc);
+                team.values = getTopPlyers(doc);
 
                 const name = document.createElement("div");
                 name.style.color = "blue";
@@ -465,7 +485,10 @@
                 value.style.color = "blue";
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
-                value.innerHTML = `<span style="color:red;">Top11: </span>${formatBigNumber(team.values, ",")} ${team.currency}`;
+                const count = resp.context.sport === "soccer" ? 11 : 21;
+                value.innerHTML = `<span style="color:red;">Top${count}: </span>${formatBigNumber(team.values, ",")} ${
+                    team.currency
+                }`;
                 team.node.querySelector("td").appendChild(value);
 
                 team.done = true;
@@ -485,7 +508,7 @@
                 const teamId = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamId");
                 const name = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamName");
                 resp.context.teams.find((t) => t.username === resp.context.username).name = name;
-                fetchTopEleven(resp.context, teamId);
+                fetchTopPlayers(resp.context, teamId);
             },
         });
     }
@@ -504,7 +527,7 @@
         thead.innerText = text;
     }
 
-    function sortFederationTeamsByTopEleven() {
+    function sortFederationTeamsByTopPlayers() {
         const tbody = document.querySelector("#federation_clash_members_list tbody");
         const sport = getSportType();
         const teams = [];
@@ -543,7 +566,9 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
+                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${
+                    teams[0].currency
+                }</td>`;
                 tbody.appendChild(total);
             } else {
                 timeout -= step;
@@ -722,7 +747,7 @@
         if (document.baseURI.search("/?p=federations&sub=clash") > -1) {
             injectToClashPage();
         } else if (isFederationFrontPage(document.baseURI)) {
-            sortFederationTeamsByTopEleven();
+            sortFederationTeamsByTopPlayers();
         } else if (document.baseURI.search("/?p=players&sub=alt") > -1) {
             injectToSquadSummaryPage();
         } else if (document.baseURI.search("mid=") > -1) {
