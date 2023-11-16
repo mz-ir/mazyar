@@ -584,7 +584,7 @@
 
     /* *********************** Match ********************************** */
 
-    function getLineupPlayers(teamNode, teamPlayers) {
+    function getLineupPlayers(teamNode, teamPlayers, sport) {
         const lineup = [];
         const teamPlayerIDs = teamPlayers.map((p) => p.id);
         const lineupPlayers = teamNode.querySelectorAll("tbody tr");
@@ -597,7 +597,7 @@
                 id: pid,
                 order,
                 exPlayer: !teamPlayerIDs.includes(pid),
-                starting: order < 12,
+                starting: sport === "hockey" || order < 12,
                 value: teamPlayers.find((p) => p.id === pid)?.value ?? 0,
                 age: teamPlayers.find((p) => p.id === pid)?.age,
             };
@@ -623,115 +623,93 @@
         return lineup;
     }
 
-    function addLineupValuesNational(team) {
+    function injectLineupValues(players, team, currency, sport) {
+        const valueHeader = document.createElement("td");
+        valueHeader.innerText = `Value`;
+        valueHeader.title = `Player Value (in ${currency})`;
+        team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
+        team.querySelector("table tfoot tr td").colSpan += 1;
+
+        const ageHeader = document.createElement("td");
+        ageHeader.innerText = `Age`;
+        ageHeader.title = `Player Age`;
+        team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
+        team.querySelector("table tfoot tr td").colSpan += 1;
+        team.querySelector("table thead tr td").colSpan += 1;
+
+        const lineupValue = getLineupPlayers(team, players, sport)
+            .filter((player) => player.starting && !player.exPlayer)
+            .map((player) => player.value)
+            .reduce((a, b) => a + b, 0);
+
+        const div = document.createElement("div");
+        div.innerHTML =
+            `${sport === "soccer" ? "Starting " : ""}Lineup Value: ` +
+            `<b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
+            `<br><br>Note: <span style="background:lightgreen">YYY</span>` +
+            ` are ${sport === "soccer" ? "starting " : "current"} players and ` +
+            `<span style="background:#DD0000">NNN</span> are ex-players.` +
+            `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
+
+        div.style.margin = "10px";
+        div.style.padding = "5px";
+        div.style.border = "2px solid green";
+        div.style.borderRadius = "10px";
+        const place = team.querySelector("table");
+        team.insertBefore(div, place);
+    }
+
+    function addLineupValuesNational(team, sport) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamID(teamLink);
-        const sport = getSportType();
         const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
         GM_xmlhttpRequest({
             method: "GET",
             url,
-            context: team,
+            context: { team, sport },
             onload: function (resp) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const currency = getNationalCurrency(doc);
                 const players = getNationalPlayers(doc, currency);
-                const team = resp.context;
+                const team = resp.context.team;
+                const sport = resp.context.sport;
 
-                const valueHeader = document.createElement("td");
-                valueHeader.innerText = `Value`;
-                valueHeader.title = `Player Value (in ${currency})`;
-                team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
-                team.querySelector("table tfoot tr td").colSpan += 1;
-
-                const ageHeader = document.createElement("td");
-                ageHeader.innerText = `Age`;
-                ageHeader.title = `Player Age`;
-                team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
-                team.querySelector("table tfoot tr td").colSpan += 1;
-                team.querySelector("table thead tr td").colSpan += 1;
-
-                const lineupValue = getLineupPlayers(team, players)
-                    .filter((player) => player.starting && !player.exPlayer)
-                    .map((player) => player.value)
-                    .reduce((a, b) => a + b, 0);
-
-                const div = document.createElement("div");
-                div.innerHTML =
-                    `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
-                    `<br><br>Note: <span style="background:lightgreen">YYY</span> are starting players and ` +
-                    `<span style="background:#DD0000">NNN</span> are ex-players.` +
-                    `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
-
-                div.style.margin = "10px";
-                div.style.padding = "5px";
-                div.style.border = "2px solid green";
-                div.style.borderRadius = "10px";
-                const place = team.querySelector("table");
-                team.insertBefore(div, place);
+                injectLineupValues(players, team, currency, sport);
             },
         });
     }
 
-    function addLineupValues(team) {
+    function addLineupValues(team, sport) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamID(teamLink);
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
         GM_xmlhttpRequest({
             method: "GET",
             url,
-            context: team,
+            context: { team, sport },
             onload: function (resp) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const currency = getCurrency(doc);
                 const players = getPlayers(doc, currency);
-                const team = resp.context;
+                const team = resp.context.team;
+                const sport = resp.context.sport;
 
-                const valueHeader = document.createElement("td");
-                valueHeader.innerText = `Value`;
-                valueHeader.title = `Player Value (in ${currency})`;
-                team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
-                team.querySelector("table tfoot tr td").colSpan += 1;
-
-                const ageHeader = document.createElement("td");
-                ageHeader.innerText = `Age`;
-                ageHeader.title = `Player Age`;
-                team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
-                team.querySelector("table tfoot tr td").colSpan += 1;
-                team.querySelector("table thead tr td").colSpan += 1;
-
-                const lineupValue = getLineupPlayers(team, players)
-                    .filter((player) => player.starting && !player.exPlayer)
-                    .map((player) => player.value)
-                    .reduce((a, b) => a + b, 0);
-
-                const div = document.createElement("div");
-                div.innerHTML =
-                    `Starting Lineup Value: <b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
-                    `<br><br>Note: <span style="background:lightgreen">YYY</span> are starting players and ` +
-                    `<span style="background:#DD0000">NNN</span> are ex-players.` +
-                    `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
-
-                div.style.margin = "10px";
-                div.style.padding = "5px";
-                div.style.border = "2px solid green";
-                div.style.borderRadius = "10px";
-                const place = team.querySelector("table");
-                team.insertBefore(div, place);
+                injectLineupValues(players, team, currency, sport);
             },
         });
     }
 
     function injectTeamValuesToMatchPage() {
+        const sport = getSportType();
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
             if (team.querySelector("table")) {
                 if (isNationalTeam(team)) {
-                    addLineupValuesNational(team);
+                    addLineupValuesNational(team, sport);
                 } else {
-                    addLineupValues(team);
+                    addLineupValues(team, sport);
                 }
             }
         }
