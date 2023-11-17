@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.23
+// @version      0.24
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -55,8 +55,11 @@
     /* *********************** Utils ********************************** */
 
     function getSportType(doc = document) {
-        const href = doc.querySelector("#settings-wrapper a")?.href;
-        return href?.indexOf("hockey") > -1 ? "soccer" : "hockey";
+        const zone = doc.querySelector("a#shortcut_link_thezone");
+        if (zone) {
+            return zone.href.indexOf("hockey") > -1 ? "hockey" : "soccer";
+        }
+        return "soccer";
     }
 
     function isNationalTeam(teamTable) {
@@ -118,10 +121,7 @@
         for (const playerNode of [...playerNodes]) {
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
-                const value = playerNode
-                    .querySelector("td:nth-child(3)")
-                    ?.innerText.replaceAll(currency, "")
-                    .replace(/\s/g, "");
+                const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 const pid = playerNode.querySelector("a")?.href;
                 players.push({
@@ -152,15 +152,8 @@
                 const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
                 const infoTable = playerNode.querySelector("div.dg_playerview_info table");
                 const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-                const value = isDomesticPlayer(infoTable)
-                    ? infoTable
-                          .querySelector("tbody tr:nth-child(5) td span")
-                          ?.innerText.replaceAll(currency, "")
-                          .replace(/\s/g, "")
-                    : infoTable
-                          .querySelector("tbody tr:nth-child(6) td span")
-                          ?.innerText.replaceAll(currency, "")
-                          .replace(/\s/g, "");
+                const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span":"tbody tr:nth-child(6) td span";
+                const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
@@ -410,6 +403,7 @@
                 let rank = 0;
                 for (const team of finals) {
                     rank++;
+                    team.row.className = rank%2 ? "odd":"even";
                     const target = team.row.querySelector("button.donut.rank");
                     target.classList.remove("loading-donut");
                     target.classList.add("final-donut");
@@ -513,9 +507,8 @@
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
                 const count = resp.context.sport === "soccer" ? 11 : 21;
-                value.innerHTML = `<span style="color:red;">Top${count}: </span>${formatBigNumber(team.values, ",")} ${
-                    team.currency
-                }`;
+                value.innerHTML = `<span style="color:red;">Top${count}: </span>`+
+                    `${formatBigNumber(team.values, ",")} ${team.currency}`;
                 team.node.querySelector("td").appendChild(value);
 
                 team.done = true;
@@ -581,6 +574,11 @@
                 clearInterval(interval);
                 teams.sort((a, b) => b.values - a.values);
                 const newOrder = teams.map((t) => t.node);
+                let rank = 0;
+                for (const row of newOrder) {
+                    rank++;
+                    row.className = rank%2 ? "odd":"even";
+                }
                 tbody.replaceChildren(...newOrder);
                 setTableHeader(tableHeader + " ▼");
 
@@ -593,9 +591,8 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${
-                    teams[0].currency
-                }</td>`;
+                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>`+
+                    `${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
                 tbody.appendChild(total);
             } else {
                 timeout -= step;
@@ -665,9 +662,9 @@
         team.querySelector("table thead tr td").colSpan += 1;
 
         const lineupValue = getLineupPlayers(team, players, sport)
-            .filter((player) => player.starting && !player.exPlayer)
-            .map((player) => player.value)
-            .reduce((a, b) => a + b, 0);
+        .filter((player) => player.starting && !player.exPlayer)
+        .map((player) => player.value)
+        .reduce((a, b) => a + b, 0);
 
         const div = document.createElement("div");
         div.innerHTML =
