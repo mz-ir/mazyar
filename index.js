@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.22
+// @version      0.23
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -183,11 +183,12 @@
         table.align = "center";
 
         const titleHeader = document.createElement("th");
-        titleHeader.align = "center";
+        titleHeader.align = "left";
         titleHeader.classList.add("header");
         titleHeader.innerText = "Group";
+
         const valueHeader = document.createElement("th");
-        valueHeader.align = "center";
+        valueHeader.align = "right";
         valueHeader.classList.add("header");
         valueHeader.innerHTML = "Values";
         const thead = document.createElement("thead");
@@ -203,7 +204,6 @@
             const value = document.createElement("td");
             value.innerText = `${formatBigNumber(row.value)} ${currency}`;
             value.style.textAlign = "end";
-            value.width = "e";
             tr.appendChild(title);
             tr.appendChild(value);
             tbody.appendChild(tr);
@@ -379,18 +379,24 @@
                 url,
                 values: 0,
                 done: false,
+                currency: "",
             });
             i++;
             GM_xmlhttpRequest({
                 method: "GET",
                 url,
+                context: finals,
                 onload: function (resp) {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(resp.responseText, "text/html");
+                    const currency = getCurrency(doc);
                     const values = getTopPlyers(doc);
-                    const fin = finals.find((p) => resp.finalUrl === p.url);
-                    fin.values = values;
-                    fin.done = true;
+                    const fin = resp.context?.find((p) => resp.finalUrl === p.url);
+                    if (fin) {
+                        fin.values = values;
+                        fin.done = true;
+                        fin.currency = currency;
+                    }
                 },
             });
         }
@@ -404,10 +410,13 @@
                 let rank = 0;
                 for (const team of finals) {
                     rank++;
-                    const target = team.target.parentNode.querySelector("button.donut.rank");
+                    const target = team.row.querySelector("button.donut.rank");
                     target.classList.remove("loading-donut");
                     target.classList.add("final-donut");
                     target.innerText = `${rank}`;
+
+                    const value = team.row.querySelector("td.value");
+                    value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
                 }
                 const newOrder = finals.map((t) => t.row);
                 tbody.replaceChildren(...newOrder);
@@ -416,43 +425,61 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     for (const team of finals) {
-                        const target = team.target.parentNode.querySelector("button.donut.rank");
+                        const target = team.row.querySelector("button.donut.rank");
                         target.classList.remove("loading-donut");
                         target.classList.add("final-donut");
                         target.innerText = `-`;
+
+                        const value = team.row.querySelector("td.value");
+                        value.innerText = `N/A`;
                     }
                 }
             }
         }, step);
     }
 
-    function addSquadButton(target) {
-        const url = getSquadSummaryLink(target.href);
+    function addRankView(target) {
+        const value = document.createElement("td");
+        value.innerText = "";
+        value.classList.add("value");
+        value.style.textAlign = "right";
+        target.insertBefore(value, target.firstChild);
+
+        const rank = document.createElement("td");
         const button = document.createElement("button");
-        button.classList.add("donut", "final-donut", "squad");
-        button.innerText = `S`;
-        button.style.color = "inherit";
-        const place = target.parentNode.firstChild;
-        place.parentNode.insertBefore(button, place);
+        button.innerText = "_";
+        button.classList.add("donut", "loading-donut", "rank");
+        button.title = "Click to see squad summary";
+        rank.appendChild(button);
+        target.insertBefore(rank, target.firstChild);
+
+        const name = target.querySelector("a.team-name");
+        const url = getSquadSummaryLink(name.href);
         button.onclick = () => {
             displayOnModal(url);
         };
     }
 
-    function addRankView(target) {
-        const rank = document.createElement("button");
-        rank.innerText = "_";
-        rank.classList.add("donut", "loading-donut", "rank");
-        const place = target.parentNode.firstChild;
-        place.parentNode.insertBefore(rank, place);
-    }
-
     function injectToClashPage() {
         createModal();
-        const teams = document.querySelectorAll("a.team-name");
+
+        const table = document.querySelector("table.hitlist.challenges-list");
+
+        const headers = table.querySelector("thead tr");
+        const value = document.createElement("th");
+        value.style.textAlign = "right";
+        value.innerText = "Values";
+        value.style.width = "15%";
+        headers.insertBefore(value, headers.firstChild);
+
+        const rank = document.createElement("th");
+        rank.innerText = "Rank";
+        rank.style.width = "5%";
+        headers.insertBefore(rank, headers.firstChild);
+
+        const teams = table.querySelectorAll("tbody tr");
         for (const team of teams) {
             addRankView(team);
-            addSquadButton(team);
         }
         calculateRankOfTeams();
     }

@@ -16,8 +16,8 @@ Adds values of top 11 players of first team members and name of the teams. Then 
 
 ## In Clash Page
 
-Adds team rank in its federation, based on its Top 11 players.  
-Adds a yellow 'S' button in front of each team. Click to view the 'squad summary' in place.  
+Adds team rank in its federation, based on its Top 11 players. Click the rank button to view the 'squad summary' in place.   
+Also adds a new column to display team's top 11 players values.  
 
 ![Clash](./img/Clash.png)
 
