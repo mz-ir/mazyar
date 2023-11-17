@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.22
+// @version      0.23
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -408,6 +408,9 @@
                     target.classList.remove("loading-donut");
                     target.classList.add("final-donut");
                     target.innerText = `${rank}`;
+
+                    const value = team.target.parentNode.querySelector("span.value");
+                    value.innerText = `${formatBigNumber(team.values, ",")}`;
                 }
                 const newOrder = finals.map((t) => t.row);
                 tbody.replaceChildren(...newOrder);
@@ -426,33 +429,37 @@
         }, step);
     }
 
-    function addSquadButton(target) {
-        const url = getSquadSummaryLink(target.href);
-        const button = document.createElement("button");
-        button.classList.add("donut", "final-donut", "squad");
-        button.innerText = `S`;
-        button.style.color = "inherit";
-        const place = target.parentNode.firstChild;
-        place.parentNode.insertBefore(button, place);
-        button.onclick = () => {
-            displayOnModal(url);
-        };
-    }
-
     function addRankView(target) {
+        const url = getSquadSummaryLink(target.href);
         const rank = document.createElement("button");
         rank.innerText = "_";
         rank.classList.add("donut", "loading-donut", "rank");
+
+        rank.onclick = () => {
+            displayOnModal(url);
+        };
+
+        const value = document.createElement("span");
+        value.innerText = "";
+        value.classList.add("value");
+
         const place = target.parentNode.firstChild;
         place.parentNode.insertBefore(rank, place);
+        place.parentNode.insertBefore(value, place);
     }
 
     function injectToClashPage() {
         createModal();
+        const table = document.querySelector("table.hitlist.challenges-list");
+        const headers = table.querySelector("thead tr");
+
+        const info = document.createElement("th");
+        info.innerText = "Info";
+        headers.insertBefore(info, headers.firstChild);
+
         const teams = document.querySelectorAll("a.team-name");
         for (const team of teams) {
             addRankView(team);
-            addSquadButton(team);
         }
         calculateRankOfTeams();
     }
