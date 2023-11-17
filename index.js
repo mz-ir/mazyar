@@ -121,10 +121,7 @@
         for (const playerNode of [...playerNodes]) {
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
-                const value = playerNode
-                .querySelector("td:nth-child(3)")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "");
+                const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 const pid = playerNode.querySelector("a")?.href;
                 players.push({
@@ -155,15 +152,8 @@
                 const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
                 const infoTable = playerNode.querySelector("div.dg_playerview_info table");
                 const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-                const value = isDomesticPlayer(infoTable)
-                ? infoTable
-                .querySelector("tbody tr:nth-child(5) td span")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "")
-                : infoTable
-                .querySelector("tbody tr:nth-child(6) td span")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "");
+                const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span":"tbody tr:nth-child(6) td span";
+                const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
@@ -586,8 +576,8 @@
                 const newOrder = teams.map((t) => t.node);
                 let rank = 0;
                 for (const row of newOrder) {
-                    row.className = rank%2 ? "odd":"even";
                     rank++;
+                    row.className = rank%2 ? "odd":"even";
                 }
                 tbody.replaceChildren(...newOrder);
                 setTableHeader(tableHeader + " ▼");
