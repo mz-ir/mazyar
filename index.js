@@ -415,7 +415,7 @@
                     target.classList.add("final-donut");
                     target.innerText = `${rank}`;
 
-                    const value = team.row.querySelector("span.value");
+                    const value = team.row.querySelector("td.value");
                     value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
                 }
                 const newOrder = finals.map((t) => t.row);
@@ -425,10 +425,13 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     for (const team of finals) {
-                        const target = team.target.parentNode.querySelector("button.donut.rank");
+                        const target = team.row.querySelector("button.donut.rank");
                         target.classList.remove("loading-donut");
                         target.classList.add("final-donut");
                         target.innerText = `-`;
+
+                        const value = team.row.querySelector("td.value");
+                        value.innerText = `N/A`;
                     }
                 }
             }
@@ -436,30 +439,25 @@
     }
 
     function addRankView(target) {
-        const name = target.querySelector("a.team-name");
-        const url = getSquadSummaryLink(name.href);
-
-        const info = document.createElement("td");
-        info.style.width = "20%";
-        target.parentNode.insertBefore(info, target);
-
-        const rank = document.createElement("button");
-        rank.innerText = "_";
-        rank.classList.add("donut", "loading-donut", "rank");
-        rank.title = "Click to see squad summary";
-        rank.onclick = () => {
-            displayOnModal(url);
-        };
-
-        const value = document.createElement("span");
+        const value = document.createElement("td");
         value.innerText = "";
         value.classList.add("value");
-        value.style.alignContent = "right";
+        value.style.textAlign = "right";
+        target.insertBefore(value, target.firstChild);
 
-        info.appendChild(rank);
-        info.appendChild(value);
+        const rank = document.createElement("td");
+        const button = document.createElement("button");
+        button.innerText = "_";
+        button.classList.add("donut", "loading-donut", "rank");
+        button.title = "Click to see squad summary";
+        rank.appendChild(button);
+        target.insertBefore(rank, target.firstChild);
 
-        target.insertBefore(info, target.firstChild);
+        const name = target.querySelector("a.team-name");
+        const url = getSquadSummaryLink(name.href);
+        button.onclick = () => {
+            displayOnModal(url);
+        };
     }
 
     function injectToClashPage() {
@@ -468,10 +466,16 @@
         const table = document.querySelector("table.hitlist.challenges-list");
 
         const headers = table.querySelector("thead tr");
-        const info = document.createElement("th");
-        info.innerText = "Info";
-        info.style.width = "20%";
-        headers.insertBefore(info, headers.firstChild);
+        const value = document.createElement("th");
+        value.style.textAlign = "right";
+        value.innerText = "Values";
+        value.style.width = "15%";
+        headers.insertBefore(value, headers.firstChild);
+
+        const rank = document.createElement("th");
+        rank.innerText = "Rank";
+        rank.style.width = "5%";
+        headers.insertBefore(rank, headers.firstChild);
 
         const teams = table.querySelectorAll("tbody tr");
         for (const team of teams) {
