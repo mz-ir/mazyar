@@ -430,7 +430,12 @@
     }
 
     function addRankView(target) {
-        const url = getSquadSummaryLink(target.href);
+        const name = target.querySelector("a.team-name");
+        const url = getSquadSummaryLink(name.href);
+
+        const info = document.createElement("td");
+        target.parentNode.insertBefore(info, target);
+
         const rank = document.createElement("button");
         rank.innerText = "_";
         rank.classList.add("donut", "loading-donut", "rank");
@@ -443,21 +448,23 @@
         value.innerText = "";
         value.classList.add("value");
 
-        const place = target.parentNode.firstChild;
-        place.parentNode.insertBefore(rank, place);
-        place.parentNode.insertBefore(value, place);
+        info.appendChild(rank);
+        info.appendChild(value);
+
+        target.insertBefore(info, target.firstChild);
     }
 
     function injectToClashPage() {
         createModal();
-        const table = document.querySelector("table.hitlist.challenges-list");
-        const headers = table.querySelector("thead tr");
 
+        const table = document.querySelector("table.hitlist.challenges-list");
+
+        const headers = table.querySelector("thead tr");
         const info = document.createElement("th");
         info.innerText = "Info";
         headers.insertBefore(info, headers.firstChild);
 
-        const teams = document.querySelectorAll("a.team-name");
+        const teams = table.querySelectorAll("tbody tr");
         for (const team of teams) {
             addRankView(team);
         }
