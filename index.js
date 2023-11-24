@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.24
+// @version      0.25
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -22,6 +22,11 @@
     /* *********************** Styles ********************************** */
 
     GM_addStyle(`
+
+    table.squad-summary tbody td, table.squad-summary thead th {
+        padding: 0.3em 0.5em;
+    }
+
     .donut {
         width: 1.7em;
         height: 1.7em;
@@ -121,7 +126,10 @@
         for (const playerNode of [...playerNodes]) {
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
-                const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
+                const value = playerNode
+                    .querySelector("td:nth-child(3)")
+                    ?.innerText.replaceAll(currency, "")
+                    .replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 const pid = playerNode.querySelector("a")?.href;
                 players.push({
@@ -152,7 +160,9 @@
                 const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
                 const infoTable = playerNode.querySelector("div.dg_playerview_info table");
                 const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-                const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span":"tbody tr:nth-child(6) td span";
+                const selector = isDomesticPlayer(infoTable)
+                    ? "tbody tr:nth-child(5) td span"
+                    : "tbody tr:nth-child(6) td span";
                 const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
@@ -166,151 +176,197 @@
 
     /* *********************** Squad Summary ********************************** */
 
-    function createSquadTable(rows, currency) {
-        const table = document.createElement("table");
-        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.width = "30%";
-        table.cellSpacing = "1px";
-        table.cellPadding = "3px";
-        table.border = "0";
-        table.align = "center";
-
-        const titleHeader = document.createElement("th");
-        titleHeader.align = "left";
-        titleHeader.classList.add("header");
-        titleHeader.innerText = "Group";
-
-        const valueHeader = document.createElement("th");
-        valueHeader.align = "right";
-        valueHeader.classList.add("header");
-        valueHeader.innerHTML = "Values";
-        const thead = document.createElement("thead");
-        thead.appendChild(titleHeader);
-        thead.appendChild(valueHeader);
-        table.appendChild(thead);
-
-        const tbody = document.createElement("tbody");
-        for (const row of rows) {
-            const tr = document.createElement("tr");
-            const title = document.createElement("td");
-            title.innerHTML = `${row.title}`;
-            const value = document.createElement("td");
-            value.innerText = `${formatBigNumber(row.value)} ${currency}`;
-            value.style.textAlign = "end";
-            tr.appendChild(title);
-            tr.appendChild(value);
-            tbody.appendChild(tr);
-        }
-        table.appendChild(tbody);
-
-        const info = document.createElement("div");
-        info.appendChild(table);
-        info.style = "margin: 10px 0px";
-        return info;
-    }
-
-    function getTotalValueOfAllPlayers(players) {
-        const values = players.map((player) => player.value);
-        return values.reduce((a, b) => a + b, 0);
-    }
-
-    function filterTopPlayers(players, count, ageLow = 0, ageHigh = 99) {
+    function getValueOfPlayers(players, count, ageLow = 0, ageHigh = 99) {
+        const n = count === 0 ? players.length : count;
         return players
             .filter((player) => player.age <= ageHigh && player.age >= ageLow)
             .sort((a, b) => b.value - a.value)
-            .slice(0, count)
+            .slice(0, n)
             .map((player) => player.value)
             .reduce((a, b) => a + b, 0);
     }
 
-    function createSquadSummary(doc) {
-        const currency = getCurrency(doc);
+    function getNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
+        return players.filter((player) => player.age <= ageHigh && player.age >= ageLow).length;
+    }
+
+    function getSquadSummary(players, currency = "USD", sport = "soccer") {
         const rows = [];
-        const players = getPlayers(doc, currency);
-        const sport = getSportType(doc);
         if (players) {
-            rows.push({
-                title: "All",
-                value: getTotalValueOfAllPlayers(players),
-            });
             if (sport === "hockey") {
                 rows.push({
-                    title: "Top 21 - All",
-                    value: filterTopPlayers(players, 21),
+                    title: "All",
+                    count: players.length,
+                    all: getValueOfPlayers(players),
+                    top21: getValueOfPlayers(players, 21),
                 });
                 rows.push({
-                    title: "Top 21 - U23",
-                    value: filterTopPlayers(players, 21, 0, 23),
+                    title: "U23",
+                    count: getNumberOfPlayers(players, 0, 23),
+                    all: getValueOfPlayers(players, 0, 0, 23),
+                    top21: getValueOfPlayers(players, 21, 0, 23),
                 });
                 rows.push({
-                    title: "Top 21 - U21",
-                    value: filterTopPlayers(players, 21, 0, 21),
+                    title: "U21",
+                    count: getNumberOfPlayers(players, 0, 21),
+                    all: getValueOfPlayers(players, 0, 0, 21),
+                    top21: getValueOfPlayers(players, 21, 0, 21),
                 });
                 rows.push({
-                    title: "Top 21 - U18",
-                    value: filterTopPlayers(players, 21, 0, 18),
+                    title: "U18",
+                    count: getNumberOfPlayers(players, 0, 18),
+                    all: getValueOfPlayers(players, 0, 0, 18),
+                    top21: getValueOfPlayers(players, 21, 0, 18),
                 });
             } else {
                 rows.push({
-                    title: "Top 16 - All",
-                    value: filterTopPlayers(players, 16),
+                    title: "All",
+                    count: players.length,
+                    all: getValueOfPlayers(players),
+                    top16: getValueOfPlayers(players, 16),
+                    top11: getValueOfPlayers(players, 11),
                 });
                 rows.push({
-                    title: "Top 11 - All",
-                    value: filterTopPlayers(players, 11),
+                    title: "U23",
+                    count: getNumberOfPlayers(players, 0, 23),
+                    all: getValueOfPlayers(players, 0, 0, 23),
+                    top16: getValueOfPlayers(players, 16, 0, 23),
+                    top11: getValueOfPlayers(players, 11, 0, 23),
                 });
                 rows.push({
-                    title: "Top 16 - U23",
-                    value: filterTopPlayers(players, 16, 0, 23),
+                    title: "U21",
+                    count: getNumberOfPlayers(players, 0, 21),
+                    all: getValueOfPlayers(players, 0, 0, 21),
+                    top16: getValueOfPlayers(players, 16, 0, 21),
+                    top11: getValueOfPlayers(players, 11, 0, 21),
                 });
                 rows.push({
-                    title: "Top 11 - U23",
-                    value: filterTopPlayers(players, 11, 0, 23),
-                });
-                rows.push({
-                    title: "Top 16 - U21",
-                    value: filterTopPlayers(players, 16, 0, 21),
-                });
-                rows.push({
-                    title: "Top 11 - U21",
-                    value: filterTopPlayers(players, 11, 0, 21),
-                });
-                rows.push({
-                    title: "Top 16 - U18",
-                    value: filterTopPlayers(players, 16, 0, 18),
-                });
-                rows.push({
-                    title: "Top 11 - U18",
-                    value: filterTopPlayers(players, 11, 0, 18),
+                    title: "U18",
+                    count: getNumberOfPlayers(players, 0, 18),
+                    all: getValueOfPlayers(players, 0, 0, 18),
+                    top16: getValueOfPlayers(players, 16, 0, 18),
+                    top11: getValueOfPlayers(players, 11, 0, 18),
                 });
             }
         }
-        return createSquadTable(rows, currency);
+        return rows;
+    }
+
+    function createSquadTable(rows, currency = "USD", sport = "soccer") {
+        const table = document.createElement("table");
+        table.classList.add("squad-summary");
+
+        const thead = document.createElement("thead");
+        table.appendChild(thead);
+
+        const titleHeader = document.createElement("th");
+        thead.appendChild(titleHeader);
+        titleHeader.innerText = "Group";
+        titleHeader.style.textAlign = "center";
+        titleHeader.style.textDecoration = "none";
+
+        const countHeader = document.createElement("th");
+        thead.appendChild(countHeader);
+        countHeader.innerText = "Count";
+        countHeader.title = "Number of Players";
+        countHeader.style.textAlign = "center";
+        countHeader.style.textDecoration = "none";
+
+        const totalHeader = document.createElement("th");
+        thead.appendChild(totalHeader);
+        totalHeader.innerHTML = "Total";
+        totalHeader.title = "Total Value of Players";
+        totalHeader.style.textAlign = "center";
+        totalHeader.style.textDecoration = "none";
+
+        if (sport === "soccer") {
+            const top16Header = document.createElement("th");
+            thead.appendChild(top16Header);
+            top16Header.innerHTML = "Top 16";
+            top16Header.title = "Value of Top 16 Players";
+            top16Header.style.textAlign = "center";
+            top16Header.style.textDecoration = "none";
+
+            const top11Header = document.createElement("th");
+            thead.appendChild(top11Header);
+            top11Header.innerHTML = "Top 11";
+            top11Header.title = "Value of Top 11 Players";
+            top11Header.style.textAlign = "center";
+            top11Header.style.textDecoration = "none";
+        } else {
+            const top21Header = document.createElement("th");
+            thead.appendChild(top21Header);
+            top21Header.innerHTML = "Top 21";
+            top21Header.title = "Value of Top 21 Players";
+            top21Header.style.textAlign = "center";
+            top21Header.style.textDecoration = "none";
+        }
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+
+        for (const row of rows) {
+            const tr = document.createElement("tr");
+            tbody.appendChild(tr);
+
+            const title = document.createElement("td");
+            title.innerHTML = `${row.title}`;
+            tr.appendChild(title);
+
+            const count = document.createElement("td");
+            count.innerHTML = `${row.count}`;
+            count.style.textAlign = "center";
+            tr.appendChild(count);
+
+            const all = document.createElement("td");
+            all.innerText = `${formatBigNumber(row.all)} ${currency}`;
+            all.style.textAlign = "end";
+            tr.appendChild(all);
+
+            if (sport === "soccer") {
+                const top16 = document.createElement("td");
+                top16.innerText = `${formatBigNumber(row.top16)} ${currency}`;
+                top16.style.textAlign = "end";
+                tr.appendChild(top16);
+
+                const top11 = document.createElement("td");
+                top11.innerText = `${formatBigNumber(row.top11)} ${currency}`;
+                top11.style.textAlign = "end";
+                tr.appendChild(top11);
+            } else {
+                const top21 = document.createElement("td");
+                top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
+                top21.style.textAlign = "end";
+            }
+        }
+
+        return table;
     }
 
     function injectToSquadSummaryPage() {
-        const content = createSquadSummary(document);
+        const sport = getSportType(document);
+        const currency = getCurrency(document);
+        const players = getPlayers(document, currency);
+        const summary = getSquadSummary(players, currency, sport);
+        const table = createSquadTable(summary, currency, sport);
+
+        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.style.borderSpacing = 0;
+        table.style.marginBottom = "10px";
+        table.align = "center";
+
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
-            place.parentNode?.insertBefore(content, place);
+            place.parentNode?.insertBefore(table, place);
         }
     }
 
     /* *********************** Clash ********************************** */
 
     function createModal() {
-        const modalContent = document.createElement("div");
-        modalContent.style.backgroundColor = "#fefefe";
-        modalContent.style.margin = "15% auto";
-        modalContent.style.padding = "20px";
-        modalContent.style.border = "1px solid #888";
-        modalContent.style.width = "15%";
-
-        const divContent = document.createElement("div");
-        divContent.id = "squad-display-modal-content";
-        modalContent.appendChild(divContent);
-
         const modal = document.createElement("div");
+        document.body.appendChild(modal);
+
         modal.style.display = "none";
         modal.style.position = "fixed";
         modal.style.zIndex = "1";
@@ -321,26 +377,47 @@
         modal.style.overflow = "auto";
         modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
         modal.id = "squad-display-modal";
-        modal.appendChild(modalContent);
         modal.onclick = () => {
             modal.style.display = "none";
         };
-        document.body.appendChild(modal);
+
+        const modalContent = document.createElement("div");
+        modal.appendChild(modalContent);
+        modalContent.style.backgroundColor = "#fefefe";
+        modalContent.style.margin = "15% auto";
+        modalContent.style.padding = "20px";
+        modalContent.style.border = "1px solid #888";
+        modalContent.style.width = "30%";
+
+        const divContent = document.createElement("div");
+        modalContent.appendChild(divContent);
+        divContent.id = "squad-display-modal-content";
     }
 
     function displayOnModal(url) {
-        const modal = document.getElementById("squad-display-modal");
         const divContent = document.getElementById("squad-display-modal-content");
         divContent.innerHTML = "loading...";
+
+        const modal = document.getElementById("squad-display-modal");
         modal.style.display = "block";
+
         GM_xmlhttpRequest({
             method: "GET",
             url,
             onload: function (resp) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
-                const content = createSquadSummary(doc);
-                divContent.innerHTML = content.innerHTML;
+                const sport = getSportType(doc);
+                const currency = getCurrency(doc);
+                const players = getPlayers(doc, currency);
+                const summary = getSquadSummary(players, currency, sport);
+                const table = createSquadTable(summary, currency, sport);
+                table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+                table.style.width = "auto";
+                table.align = "center";
+
+                const target = document.getElementById("squad-display-modal-content");
+                target.replaceChildren(table);
             },
         });
     }
@@ -355,7 +432,7 @@
         const players = getPlayers(doc, currency);
         const sport = getSportType(doc);
         const count = sport === "soccer" ? 11 : 21;
-        return players ? filterTopPlayers(players, count) : 0;
+        return players ? getValueOfPlayers(players, count) : 0;
     }
 
     function calculateRankOfTeams() {
@@ -403,7 +480,7 @@
                 let rank = 0;
                 for (const team of finals) {
                     rank++;
-                    team.row.className = rank%2 ? "odd":"even";
+                    team.row.className = rank % 2 ? "odd" : "even";
                     const target = team.row.querySelector("button.donut.rank");
                     target.classList.remove("loading-donut");
                     target.classList.add("final-donut");
@@ -507,7 +584,8 @@
                 value.style.width = "100%";
                 value.style.marginTop = "3px";
                 const count = resp.context.sport === "soccer" ? 11 : 21;
-                value.innerHTML = `<span style="color:red;">Top${count}: </span>`+
+                value.innerHTML =
+                    `<span style="color:red;">Top${count}: </span>` +
                     `${formatBigNumber(team.values, ",")} ${team.currency}`;
                 team.node.querySelector("td").appendChild(value);
 
@@ -577,7 +655,7 @@
                 let rank = 0;
                 for (const row of newOrder) {
                     rank++;
-                    row.className = rank%2 ? "odd":"even";
+                    row.className = rank % 2 ? "odd" : "even";
                 }
                 tbody.replaceChildren(...newOrder);
                 setTableHeader(tableHeader + " ▼");
@@ -591,7 +669,8 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>`+
+                total.innerHTML =
+                    `<td><hr><span style="color:red;">Total: </span>` +
                     `${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
                 tbody.appendChild(total);
             } else {
@@ -662,9 +741,9 @@
         team.querySelector("table thead tr td").colSpan += 1;
 
         const lineupValue = getLineupPlayers(team, players, sport)
-        .filter((player) => player.starting && !player.exPlayer)
-        .map((player) => player.value)
-        .reduce((a, b) => a + b, 0);
+            .filter((player) => player.starting && !player.exPlayer)
+            .map((player) => player.value)
+            .reduce((a, b) => a + b, 0);
 
         const div = document.createElement("div");
         div.innerHTML =
