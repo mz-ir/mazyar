@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.25
+// @version      0.26
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -335,6 +335,7 @@
                 tr.appendChild(top11);
             } else {
                 const top21 = document.createElement("td");
+                tr.appendChild(top21);
                 top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
                 top21.style.textAlign = "end";
             }
