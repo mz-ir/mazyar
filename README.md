@@ -4,7 +4,7 @@ This is a userscript to add some features to [www.managerzone.com](www.managerzo
 ## In Squad Summary
 
 Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 - U23'.  
-https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/Clash.png
+
 ![Squad Summary](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/SquadSummary.png)
 
 
