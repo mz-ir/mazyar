@@ -8,6 +8,13 @@ Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 
 ![Squad Summary](./img/SquadSummary.png)
 
 
+## In League Pages
+
+Adds top players' value and average age to the table.  
+Click on team value to see squad summary. 
+
+![Match](./img/LeaguePage.png)
+
 ## In Federation Front Page
 
 Adds values of top 11 players of first team members and name of the teams. Then it sorts the teams by their value.  
