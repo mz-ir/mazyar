@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.26
+// @version      0.27
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -14,6 +14,7 @@
 // @match        https://www.managerzone.com/?p=federations
 // @match        https://www.managerzone.com/?p=federations&fid=*
 // @match        https://www.managerzone.com/?p=match&sub=result&mid=*
+// @match        https://www.managerzone.com/?p=league*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // ==/UserScript==
 (function () {
@@ -127,9 +128,9 @@
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
                 const value = playerNode
-                    .querySelector("td:nth-child(3)")
-                    ?.innerText.replaceAll(currency, "")
-                    .replace(/\s/g, "");
+                .querySelector("td:nth-child(3)")
+                ?.innerText.replaceAll(currency, "")
+                .replace(/\s/g, "");
                 const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
                 const pid = playerNode.querySelector("a")?.href;
                 players.push({
@@ -161,8 +162,8 @@
                 const infoTable = playerNode.querySelector("div.dg_playerview_info table");
                 const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
                 const selector = isDomesticPlayer(infoTable)
-                    ? "tbody tr:nth-child(5) td span"
-                    : "tbody tr:nth-child(6) td span";
+                ? "tbody tr:nth-child(5) td span"
+                : "tbody tr:nth-child(6) td span";
                 const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
@@ -176,14 +177,23 @@
 
     /* *********************** Squad Summary ********************************** */
 
-    function getValueOfPlayers(players, count, ageLow = 0, ageHigh = 99) {
+    function filterPlayers(players, count = 0, ageLow = 0, ageHigh = 99) {
+        if(players.length === 0) {
+            return { values: 0, avgAge: 0.0 };
+        }
+
         const n = count === 0 ? players.length : count;
-        return players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n)
-            .map((player) => player.value)
-            .reduce((a, b) => a + b, 0);
+        const filtered = players
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
+        if(filtered.length === 0) {
+            return {values: 0, avgAge: 0.0};
+        }
+
+        const values = filtered.map((player) => player.value).reduce((a, b) => a + b, 0);
+        const avgAge = filtered.map((player) => player.age).reduce((a, b) => a + b, 0) / filtered.length;
+        return { values, avgAge };
     }
 
     function getNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
@@ -197,55 +207,55 @@
                 rows.push({
                     title: "All",
                     count: players.length,
-                    all: getValueOfPlayers(players),
-                    top21: getValueOfPlayers(players, 21),
+                    all: filterPlayers(players).values,
+                    top21: filterPlayers(players, 21).values,
                 });
                 rows.push({
                     title: "U23",
                     count: getNumberOfPlayers(players, 0, 23),
-                    all: getValueOfPlayers(players, 0, 0, 23),
-                    top21: getValueOfPlayers(players, 21, 0, 23),
+                    all: filterPlayers(players, 0, 0, 23).values,
+                    top21: filterPlayers(players, 21, 0, 23).values,
                 });
                 rows.push({
                     title: "U21",
                     count: getNumberOfPlayers(players, 0, 21),
-                    all: getValueOfPlayers(players, 0, 0, 21),
-                    top21: getValueOfPlayers(players, 21, 0, 21),
+                    all: filterPlayers(players, 0, 0, 21).values,
+                    top21: filterPlayers(players, 21, 0, 21).values,
                 });
                 rows.push({
                     title: "U18",
                     count: getNumberOfPlayers(players, 0, 18),
-                    all: getValueOfPlayers(players, 0, 0, 18),
-                    top21: getValueOfPlayers(players, 21, 0, 18),
+                    all: filterPlayers(players, 0, 0, 18).values,
+                    top21: filterPlayers(players, 21, 0, 18).values,
                 });
             } else {
                 rows.push({
                     title: "All",
                     count: players.length,
-                    all: getValueOfPlayers(players),
-                    top16: getValueOfPlayers(players, 16),
-                    top11: getValueOfPlayers(players, 11),
+                    all: filterPlayers(players).values,
+                    top16: filterPlayers(players, 16).values,
+                    top11: filterPlayers(players, 11).values,
                 });
                 rows.push({
                     title: "U23",
                     count: getNumberOfPlayers(players, 0, 23),
-                    all: getValueOfPlayers(players, 0, 0, 23),
-                    top16: getValueOfPlayers(players, 16, 0, 23),
-                    top11: getValueOfPlayers(players, 11, 0, 23),
+                    all: filterPlayers(players, 0, 0, 23).values,
+                    top16: filterPlayers(players, 16, 0, 23).values,
+                    top11: filterPlayers(players, 11, 0, 23).values,
                 });
                 rows.push({
                     title: "U21",
                     count: getNumberOfPlayers(players, 0, 21),
-                    all: getValueOfPlayers(players, 0, 0, 21),
-                    top16: getValueOfPlayers(players, 16, 0, 21),
-                    top11: getValueOfPlayers(players, 11, 0, 21),
+                    all: filterPlayers(players, 0, 0, 21).values,
+                    top16: filterPlayers(players, 16, 0, 21).values,
+                    top11: filterPlayers(players, 11, 0, 21).values,
                 });
                 rows.push({
                     title: "U18",
                     count: getNumberOfPlayers(players, 0, 18),
-                    all: getValueOfPlayers(players, 0, 0, 18),
-                    top16: getValueOfPlayers(players, 16, 0, 18),
-                    top11: getValueOfPlayers(players, 11, 0, 18),
+                    all: filterPlayers(players, 0, 0, 18).values,
+                    top16: filterPlayers(players, 16, 0, 18).values,
+                    top11: filterPlayers(players, 11, 0, 18).values,
                 });
             }
         }
@@ -433,7 +443,7 @@
         const players = getPlayers(doc, currency);
         const sport = getSportType(doc);
         const count = sport === "soccer" ? 11 : 21;
-        return players ? getValueOfPlayers(players, count) : 0;
+        return players ? filterPlayers(players, count).values : 0;
     }
 
     function calculateRankOfTeams() {
@@ -742,9 +752,9 @@
         team.querySelector("table thead tr td").colSpan += 1;
 
         const lineupValue = getLineupPlayers(team, players, sport)
-            .filter((player) => player.starting && !player.exPlayer)
-            .map((player) => player.value)
-            .reduce((a, b) => a + b, 0);
+        .filter((player) => player.starting && !player.exPlayer)
+        .map((player) => player.value)
+        .reduce((a, b) => a + b, 0);
 
         const div = document.createElement("div");
         div.innerHTML =
@@ -819,6 +829,108 @@
         }
     }
 
+    /* *********************** League ********************************** */
+
+    function addTeamTopPlayersValueToTable(team, age, sport) {
+        const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
+        const tid = extractTeamID(teamLink);
+        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+
+        const teamValue = document.createElement("td");
+        team.appendChild(teamValue);
+        teamValue.innerText = "loading...";
+        teamValue.classList.add("team-value");
+        teamValue.title = "Click to see quad summary";
+        teamValue.style.textAlign = "center";
+        teamValue.style.whiteSpace = 'nowrap';
+        teamValue.style.padding = 'auto 3px';
+        teamValue.onclick = () => {
+            displayOnModal(url);
+        };
+
+        const ageValue = document.createElement("td");
+        team.appendChild(ageValue);
+        ageValue.innerText = "...";
+        ageValue.style.textAlign = "center";
+        teamValue.style.whiteSpace = 'nowrap';
+        teamValue.style.padding = 'auto 3px';
+        ageValue.classList.add("avg-age-value");
+
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context: { team, sport, age },
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const currency = getCurrency(doc);
+                const players = getPlayers(doc, currency);
+                const team = resp.context.team;
+                const sport = resp.context.sport;
+                const age = resp.context.age;
+                const { values, avgAge } = filterPlayers(players, sport === "soccer" ? 11 : 21, 0, age);
+                const valueElement = team.querySelector("td.team-value");
+                valueElement.innerText = `${formatBigNumber(values)} ${currency}`;
+                valueElement.style.textAlign = "right";
+
+                const ageElement = team.querySelector("td.avg-age-value");
+                ageElement.innerText = `${avgAge.toFixed(1)}`;
+            },
+        });
+    }
+
+    function getLeagueAgeLimit(url) {
+        if (url.search("type=u23") > -1) {
+            return 23;
+        } else if (url.search("type=u21") > -1) {
+            return 21;
+        } else if (url.search("type=u18") > -1) {
+            return 18;
+        }
+        return 99;
+    }
+
+    function addTopPlayersValueToTable() {
+        createModal();
+        const age = getLeagueAgeLimit(document.baseURI);
+        const sport = getSportType(document);
+        const table = document.querySelector("table.nice_table");
+
+        const valueH = document.createElement("th");
+        valueH.style.textAlign = "center";
+        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21}`;
+
+        const ageH = document.createElement("th");
+        ageH.style.textAlign = "center";
+        ageH.innerText = `Age`;
+        ageH.title = 'Average Age Of the Top Players';
+
+        const headers = table.querySelector("thead tr");
+        headers.appendChild(valueH);
+        headers.appendChild(ageH);
+
+        const teams = table.querySelectorAll("tbody tr");
+        for (const team of teams) {
+            addTeamTopPlayersValueToTable(team, age, sport);
+        }
+    }
+
+    function injectTeamValuesToLeagueTable() {
+        let timeout = 16000;
+        const step = 1000;
+        const interval = setInterval(() => {
+            if (document.querySelector("table.nice_table")) {
+                clearInterval(interval);
+                addTopPlayersValueToTable();
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                }
+            }
+        }, step);
+    }
+
     /* *********************** Inject ********************************** */
 
     function isFederationFrontPage(uri) {
@@ -834,6 +946,8 @@
             injectToSquadSummaryPage();
         } else if (document.baseURI.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
+        } else if (document.baseURI.search("/?p=league") > -1) {
+            injectTeamValuesToLeagueTable();
         }
     }
 
