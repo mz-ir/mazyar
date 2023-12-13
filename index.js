@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.29
+// @version      0.30
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -651,7 +651,7 @@
                 const name = document.createElement("div");
                 name.style.color = "blue";
                 name.style.width = "100%";
-                name.style.marginTop = "3px";
+                name.style.marginTop = "0.5em";
                 name.title = team.name;
                 const teamName = team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name;
                 name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
@@ -660,7 +660,7 @@
                 const value = document.createElement("div");
                 value.style.color = "blue";
                 value.style.width = "100%";
-                value.style.marginTop = "3px";
+                value.style.marginTop = "0.5em";
                 const count = resp.context.sport === "soccer" ? 11 : 21;
                 value.innerHTML =
                     `<span style="color:red;">Top${count}: </span>` +
@@ -907,6 +907,7 @@
         team.appendChild(teamValue);
         teamValue.innerText = "loading...";
         teamValue.classList.add("team-value");
+        teamValue.classList.add("responsive-hide");
         teamValue.title = "Click to see quad summary";
         teamValue.style.textAlign = "center";
         teamValue.style.whiteSpace = 'nowrap';
@@ -916,6 +917,7 @@
         };
 
         const ageValue = document.createElement("td");
+        ageValue.classList.add("responsive-hide");
         team.appendChild(ageValue);
         ageValue.innerText = "...";
         ageValue.style.textAlign = "center";
@@ -964,10 +966,12 @@
         const table = document.querySelector("table.nice_table");
 
         const valueH = document.createElement("th");
+        valueH.classList.add("responsive-hide");
         valueH.style.textAlign = "center";
         valueH.innerText = `Top ${sport === "soccer" ? 11 : 21}`;
 
         const ageH = document.createElement("th");
+        ageH.classList.add("responsive-hide");
         ageH.style.textAlign = "center";
         ageH.innerText = `Age`;
         ageH.title = 'Average Age Of the Top Players';
