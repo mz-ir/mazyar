@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.27
+// @version      0.28
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -16,6 +16,8 @@
 // @match        https://www.managerzone.com/?p=match&sub=result&mid=*
 // @match        https://www.managerzone.com/?p=league*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
+// @downloadURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
+// @updateURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
 // ==/UserScript==
 (function () {
     "use strict";
@@ -262,6 +264,27 @@
         return rows;
     }
 
+    function createCompactElement(title, value){
+        const dd = document.createElement("dd");
+        dd.innerHTML = `<span class="listHeadColor">${title}</span><span class="clippable">${value}</span>`;
+        return dd;
+    }
+
+    function createCompactSquadRow(row, currency = "USD", sport = "soccer") {
+        const dl = document.createElement("dl");
+        dl.classList.add("hitlist-compact-list", "columns");
+
+        dl.appendChild(createCompactElement("Count", row.count));
+        dl.appendChild(createCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
+        if (sport == "soccer") {
+            dl.appendChild(createCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
+            dl.appendChild(createCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
+        } else {
+            dl.appendChild(createCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
+        }
+        return dl;
+    }
+
     function createSquadTable(rows, currency = "USD", sport = "soccer") {
         const table = document.createElement("table");
         table.classList.add("squad-summary");
@@ -269,21 +292,27 @@
         const thead = document.createElement("thead");
         table.appendChild(thead);
 
+        const tr = document.createElement("tr");
+        thead.appendChild(tr);
+
         const titleHeader = document.createElement("th");
-        thead.appendChild(titleHeader);
+        tr.appendChild(titleHeader);
+        titleHeader.classList.add("header");
         titleHeader.innerText = "Group";
         titleHeader.style.textAlign = "center";
         titleHeader.style.textDecoration = "none";
 
         const countHeader = document.createElement("th");
-        thead.appendChild(countHeader);
+        tr.appendChild(countHeader);
+        countHeader.classList.add("header");
         countHeader.innerText = "Count";
         countHeader.title = "Number of Players";
         countHeader.style.textAlign = "center";
         countHeader.style.textDecoration = "none";
 
         const totalHeader = document.createElement("th");
-        thead.appendChild(totalHeader);
+        tr.appendChild(totalHeader);
+        totalHeader.classList.add("header");
         totalHeader.innerHTML = "Total";
         totalHeader.title = "Total Value of Players";
         totalHeader.style.textAlign = "center";
@@ -291,21 +320,24 @@
 
         if (sport === "soccer") {
             const top16Header = document.createElement("th");
-            thead.appendChild(top16Header);
+            tr.appendChild(top16Header);
+            top16Header.classList.add("header");
             top16Header.innerHTML = "Top 16";
             top16Header.title = "Value of Top 16 Players";
             top16Header.style.textAlign = "center";
             top16Header.style.textDecoration = "none";
 
             const top11Header = document.createElement("th");
-            thead.appendChild(top11Header);
+            tr.appendChild(top11Header);
+            top11Header.classList.add("header");
             top11Header.innerHTML = "Top 11";
             top11Header.title = "Value of Top 11 Players";
             top11Header.style.textAlign = "center";
             top11Header.style.textDecoration = "none";
         } else {
             const top21Header = document.createElement("th");
-            thead.appendChild(top21Header);
+            tr.appendChild(top21Header);
+            top21Header.classList.add("header");
             top21Header.innerHTML = "Top 21";
             top21Header.title = "Value of Top 21 Players";
             top21Header.style.textAlign = "center";
@@ -321,7 +353,10 @@
 
             const title = document.createElement("td");
             title.innerHTML = `${row.title}`;
+            title.classList.add("hitlist-compact-list-column");
             tr.appendChild(title);
+            const compact = createCompactSquadRow(row, currency, sport);
+            title.appendChild(compact);
 
             const count = document.createElement("td");
             count.innerHTML = `${row.count}`;
@@ -394,11 +429,8 @@
 
         const modalContent = document.createElement("div");
         modal.appendChild(modalContent);
-        modalContent.style.backgroundColor = "#fefefe";
         modalContent.style.margin = "15% auto";
         modalContent.style.padding = "20px";
-        modalContent.style.border = "1px solid #888";
-        modalContent.style.width = "30%";
 
         const divContent = document.createElement("div");
         modalContent.appendChild(divContent);
@@ -407,10 +439,19 @@
 
     function displayOnModal(url) {
         const divContent = document.getElementById("squad-display-modal-content");
-        divContent.innerHTML = "loading...";
+
+        const loading = document.createElement("p");
+        divContent.replaceChildren(loading);
+        loading.innerText = "loading...";
+        loading.style.width = "fit-content";
+        loading.style.textAlign = "center";
+        loading.style.backgroundColor = "#fefefe";
+        loading.style.padding = "0.5em";
 
         const modal = document.getElementById("squad-display-modal");
-        modal.style.display = "block";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
 
         GM_xmlhttpRequest({
             method: "GET",
@@ -426,6 +467,8 @@
                 table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
                 table.style.width = "auto";
                 table.align = "center";
+                table.style.backgroundColor = "#fefefe";
+                table.style.padding = "0.5em";
 
                 const target = document.getElementById("squad-display-modal-content");
                 target.replaceChildren(table);
