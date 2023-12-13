@@ -651,7 +651,7 @@
                 const name = document.createElement("div");
                 name.style.color = "blue";
                 name.style.width = "100%";
-                name.style.marginTop = "3px";
+                name.style.marginTop = "0.5em";
                 name.title = team.name;
                 const teamName = team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name;
                 name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
@@ -660,7 +660,7 @@
                 const value = document.createElement("div");
                 value.style.color = "blue";
                 value.style.width = "100%";
-                value.style.marginTop = "3px";
+                value.style.marginTop = "0.5em";
                 const count = resp.context.sport === "soccer" ? 11 : 21;
                 value.innerHTML =
                     `<span style="color:red;">Top${count}: </span>` +
@@ -906,7 +906,8 @@
         const teamValue = document.createElement("td");
         team.appendChild(teamValue);
         teamValue.innerText = "loading...";
-        teamValue.classList.add("team-value", "responsive-hide");
+        teamValue.classList.add("team-value");
+        teamValue.classList.add("responsive-hide");
         teamValue.title = "Click to see quad summary";
         teamValue.style.textAlign = "center";
         teamValue.style.whiteSpace = 'nowrap';
