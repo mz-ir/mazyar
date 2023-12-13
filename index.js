@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.29
+// @version      0.30
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -906,7 +906,7 @@
         const teamValue = document.createElement("td");
         team.appendChild(teamValue);
         teamValue.innerText = "loading...";
-        teamValue.classList.add("team-value");
+        teamValue.classList.add("team-value", "responsive-hide");
         teamValue.title = "Click to see quad summary";
         teamValue.style.textAlign = "center";
         teamValue.style.whiteSpace = 'nowrap';
@@ -916,6 +916,7 @@
         };
 
         const ageValue = document.createElement("td");
+        ageValue.classList.add("responsive-hide");
         team.appendChild(ageValue);
         ageValue.innerText = "...";
         ageValue.style.textAlign = "center";
@@ -964,10 +965,12 @@
         const table = document.querySelector("table.nice_table");
 
         const valueH = document.createElement("th");
+        valueH.classList.add("responsive-hide");
         valueH.style.textAlign = "center";
         valueH.innerText = `Top ${sport === "soccer" ? 11 : 21}`;
 
         const ageH = document.createElement("th");
+        ageH.classList.add("responsive-hide");
         ageH.style.textAlign = "center";
         ageH.innerText = `Age`;
         ageH.title = 'Average Age Of the Top Players';
