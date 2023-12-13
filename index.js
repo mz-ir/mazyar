@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.28
+// @version      0.29
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -25,7 +25,6 @@
     /* *********************** Styles ********************************** */
 
     GM_addStyle(`
-
     table.squad-summary tbody td, table.squad-summary thead th {
         padding: 0.3em 0.5em;
     }
@@ -489,40 +488,39 @@
         return players ? filterPlayers(players, count).values : 0;
     }
 
-    function calculateRankOfTeams() {
-        const tbody = document.querySelector("div.panel-2 table tbody");
-        const rows = tbody.querySelectorAll("tr");
-        const teams = document.querySelectorAll("a.team-name");
+    function calculateRankOfTeams(rows) {
         const finals = [];
-        let i = 0;
-        for (const team of teams) {
-            const url = getSquadSummaryLink(team.href);
-            finals.push({
-                target: team,
-                row: rows[i],
-                url,
-                values: 0,
-                done: false,
-                currency: "",
-            });
-            i++;
-            GM_xmlhttpRequest({
-                method: "GET",
-                url,
-                context: finals,
-                onload: function (resp) {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(resp.responseText, "text/html");
-                    const currency = getCurrency(doc);
-                    const values = getTopPlyers(doc);
-                    const fin = resp.context?.find((p) => resp.finalUrl === p.url);
-                    if (fin) {
-                        fin.values = values;
-                        fin.done = true;
-                        fin.currency = currency;
-                    }
-                },
-            });
+        for (const row of rows) {
+            if (!row.isMatchRow) {
+                const team = row.querySelector("a.team-name");
+                const url = getSquadSummaryLink(team.href);
+                finals.push({
+                    target: team,
+                    row,
+                    url,
+                    values: 0,
+                    done: false,
+                    currency: "",
+                    playedMatches: row.playedMatches,
+                });
+                GM_xmlhttpRequest({
+                    method: "GET",
+                    url,
+                    context: finals,
+                    onload: function (resp) {
+                        const parser = new DOMParser();
+                        const doc = parser.parseFromString(resp.responseText, "text/html");
+                        const currency = getCurrency(doc);
+                        const values = getTopPlyers(doc);
+                        const fin = resp.context?.find((p) => resp.finalUrl === p.url);
+                        if (fin) {
+                            fin.values = values;
+                            fin.done = true;
+                            fin.currency = currency;
+                        }
+                    },
+                });
+            }
         }
 
         let timeout = 16000;
@@ -536,15 +534,27 @@
                     rank++;
                     team.row.className = rank % 2 ? "odd" : "even";
                     const target = team.row.querySelector("button.donut.rank");
-                    target.classList.remove("loading-donut");
-                    target.classList.add("final-donut");
-                    target.innerText = `${rank}`;
-
+                    if (target){
+                        target.classList.remove("loading-donut");
+                        target.classList.add("final-donut");
+                        target.innerText = `${rank}`;
+                    }
                     const value = team.row.querySelector("td.value");
-                    value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
+                    if (value){
+                        value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
+                    }
                 }
                 const newOrder = finals.map((t) => t.row);
-                tbody.replaceChildren(...newOrder);
+                const newOrderWithPlayedMatches = [];
+                for (const row of newOrder) {
+                    newOrderWithPlayedMatches.push(row);
+                    for (const playedMatch of row.playedMatches) {
+                        playedMatch.className = row.className;
+                        newOrderWithPlayedMatches.push(playedMatch);
+                    }
+                }
+                const tbody = document.querySelector("div.panel-2 table tbody");
+                tbody.replaceChildren(...newOrderWithPlayedMatches);
             } else {
                 timeout -= step;
                 if (timeout < 0) {
@@ -563,23 +573,22 @@
         }, step);
     }
 
-    function addRankView(target) {
+    function addRankView(team, url = '') {
         const value = document.createElement("td");
+        value.style.width = "max-content";
         value.innerText = "";
         value.classList.add("value");
         value.style.textAlign = "right";
-        target.insertBefore(value, target.firstChild);
+        team.insertBefore(value, team.firstChild);
 
         const rank = document.createElement("td");
+        rank.style.width = "max-content";
+        team.insertBefore(rank, team.firstChild);
         const button = document.createElement("button");
         button.innerText = "_";
-        button.classList.add("donut", "loading-donut", "rank");
+        button.classList.add("donut", "loading-donut", "rank", "fix-width");
         button.title = "Click to see squad summary";
         rank.appendChild(button);
-        target.insertBefore(rank, target.firstChild);
-
-        const name = target.querySelector("a.team-name");
-        const url = getSquadSummaryLink(name.href);
         button.onclick = () => {
             displayOnModal(url);
         };
@@ -591,22 +600,37 @@
         const table = document.querySelector("table.hitlist.challenges-list");
 
         const headers = table.querySelector("thead tr");
-        const value = document.createElement("th");
-        value.style.textAlign = "right";
-        value.innerText = "Values";
-        value.style.width = "15%";
-        headers.insertBefore(value, headers.firstChild);
+        // mobile view has not headers section
+        if (headers) {
+            const value = document.createElement("th");
+            value.style.textAlign = "right";
+            value.innerText = "Values";
+            value.style.width = "15%";
+            headers.insertBefore(value, headers.firstChild);
 
-        const rank = document.createElement("th");
-        rank.innerText = "Rank";
-        rank.style.width = "5%";
-        headers.insertBefore(rank, headers.firstChild);
-
-        const teams = table.querySelectorAll("tbody tr");
-        for (const team of teams) {
-            addRankView(team);
+            const rank = document.createElement("th");
+            rank.innerText = "Rank";
+            rank.style.width = "5%";
+            headers.insertBefore(rank, headers.firstChild);
         }
-        calculateRankOfTeams();
+
+        const rows = table.querySelectorAll("tbody tr");
+        for (const row of rows) {
+            // in mobile view played challenges are also <tr> and for this rows, the team name is not a hyperlink
+            const name = row.querySelector("a.team-name");
+            if (name?.href) {
+                const url = getSquadSummaryLink(name.href);
+                addRankView(row, url);
+                row.playedMatches = [];
+                row.isMatchRow = false;
+            } else {
+                row.previousSibling.playedMatches?.push(row);
+                const firstTd = row.querySelector("td");
+                firstTd.colSpan = "3";
+                row.isMatchRow = true;
+            }
+        }
+        calculateRankOfTeams(rows);
     }
 
     /* *********************** Federation Page ********************************** */
