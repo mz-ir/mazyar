@@ -429,11 +429,8 @@
 
         const modalContent = document.createElement("div");
         modal.appendChild(modalContent);
-        modalContent.style.backgroundColor = "#fefefe";
         modalContent.style.margin = "15% auto";
         modalContent.style.padding = "20px";
-        modalContent.style.border = "1px solid #888";
-        modalContent.style.width = "30%";
 
         const divContent = document.createElement("div");
         modalContent.appendChild(divContent);
@@ -442,10 +439,19 @@
 
     function displayOnModal(url) {
         const divContent = document.getElementById("squad-display-modal-content");
-        divContent.innerHTML = "loading...";
+
+        const loading = document.createElement("p");
+        divContent.replaceChildren(loading);
+        loading.innerText = "loading...";
+        loading.style.width = "fit-content";
+        loading.style.textAlign = "center";
+        loading.style.backgroundColor = "#fefefe";
+        loading.style.padding = "0.5em";
 
         const modal = document.getElementById("squad-display-modal");
-        modal.style.display = "block";
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
 
         GM_xmlhttpRequest({
             method: "GET",
@@ -461,6 +467,8 @@
                 table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
                 table.style.width = "auto";
                 table.align = "center";
+                table.style.backgroundColor = "#fefefe";
+                table.style.padding = "0.5em";
 
                 const target = document.getElementById("squad-display-modal-content");
                 target.replaceChildren(table);
