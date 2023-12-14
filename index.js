@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.30
+// @version      0.31
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -67,14 +67,6 @@
             return zone.href.indexOf("hockey") > -1 ? "hockey" : "soccer";
         }
         return "soccer";
-    }
-
-    function isNationalTeam(teamTable) {
-        const images = teamTable.getElementsByTagName("img");
-        if (images) {
-            return [...images].some((img) => img.src.endsWith("mz.png"));
-        }
-        return false;
     }
 
     function getCurrency(doc) {
@@ -855,7 +847,6 @@
                 const players = getNationalPlayers(doc, currency);
                 const team = resp.context.team;
                 const sport = resp.context.sport;
-
                 injectLineupValues(players, team, currency, sport);
             },
         });
@@ -870,14 +861,17 @@
             url,
             context: { team, sport },
             onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const currency = getCurrency(doc);
-                const players = getPlayers(doc, currency);
-                const team = resp.context.team;
-                const sport = resp.context.sport;
-
-                injectLineupValues(players, team, currency, sport);
+                if (resp.finalUrl.search("p=national_teams") > -1) {
+                    addLineupValuesNational(resp.context.team, resp.context.sport);
+                } else {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(resp.responseText, "text/html");
+                    const currency = getCurrency(doc);
+                    const players = getPlayers(doc, currency);
+                    const team = resp.context.team;
+                    const sport = resp.context.sport;
+                    injectLineupValues(players, team, currency, sport);
+                }
             },
         });
     }
@@ -887,11 +881,7 @@
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
             if (team.querySelector("table")) {
-                if (isNationalTeam(team)) {
-                    addLineupValuesNational(team, sport);
-                } else {
-                    addLineupValues(team, sport);
-                }
+                addLineupValues(team, sport);
             }
         }
     }
