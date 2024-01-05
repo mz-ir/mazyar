@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.31
+// @version      0.32
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -15,6 +15,9 @@
 // @match        https://www.managerzone.com/?p=federations&fid=*
 // @match        https://www.managerzone.com/?p=match&sub=result&mid=*
 // @match        https://www.managerzone.com/?p=league*
+// @match        https://www.managerzone.com/?p=cup&*
+// @match        https://www.managerzone.com/?p=private_cup&*
+// @match        https://www.managerzone.com/?p=friendlyseries&*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @downloadURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
 // @updateURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
@@ -976,13 +979,18 @@
         }
     }
 
-    function injectTeamValuesToLeagueTable() {
-        let timeout = 16000;
+    function waitAndInjectTeamValuesToTable(timeout = 16000) {
         const step = 1000;
         const interval = setInterval(() => {
-            if (document.querySelector("table.nice_table")) {
+            const table = document.querySelector("table.nice_table");
+            if (table) {
                 clearInterval(interval);
-                addTopPlayersValueToTable();
+                if (!table.teamValueInjected) {
+                    table.teamValueInjected = true;
+                    addTopPlayersValueToTable();
+                } else {
+                    console.log('already injected');
+                }
             } else {
                 timeout -= step;
                 if (timeout < 0) {
@@ -992,10 +1000,48 @@
         }, step);
     }
 
+    function injectTeamValuesToOffialLeagueTable() {
+        // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
+        waitAndInjectTeamValuesToTable();
+
+        // also add 'onclick' handler to Table tab
+        const links = document.getElementsByTagName('a');
+        for (const link of links) {
+            if (['p=league', 'sub=table'].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = waitAndInjectTeamValuesToTable;
+            }
+        }
+    }
+
+    function injectTeamValuesToFriendlyLeagueTable() {
+        const links = document.getElementsByTagName('a');
+        for (const link of links) {
+            if (['p=friendlySeries', 'sub=standings'].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = waitAndInjectTeamValuesToTable;
+            }
+        }
+    }
+
+    function injectTeamValuesToCupTable() {
+        const links = document.getElementsByTagName('a');
+        for (const link of links) {
+            if (['p=cups', 'sub=groupplay'].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = waitAndInjectTeamValuesToTable;
+            }
+        }
+    }
+
+
     /* *********************** Inject ********************************** */
 
     function isFederationFrontPage(uri) {
-        return uri.endsWith("/?p=federations") || uri.search("/?p=federations&fid=") > -1;
+        return uri.endsWith("/?p=federations")
+        || uri.search("/?p=federations&fid=") > -1;
+    }
+
+    function isCupPage(uri) {
+        return document.baseURI.search("/?p=cup&") > -1
+        || document.baseURI.search("/?p=private_cup&") > -1;
     }
 
     function inject() {
@@ -1007,8 +1053,12 @@
             injectToSquadSummaryPage();
         } else if (document.baseURI.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
-        } else if (document.baseURI.search("/?p=league") > -1) {
-            injectTeamValuesToLeagueTable();
+        } else if (document.baseURI.search("/?p=league") > -1){
+            injectTeamValuesToOffialLeagueTable();
+        } else if (document.baseURI.search("/?p=friendlyseries") > -1){
+            injectTeamValuesToFriendlyLeagueTable();
+        } else if (isCupPage(document.baseURI)){
+            injectTeamValuesToCupTable();
         }
     }
 
