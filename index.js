@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.32
+// @version      0.33
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -10,14 +10,14 @@
 // @connect      self
 // @match        https://www.managerzone.com/?p=players&sub=alt
 // @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
-// @match        https://www.managerzone.com/?p=federations&sub=clash*
-// @match        https://www.managerzone.com/?p=federations
-// @match        https://www.managerzone.com/?p=federations&fid=*
-// @match        https://www.managerzone.com/?p=match&sub=result&mid=*
 // @match        https://www.managerzone.com/?p=league*
 // @match        https://www.managerzone.com/?p=cup&*
 // @match        https://www.managerzone.com/?p=private_cup&*
 // @match        https://www.managerzone.com/?p=friendlyseries&*
+// @match        https://www.managerzone.com/?p=federations
+// @match        https://www.managerzone.com/?p=federations&fid=*
+// @match        https://www.managerzone.com/?p=federations&sub=clash*
+// @match        https://www.managerzone.com/?p=match&sub=result&mid=*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @downloadURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
 // @updateURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
@@ -1034,30 +1034,31 @@
 
     /* *********************** Inject ********************************** */
 
-    function isFederationFrontPage(uri) {
-        return uri.endsWith("/?p=federations")
-        || uri.search("/?p=federations&fid=") > -1;
-    }
-
     function isCupPage(uri) {
         return document.baseURI.search("/?p=cup&") > -1
         || document.baseURI.search("/?p=private_cup&") > -1;
     }
 
     function inject() {
-        if (document.baseURI.search("/?p=federations&sub=clash") > -1) {
-            injectToClashPage();
-        } else if (isFederationFrontPage(document.baseURI)) {
-            sortFederationTeamsByTopPlayers();
-        } else if (document.baseURI.search("/?p=players&sub=alt") > -1) {
+        const uri = document.baseURI;
+        const url = document.URL;
+        if (uri.search("/?p=federations") > -1){
+            if (uri.search("&sub=clash") > -1) {
+                injectToClashPage();
+            } else if (uri.search("&fid=") > -1) {
+                sortFederationTeamsByTopPlayers();
+            } else if (url.search("p=federations#fid=") > -1) {
+                window.location.href = url.replace('#', '&');
+            }
+        } else if (uri.search("/?p=players&sub=alt") > -1) {
             injectToSquadSummaryPage();
-        } else if (document.baseURI.search("mid=") > -1) {
+        } else if (uri.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
-        } else if (document.baseURI.search("/?p=league") > -1){
+        } else if (uri.search("/?p=league") > -1){
             injectTeamValuesToOffialLeagueTable();
-        } else if (document.baseURI.search("/?p=friendlyseries") > -1){
+        } else if (uri.search("/?p=friendlyseries") > -1){
             injectTeamValuesToFriendlyLeagueTable();
-        } else if (isCupPage(document.baseURI)){
+        } else if (isCupPage(uri)){
             injectTeamValuesToCupTable();
         }
     }
