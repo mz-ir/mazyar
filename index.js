@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.33
+// @version      0.34
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -1045,9 +1045,10 @@
         if (uri.search("/?p=federations") > -1){
             if (uri.search("&sub=clash") > -1) {
                 injectToClashPage();
-            } else if (uri.search("&fid=") > -1) {
+            } else if (uri.search("&fid=") > -1 || url.endsWith('p=federations')) {
                 sortFederationTeamsByTopPlayers();
             } else if (url.search("p=federations#fid=") > -1) {
+                // redirect
                 window.location.href = url.replace('#', '&');
             }
         } else if (uri.search("/?p=players&sub=alt") > -1) {
