@@ -1,5 +1,5 @@
 # MZ Player Values
-This is a userscript to add some features to [www.managerzone.com](www.managerzone.com) pages.  
+This is a userscript to add some features to [www.managerzone.com](https://www.managerzone.com) pages.  
 
 ## In Squad Summary
 
