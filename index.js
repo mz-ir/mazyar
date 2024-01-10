@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.34
+// @version      0.35
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -73,9 +73,13 @@
     }
 
     function getCurrency(doc) {
-        const players = doc.getElementById("playerAltViewTable")?.querySelectorAll("tbody tr");
+        const players = doc
+            .getElementById("playerAltViewTable")
+            ?.querySelectorAll("tbody tr");
         if (players && players.length > 0) {
-            const parts = players[0].querySelector("td:nth-child(3)")?.innerText.split(" ");
+            const parts = players[0]
+                .querySelector("td:nth-child(3)")
+                ?.innerText.split(" ");
             return parts[parts.length - 1];
         }
         return "";
@@ -83,7 +87,9 @@
 
     function getNationalCurrency(doc) {
         // works for both domestic and foreign countries
-        const playerNode = doc.getElementById("thePlayers_0")?.querySelector("table tbody tr:nth-child(6)");
+        const playerNode = doc
+            .getElementById("thePlayers_0")
+            ?.querySelector("table tbody tr:nth-child(6)");
         if (playerNode) {
             const parts = playerNode.innerText.split(" ");
             return parts[parts.length - 1];
@@ -104,30 +110,39 @@
     }
 
     function formatBigNumber(n, sep = " ") {
-        const numberString = n.toString();
-        let formattedParts = [];
-        for (let i = numberString.length - 1; i >= 0; i -= 3) {
-            let part = numberString.substring(Math.max(i - 2, 0), i + 1);
-            formattedParts.unshift(part);
+        if (n) {
+            const numberString = n.toString();
+            let formattedParts = [];
+            for (let i = numberString.length - 1; i >= 0; i -= 3) {
+                let part = numberString.substring(Math.max(i - 2, 0), i + 1);
+                formattedParts.unshift(part);
+            }
+            return formattedParts.join(sep);
         }
-        return formattedParts.join(sep);
+        return "0";
     }
 
     function getPlayers(doc, currency) {
-        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
+        const playerNodes = doc
+            .getElementById("playerAltViewTable")
+            ?.querySelectorAll("tr");
         if (!playerNodes) {
             return [];
         }
 
         const players = [];
         for (const playerNode of [...playerNodes]) {
-            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
+            const age = playerNode
+                .querySelector("td:nth-child(5)")
+                ?.innerText.replace(/\s/g, "");
             if (age) {
                 const value = playerNode
-                .querySelector("td:nth-child(3)")
-                ?.innerText.replaceAll(currency, "")
-                .replace(/\s/g, "");
-                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
+                    .querySelector("td:nth-child(3)")
+                    ?.innerText.replaceAll(currency, "")
+                    .replace(/\s/g, "");
+                const shirtNumber = playerNode
+                    .querySelector("td:nth-child(0)")
+                    ?.innerText.replace(/\s/g, "");
                 const pid = playerNode.querySelector("a")?.href;
                 players.push({
                     shirtNumber,
@@ -142,7 +157,10 @@
 
     function getNumberOfFlags(infoTable) {
         const images = infoTable.getElementsByTagName("img");
-        return images ? [...images].filter((img) => img.src.indexOf("/flags/") > -1).length : 0;
+        return images
+            ? [...images].filter((img) => img.src.indexOf("/flags/") > -1)
+                .length
+            : 0;
     }
 
     function isDomesticPlayer(infoTable) {
@@ -154,13 +172,22 @@
         const playerNodes = doc.querySelectorAll("div.playerContainer");
         if (playerNodes) {
             for (const playerNode of [...playerNodes]) {
-                const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
-                const infoTable = playerNode.querySelector("div.dg_playerview_info table");
-                const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
+                const id = extractPlayerID(
+                    playerNode.querySelector("h2 a")?.href
+                );
+                const infoTable = playerNode.querySelector(
+                    "div.dg_playerview_info table"
+                );
+                const age = infoTable.querySelector(
+                    "tbody tr:nth-child(1) td strong"
+                ).innerText;
                 const selector = isDomesticPlayer(infoTable)
-                ? "tbody tr:nth-child(5) td span"
-                : "tbody tr:nth-child(6) td span";
-                const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
+                    ? "tbody tr:nth-child(5) td span"
+                    : "tbody tr:nth-child(6) td span";
+                const value = infoTable
+                    .querySelector(selector)
+                    ?.innerText.replaceAll(currency, "")
+                    .replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
@@ -171,30 +198,116 @@
         return players;
     }
 
-    /* *********************** Squad Summary ********************************** */
+    function getNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
+        return players.filter(
+            (player) => player.age <= ageHigh && player.age >= ageLow
+        ).length;
+    }
 
     function filterPlayers(players, count = 0, ageLow = 0, ageHigh = 99) {
-        if(players.length === 0) {
+        if (players.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
-        if(filtered.length === 0) {
-            return {values: 0, avgAge: 0.0};
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
+        if (filtered.length === 0) {
+            return { values: 0, avgAge: 0.0 };
         }
-
-        const values = filtered.map((player) => player.value).reduce((a, b) => a + b, 0);
-        const avgAge = filtered.map((player) => player.age).reduce((a, b) => a + b, 0) / filtered.length;
+        const values = filtered
+            .map((player) => player.value)
+            .reduce((a, b) => a + b, 0);
+        const avgAge =
+            filtered.map((player) => player.age).reduce((a, b) => a + b, 0) /
+            filtered.length;
         return { values, avgAge };
     }
 
-    function getNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
-        return players.filter((player) => player.age <= ageHigh && player.age >= ageLow).length;
+    function displayOnModal(url) {
+        const divContent = document.getElementById(
+            "squad-display-modal-content"
+        );
+
+        const loading = document.createElement("p");
+        divContent.replaceChildren(loading);
+        loading.innerText = "loading...";
+        loading.style.width = "fit-content";
+        loading.style.textAlign = "center";
+        loading.style.backgroundColor = "#fefefe";
+        loading.style.padding = "0.5em";
+
+        const modal = document.getElementById("squad-display-modal");
+        modal.style.display = "flex";
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(
+                    resp.responseText,
+                    "text/html"
+                );
+                const sport = getSportType(doc);
+                const currency = getCurrency(doc);
+                const players = getPlayers(doc, currency);
+                const summary = getSquadSummary(players, currency, sport);
+                const table = createSquadTable(summary, currency, sport);
+                table.classList.add(
+                    "tablesorter",
+                    "hitlist",
+                    "marker",
+                    "hitlist-compact-list-included"
+                );
+                table.style.width = "auto";
+                table.align = "center";
+                table.style.backgroundColor = "#fefefe";
+                table.style.padding = "0.5em";
+
+                const target = document.getElementById(
+                    "squad-display-modal-content"
+                );
+                target.replaceChildren(table);
+            },
+        });
     }
+
+    function createModal() {
+        const modal = document.createElement("div");
+        document.body.appendChild(modal);
+
+        modal.classList.add("powerbox");
+
+        modal.style.display = "none";
+        modal.style.position = "fixed";
+        modal.style.zIndex = "1";
+        modal.style.left = "0";
+        modal.style.top = "0";
+        modal.style.width = "100%";
+        modal.style.height = "100%";
+        modal.style.overflow = "auto";
+        modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
+        modal.id = "squad-display-modal";
+        modal.onclick = () => {
+            modal.style.display = "none";
+        };
+
+        const modalContent = document.createElement("div");
+        modal.appendChild(modalContent);
+        modalContent.style.margin = "15% auto";
+        modalContent.style.padding = "20px";
+
+        const divContent = document.createElement("div");
+        modalContent.appendChild(divContent);
+        divContent.id = "squad-display-modal-content";
+    }
+
+    /* *********************** Squad Summary ********************************** */
 
     function getSquadSummary(players, currency = "USD", sport = "soccer") {
         const rows = [];
@@ -258,7 +371,7 @@
         return rows;
     }
 
-    function createCompactElement(title, value){
+    function createCompactElement(title, value) {
         const dd = document.createElement("dd");
         dd.innerHTML = `<span class="listHeadColor">${title}</span><span class="clippable">${value}</span>`;
         return dd;
@@ -269,12 +382,32 @@
         dl.classList.add("hitlist-compact-list", "columns");
 
         dl.appendChild(createCompactElement("Count", row.count));
-        dl.appendChild(createCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
+        dl.appendChild(
+            createCompactElement(
+                "Total",
+                `${formatBigNumber(row.all)} ${currency}`
+            )
+        );
         if (sport == "soccer") {
-            dl.appendChild(createCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
-            dl.appendChild(createCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
+            dl.appendChild(
+                createCompactElement(
+                    "Top 16",
+                    `${formatBigNumber(row.top16)} ${currency}`
+                )
+            );
+            dl.appendChild(
+                createCompactElement(
+                    "Top 11",
+                    `${formatBigNumber(row.top11)} ${currency}`
+                )
+            );
         } else {
-            dl.appendChild(createCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
+            dl.appendChild(
+                createCompactElement(
+                    "Top 21",
+                    `${formatBigNumber(row.top21)} ${currency}`
+                )
+            );
         }
         return dl;
     }
@@ -390,7 +523,12 @@
         const summary = getSquadSummary(players, currency, sport);
         const table = createSquadTable(summary, currency, sport);
 
-        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.classList.add(
+            "tablesorter",
+            "hitlist",
+            "marker",
+            "hitlist-compact-list-included"
+        );
         table.style.borderSpacing = 0;
         table.style.marginBottom = "10px";
         table.align = "center";
@@ -402,73 +540,6 @@
     }
 
     /* *********************** Clash ********************************** */
-
-    function createModal() {
-        const modal = document.createElement("div");
-        document.body.appendChild(modal);
-
-        modal.style.display = "none";
-        modal.style.position = "fixed";
-        modal.style.zIndex = "1";
-        modal.style.left = "0";
-        modal.style.top = "0";
-        modal.style.width = "100%";
-        modal.style.height = "100%";
-        modal.style.overflow = "auto";
-        modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-        modal.id = "squad-display-modal";
-        modal.onclick = () => {
-            modal.style.display = "none";
-        };
-
-        const modalContent = document.createElement("div");
-        modal.appendChild(modalContent);
-        modalContent.style.margin = "15% auto";
-        modalContent.style.padding = "20px";
-
-        const divContent = document.createElement("div");
-        modalContent.appendChild(divContent);
-        divContent.id = "squad-display-modal-content";
-    }
-
-    function displayOnModal(url) {
-        const divContent = document.getElementById("squad-display-modal-content");
-
-        const loading = document.createElement("p");
-        divContent.replaceChildren(loading);
-        loading.innerText = "loading...";
-        loading.style.width = "fit-content";
-        loading.style.textAlign = "center";
-        loading.style.backgroundColor = "#fefefe";
-        loading.style.padding = "0.5em";
-
-        const modal = document.getElementById("squad-display-modal");
-        modal.style.display = "flex";
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const sport = getSportType(doc);
-                const currency = getCurrency(doc);
-                const players = getPlayers(doc, currency);
-                const summary = getSquadSummary(players, currency, sport);
-                const table = createSquadTable(summary, currency, sport);
-                table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-                table.style.width = "auto";
-                table.align = "center";
-                table.style.backgroundColor = "#fefefe";
-                table.style.padding = "0.5em";
-
-                const target = document.getElementById("squad-display-modal-content");
-                target.replaceChildren(table);
-            },
-        });
-    }
 
     function getSquadSummaryLink(url) {
         const tid = extractTeamID(url);
@@ -504,10 +575,15 @@
                     context: finals,
                     onload: function (resp) {
                         const parser = new DOMParser();
-                        const doc = parser.parseFromString(resp.responseText, "text/html");
+                        const doc = parser.parseFromString(
+                            resp.responseText,
+                            "text/html"
+                        );
                         const currency = getCurrency(doc);
                         const values = getTopPlyers(doc);
-                        const fin = resp.context?.find((p) => resp.finalUrl === p.url);
+                        const fin = resp.context?.find(
+                            (p) => resp.finalUrl === p.url
+                        );
                         if (fin) {
                             fin.values = values;
                             fin.done = true;
@@ -529,14 +605,17 @@
                     rank++;
                     team.row.className = rank % 2 ? "odd" : "even";
                     const target = team.row.querySelector("button.donut.rank");
-                    if (target){
+                    if (target) {
                         target.classList.remove("loading-donut");
                         target.classList.add("final-donut");
                         target.innerText = `${rank}`;
                     }
                     const value = team.row.querySelector("td.value");
-                    if (value){
-                        value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
+                    if (value) {
+                        value.innerText = `${formatBigNumber(
+                            team.values,
+                            ","
+                        )} ${team.currency}`;
                     }
                 }
                 const newOrder = finals.map((t) => t.row);
@@ -555,7 +634,8 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     for (const team of finals) {
-                        const target = team.row.querySelector("button.donut.rank");
+                        const target =
+                            team.row.querySelector("button.donut.rank");
                         target.classList.remove("loading-donut");
                         target.classList.add("final-donut");
                         target.innerText = `-`;
@@ -568,7 +648,7 @@
         }, step);
     }
 
-    function addRankView(team, url = '') {
+    function addRankView(team, url = "") {
         const value = document.createElement("td");
         value.style.width = "max-content";
         value.innerText = "";
@@ -638,8 +718,13 @@
             context,
             onload: function (resp) {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const team = resp.context.teams.find((t) => t.username === resp.context.username);
+                const doc = parser.parseFromString(
+                    resp.responseText,
+                    "text/html"
+                );
+                const team = resp.context.teams.find(
+                    (t) => t.username === resp.context.username
+                );
                 team.currency = getCurrency(doc);
                 team.values = getTopPlyers(doc);
 
@@ -648,7 +733,10 @@
                 name.style.width = "100%";
                 name.style.marginTop = "0.5em";
                 name.title = team.name;
-                const teamName = team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name;
+                const teamName =
+                    team.name.length > 20
+                        ? team.name.substring(0, 16) + " >>>"
+                        : team.name;
                 name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
                 team.node.querySelector("td").appendChild(name);
 
@@ -675,10 +763,19 @@
             context: { sport, teams, username },
             onload: function (resp) {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/xml");
-                const teamId = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamId");
-                const name = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamName");
-                resp.context.teams.find((t) => t.username === resp.context.username).name = name;
+                const doc = parser.parseFromString(
+                    resp.responseText,
+                    "text/xml"
+                );
+                const teamId = doc
+                    .querySelector(`Team[sport="${resp.context.sport}"]`)
+                    .getAttribute("teamId");
+                const name = doc
+                    .querySelector(`Team[sport="${resp.context.sport}"]`)
+                    .getAttribute("teamName");
+                resp.context.teams.find(
+                    (t) => t.username === resp.context.username
+                ).name = name;
                 fetchTopPlayers(resp.context, teamId);
             },
         });
@@ -689,17 +786,23 @@
     }
 
     function getTableHeader() {
-        const thead = document.querySelector("#federation_clash_members_list thead td");
+        const thead = document.querySelector(
+            "#federation_clash_members_list thead td"
+        );
         return thead.innerText;
     }
 
     function setTableHeader(text) {
-        const thead = document.querySelector("#federation_clash_members_list thead td");
+        const thead = document.querySelector(
+            "#federation_clash_members_list thead td"
+        );
         thead.innerText = text;
     }
 
     function sortFederationTeamsByTopPlayers() {
-        const tbody = document.querySelector("#federation_clash_members_list tbody");
+        const tbody = document.querySelector(
+            "#federation_clash_members_list tbody"
+        );
         const sport = getSportType();
         const teams = [];
         for (const child of tbody.children) {
@@ -744,7 +847,8 @@
                 total.style.marginTop = "3px";
                 total.innerHTML =
                     `<td><hr><span style="color:red;">Total: </span>` +
-                    `${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
+                    `${formatBigNumber(totalValue, ",")} ${teams[0].currency
+                    }</td>`;
                 tbody.appendChild(total);
             } else {
                 timeout -= step;
@@ -787,7 +891,10 @@
             }
 
             const value = document.createElement("td");
-            value.innerText = `${playerInfo.value ? formatBigNumber(playerInfo.value, ",") : "N/A"}`;
+            value.innerText = `${playerInfo.value
+                ? formatBigNumber(playerInfo.value, ",")
+                : "N/A"
+                }`;
             playerNode.appendChild(value);
 
             const age = document.createElement("td");
@@ -803,27 +910,32 @@
         const valueHeader = document.createElement("td");
         valueHeader.innerText = `Value`;
         valueHeader.title = `Player Value (in ${currency})`;
-        team.querySelector("table thead tr:nth-child(2)").appendChild(valueHeader);
+        team.querySelector("table thead tr:nth-child(2)").appendChild(
+            valueHeader
+        );
         team.querySelector("table tfoot tr td").colSpan += 1;
 
         const ageHeader = document.createElement("td");
         ageHeader.innerText = `Age`;
         ageHeader.title = `Player Age`;
-        team.querySelector("table thead tr:nth-child(2)").appendChild(ageHeader);
+        team.querySelector("table thead tr:nth-child(2)").appendChild(
+            ageHeader
+        );
         team.querySelector("table tfoot tr td").colSpan += 1;
         team.querySelector("table thead tr td").colSpan += 1;
 
         const lineupValue = getLineupPlayers(team, players, sport)
-        .filter((player) => player.starting && !player.exPlayer)
-        .map((player) => player.value)
-        .reduce((a, b) => a + b, 0);
+            .filter((player) => player.starting && !player.exPlayer)
+            .map((player) => player.value)
+            .reduce((a, b) => a + b, 0);
 
         const div = document.createElement("div");
         div.innerHTML =
             `${sport === "soccer" ? "Starting " : ""}Lineup Value: ` +
             `<b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
             `<br><br>Note: <span style="background:lightgreen">YYY</span>` +
-            ` are ${sport === "soccer" ? "starting " : "current"} players and ` +
+            ` are ${sport === "soccer" ? "starting " : "current"
+            } players and ` +
             `<span style="background:#DD0000">NNN</span> are ex-players.` +
             `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
 
@@ -845,7 +957,10 @@
             context: { team, sport },
             onload: function (resp) {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const doc = parser.parseFromString(
+                    resp.responseText,
+                    "text/html"
+                );
                 const currency = getNationalCurrency(doc);
                 const players = getNationalPlayers(doc, currency);
                 const team = resp.context.team;
@@ -865,10 +980,16 @@
             context: { team, sport },
             onload: function (resp) {
                 if (resp.finalUrl.search("p=national_teams") > -1) {
-                    addLineupValuesNational(resp.context.team, resp.context.sport);
+                    addLineupValuesNational(
+                        resp.context.team,
+                        resp.context.sport
+                    );
                 } else {
                     const parser = new DOMParser();
-                    const doc = parser.parseFromString(resp.responseText, "text/html");
+                    const doc = parser.parseFromString(
+                        resp.responseText,
+                        "text/html"
+                    );
                     const currency = getCurrency(doc);
                     const players = getPlayers(doc, currency);
                     const team = resp.context.team;
@@ -892,7 +1013,9 @@
     /* *********************** League ********************************** */
 
     function addTeamTopPlayersValueToTable(team, age, sport) {
-        const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
+        const teamLink = team.querySelector(
+            "td:nth-child(2) a:last-child"
+        )?.href;
         const tid = extractTeamID(teamLink);
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
 
@@ -903,8 +1026,8 @@
         teamValue.classList.add("responsive-hide");
         teamValue.title = "Click to see quad summary";
         teamValue.style.textAlign = "center";
-        teamValue.style.whiteSpace = 'nowrap';
-        teamValue.style.padding = 'auto 3px';
+        teamValue.style.whiteSpace = "nowrap";
+        teamValue.style.padding = "auto 3px";
         teamValue.onclick = () => {
             displayOnModal(url);
         };
@@ -914,8 +1037,8 @@
         team.appendChild(ageValue);
         ageValue.innerText = "...";
         ageValue.style.textAlign = "center";
-        teamValue.style.whiteSpace = 'nowrap';
-        teamValue.style.padding = 'auto 3px';
+        teamValue.style.whiteSpace = "nowrap";
+        teamValue.style.padding = "auto 3px";
         ageValue.classList.add("avg-age-value");
 
         GM_xmlhttpRequest({
@@ -924,19 +1047,61 @@
             context: { team, sport, age },
             onload: function (resp) {
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const doc = parser.parseFromString(
+                    resp.responseText,
+                    "text/html"
+                );
                 const currency = getCurrency(doc);
                 const players = getPlayers(doc, currency);
                 const team = resp.context.team;
                 const sport = resp.context.sport;
                 const age = resp.context.age;
-                const { values, avgAge } = filterPlayers(players, sport === "soccer" ? 11 : 21, 0, age);
+                const all = filterPlayers(
+                    players,
+                    sport === "soccer" ? 11 : 21,
+                    0,
+                    99
+                );
+                const u23 = filterPlayers(
+                    players,
+                    sport === "soccer" ? 11 : 21,
+                    0,
+                    23
+                );
+                const u21 = filterPlayers(
+                    players,
+                    sport === "soccer" ? 11 : 21,
+                    0,
+                    21
+                );
+                const u18 = filterPlayers(
+                    players,
+                    sport === "soccer" ? 11 : 21,
+                    0,
+                    18
+                );
                 const valueElement = team.querySelector("td.team-value");
-                valueElement.innerText = `${formatBigNumber(values)} ${currency}`;
+                valueElement.innerHTML =
+                    `<span class="values-all" style="display:${age === 99 ? "unset" : "none"
+                    };">${formatBigNumber(all?.values)} ${currency}</span>` +
+                    `<span class="values-u23" style="display:${age === 23 ? "unset" : "none"
+                    };">${formatBigNumber(u23?.values)} ${currency}</span>` +
+                    `<span class="values-u21" style="display:${age === 21 ? "unset" : "none"
+                    };">${formatBigNumber(u21?.values)} ${currency}</span>` +
+                    `<span class="values-u18" style="display:${age === 18 ? "unset" : "none"
+                    };">${formatBigNumber(u18?.values)} ${currency}</span>`;
                 valueElement.style.textAlign = "right";
 
                 const ageElement = team.querySelector("td.avg-age-value");
-                ageElement.innerText = `${avgAge.toFixed(1)}`;
+                ageElement.innerHTML =
+                    `<span class="values-all" style="display:${age === 99 ? "unset" : "none"
+                    };">${all?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u23" style="display:${age === 23 ? "unset" : "none"
+                    };">${u23?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u21" style="display:${age === 21 ? "unset" : "none"
+                    };">${u21?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u18" style="display:${age === 18 ? "unset" : "none"
+                    };">${u18?.avgAge?.toFixed(1)}</span>`;
             },
         });
     }
@@ -952,6 +1117,53 @@
         return 99;
     }
 
+    function showNextAgeValuesInTable() {
+        const header = document.getElementById("team-value-header");
+        if (header) {
+            if (header.age === 99) {
+                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
+                    } - U23`;
+                header.age = 23;
+                document.querySelectorAll("span.values-all")?.forEach((el) => {
+                    el.style.display = "none";
+                });
+                document.querySelectorAll("span.values-u23")?.forEach((el) => {
+                    el.style.display = "unset";
+                });
+            } else if (header.age === 23) {
+                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
+                    } - U21`;
+                header.age = 21;
+                document.querySelectorAll("span.values-u23")?.forEach((el) => {
+                    el.style.display = "none";
+                });
+                document.querySelectorAll("span.values-u21")?.forEach((el) => {
+                    el.style.display = "unset";
+                });
+            } else if (header.age === 21) {
+                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
+                    } - U18`;
+                header.age = 18;
+                document.querySelectorAll("span.values-u21")?.forEach((el) => {
+                    el.style.display = "none";
+                });
+                document.querySelectorAll("span.values-u18")?.forEach((el) => {
+                    el.style.display = "unset";
+                });
+            } else if (header.age === 18) {
+                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
+                    } - All`;
+                header.age = 99;
+                document.querySelectorAll("span.values-u18")?.forEach((el) => {
+                    el.style.display = "none";
+                });
+                document.querySelectorAll("span.values-all")?.forEach((el) => {
+                    el.style.display = "unset";
+                });
+            }
+        }
+    }
+
     function addTopPlayersValueToTable() {
         createModal();
         const age = getLeagueAgeLimit(document.baseURI);
@@ -961,13 +1173,18 @@
         const valueH = document.createElement("th");
         valueH.classList.add("responsive-hide");
         valueH.style.textAlign = "center";
-        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21}`;
+        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21} - ${age === 99 ? "All" : "U" + age.toString()
+            }`;
+        valueH.onclick = showNextAgeValuesInTable;
+        valueH.age = age;
+        valueH.sport = sport;
+        valueH.id = "team-value-header";
 
         const ageH = document.createElement("th");
         ageH.classList.add("responsive-hide");
         ageH.style.textAlign = "center";
         ageH.innerText = `Age`;
-        ageH.title = 'Average Age Of the Top Players';
+        ageH.title = "Average Age Of the Top Players";
 
         const headers = table.querySelector("thead tr");
         headers.appendChild(valueH);
@@ -989,7 +1206,7 @@
                     table.teamValueInjected = true;
                     addTopPlayersValueToTable();
                 } else {
-                    console.log('already injected');
+                    console.log("already injected");
                 }
             } else {
                 timeout -= step;
@@ -1000,66 +1217,82 @@
         }, step);
     }
 
-    function injectTeamValuesToOffialLeagueTable() {
+    function injectTeamValuesToOfficialLeagueTable() {
         // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
         waitAndInjectTeamValuesToTable();
 
         // also add 'onclick' handler to Table tab
-        const links = document.getElementsByTagName('a');
+        const links = document.getElementsByTagName("a");
         for (const link of links) {
-            if (['p=league', 'sub=table'].every((text) => link.href.indexOf(text) > -1)) {
+            if (
+                ["p=league", "sub=table"].every(
+                    (text) => link.href.indexOf(text) > -1
+                )
+            ) {
                 link.onclick = waitAndInjectTeamValuesToTable;
             }
         }
     }
 
     function injectTeamValuesToFriendlyLeagueTable() {
-        const links = document.getElementsByTagName('a');
+        const links = document.getElementsByTagName("a");
         for (const link of links) {
-            if (['p=friendlySeries', 'sub=standings'].every((text) => link.href.indexOf(text) > -1)) {
+            if (
+                ["p=friendlySeries", "sub=standings"].every(
+                    (text) => link.href.indexOf(text) > -1
+                )
+            ) {
                 link.onclick = waitAndInjectTeamValuesToTable;
             }
         }
     }
 
     function injectTeamValuesToCupTable() {
-        const links = document.getElementsByTagName('a');
+        const links = document.getElementsByTagName("a");
         for (const link of links) {
-            if (['p=cups', 'sub=groupplay'].every((text) => link.href.indexOf(text) > -1)) {
+            if (
+                ["p=cups", "sub=groupplay"].every(
+                    (text) => link.href.indexOf(text) > -1
+                )
+            ) {
                 link.onclick = waitAndInjectTeamValuesToTable;
             }
         }
     }
 
-
     /* *********************** Inject ********************************** */
 
     function isCupPage(uri) {
-        return document.baseURI.search("/?p=cup&") > -1
-        || document.baseURI.search("/?p=private_cup&") > -1;
+        return (
+            document.baseURI.search("/?p=cup&") > -1 ||
+            document.baseURI.search("/?p=private_cup&") > -1
+        );
     }
 
     function inject() {
         const uri = document.baseURI;
         const url = document.URL;
-        if (uri.search("/?p=federations") > -1){
+        if (uri.search("/?p=federations") > -1) {
             if (uri.search("&sub=clash") > -1) {
                 injectToClashPage();
-            } else if (uri.search("&fid=") > -1 || url.endsWith('p=federations')) {
+            } else if (
+                uri.search("&fid=") > -1 ||
+                url.endsWith("p=federations")
+            ) {
                 sortFederationTeamsByTopPlayers();
             } else if (url.search("p=federations#fid=") > -1) {
                 // redirect
-                window.location.href = url.replace('#', '&');
+                window.location.href = url.replace("#", "&");
             }
         } else if (uri.search("/?p=players&sub=alt") > -1) {
             injectToSquadSummaryPage();
         } else if (uri.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
-        } else if (uri.search("/?p=league") > -1){
-            injectTeamValuesToOffialLeagueTable();
-        } else if (uri.search("/?p=friendlyseries") > -1){
+        } else if (uri.search("/?p=league") > -1) {
+            injectTeamValuesToOfficialLeagueTable();
+        } else if (uri.search("/?p=friendlyseries") > -1) {
             injectTeamValuesToFriendlyLeagueTable();
-        } else if (isCupPage(uri)){
+        } else if (isCupPage(uri)) {
             injectTeamValuesToCupTable();
         }
     }
