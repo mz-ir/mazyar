@@ -159,7 +159,7 @@
         const images = infoTable.getElementsByTagName("img");
         return images
             ? [...images].filter((img) => img.src.indexOf("/flags/") > -1)
-                .length
+                  .length
             : 0;
     }
 
@@ -847,7 +847,8 @@
                 total.style.marginTop = "3px";
                 total.innerHTML =
                     `<td><hr><span style="color:red;">Total: </span>` +
-                    `${formatBigNumber(totalValue, ",")} ${teams[0].currency
+                    `${formatBigNumber(totalValue, ",")} ${
+                        teams[0].currency
                     }</td>`;
                 tbody.appendChild(total);
             } else {
@@ -891,10 +892,11 @@
             }
 
             const value = document.createElement("td");
-            value.innerText = `${playerInfo.value
-                ? formatBigNumber(playerInfo.value, ",")
-                : "N/A"
-                }`;
+            value.innerText = `${
+                playerInfo.value
+                    ? formatBigNumber(playerInfo.value, ",")
+                    : "N/A"
+            }`;
             playerNode.appendChild(value);
 
             const age = document.createElement("td");
@@ -934,7 +936,8 @@
             `${sport === "soccer" ? "Starting " : ""}Lineup Value: ` +
             `<b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
             `<br><br>Note: <span style="background:lightgreen">YYY</span>` +
-            ` are ${sport === "soccer" ? "starting " : "current"
+            ` are ${
+                sport === "soccer" ? "starting " : "current"
             } players and ` +
             `<span style="background:#DD0000">NNN</span> are ex-players.` +
             `<br>ex-player's value is N/A and not included in Lineup Value calculation.`;
@@ -1012,6 +1015,54 @@
 
     /* *********************** League ********************************** */
 
+    function getLeagueAgeLimit(url) {
+        if (url.search("type=u23") > -1) {
+            return 23;
+        } else if (url.search("type=u21") > -1) {
+            return 21;
+        } else if (url.search("type=u18") > -1) {
+            return 18;
+        }
+        return 99;
+    }
+
+    function getAgeHeader(sport = "soccer", age = 99) {
+        const count = sport === "soccer" ? 11 : 21;
+        if ([18, 21, 23].includes(age)) {
+            return `Top ${count} - U${age}`;
+        }
+        return `Top ${count} - All`;
+    }
+
+    function getAgeClass(age = 99) {
+        if ([18, 21, 23].includes(age)) {
+            return `values-u${age}`;
+        }
+        return "values-all";
+    }
+
+    function getNextAge(age = 99) {
+        if (age === 99) {
+            return 23;
+        } else if (age === 23) {
+            return 21;
+        } else if (age === 21) {
+            return 18;
+        }
+        return 99;
+    }
+
+    function toggleToAgeSpan(team, age) {
+        const target = team ?? document;
+        target.querySelectorAll("td.injected span")?.forEach((el) => {
+            el.style.display = "none";
+        });
+        const ageClass = getAgeClass(age);
+        target.querySelectorAll("td.injected span." + ageClass)?.forEach((el) => {
+            el.style.display = "unset";
+        });
+    }
+
     function addTeamTopPlayersValueToTable(team, age, sport) {
         const teamLink = team.querySelector(
             "td:nth-child(2) a:last-child"
@@ -1022,8 +1073,9 @@
         const teamValue = document.createElement("td");
         team.appendChild(teamValue);
         teamValue.innerText = "loading...";
-        teamValue.classList.add("team-value");
         teamValue.classList.add("responsive-hide");
+        teamValue.classList.add("team-value");
+        teamValue.classList.add("injected");
         teamValue.title = "Click to see quad summary";
         teamValue.style.textAlign = "center";
         teamValue.style.whiteSpace = "nowrap";
@@ -1033,13 +1085,14 @@
         };
 
         const ageValue = document.createElement("td");
-        ageValue.classList.add("responsive-hide");
         team.appendChild(ageValue);
+        ageValue.classList.add("responsive-hide");
+        ageValue.classList.add("avg-age-value");
+        ageValue.classList.add("injected");
         ageValue.innerText = "...";
         ageValue.style.textAlign = "center";
-        teamValue.style.whiteSpace = "nowrap";
-        teamValue.style.padding = "auto 3px";
-        ageValue.classList.add("avg-age-value");
+        ageValue.style.whiteSpace = "nowrap";
+        ageValue.style.padding = "auto 3px";
 
         GM_xmlhttpRequest({
             method: "GET",
@@ -1055,112 +1108,42 @@
                 const players = getPlayers(doc, currency);
                 const team = resp.context.team;
                 const sport = resp.context.sport;
+                const playersOfSport = sport === "soccer" ? 11 : 21;
                 const age = resp.context.age;
-                const all = filterPlayers(
-                    players,
-                    sport === "soccer" ? 11 : 21,
-                    0,
-                    99
-                );
-                const u23 = filterPlayers(
-                    players,
-                    sport === "soccer" ? 11 : 21,
-                    0,
-                    23
-                );
-                const u21 = filterPlayers(
-                    players,
-                    sport === "soccer" ? 11 : 21,
-                    0,
-                    21
-                );
-                const u18 = filterPlayers(
-                    players,
-                    sport === "soccer" ? 11 : 21,
-                    0,
-                    18
-                );
+
+                const all = filterPlayers(players, playersOfSport, 0, 99);
+                const u23 = filterPlayers(players, playersOfSport, 0, 23);
+                const u21 = filterPlayers(players, playersOfSport, 0, 21);
+                const u18 = filterPlayers(players, playersOfSport, 0, 18);
+
                 const valueElement = team.querySelector("td.team-value");
+                // prettier-ignore
                 valueElement.innerHTML =
-                    `<span class="values-all" style="display:${age === 99 ? "unset" : "none"
-                    };">${formatBigNumber(all?.values)} ${currency}</span>` +
-                    `<span class="values-u23" style="display:${age === 23 ? "unset" : "none"
-                    };">${formatBigNumber(u23?.values)} ${currency}</span>` +
-                    `<span class="values-u21" style="display:${age === 21 ? "unset" : "none"
-                    };">${formatBigNumber(u21?.values)} ${currency}</span>` +
-                    `<span class="values-u18" style="display:${age === 18 ? "unset" : "none"
-                    };">${formatBigNumber(u18?.values)} ${currency}</span>`;
+                    `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
+                    `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
+                    `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
+                    `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
                 valueElement.style.textAlign = "right";
 
                 const ageElement = team.querySelector("td.avg-age-value");
+                // prettier-ignore
                 ageElement.innerHTML =
-                    `<span class="values-all" style="display:${age === 99 ? "unset" : "none"
-                    };">${all?.avgAge?.toFixed(1)}</span>` +
-                    `<span class="values-u23" style="display:${age === 23 ? "unset" : "none"
-                    };">${u23?.avgAge?.toFixed(1)}</span>` +
-                    `<span class="values-u21" style="display:${age === 21 ? "unset" : "none"
-                    };">${u21?.avgAge?.toFixed(1)}</span>` +
-                    `<span class="values-u18" style="display:${age === 18 ? "unset" : "none"
-                    };">${u18?.avgAge?.toFixed(1)}</span>`;
+                    `<span class="values-all" style="display:none;">${all?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u23" style="display:none;">${u23?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u21" style="display:none;">${u21?.avgAge?.toFixed(1)}</span>` +
+                    `<span class="values-u18" style="display:none;">${u18?.avgAge?.toFixed(1)}</span>`;
+
+                toggleToAgeSpan(team, age);
             },
         });
-    }
-
-    function getLeagueAgeLimit(url) {
-        if (url.search("type=u23") > -1) {
-            return 23;
-        } else if (url.search("type=u21") > -1) {
-            return 21;
-        } else if (url.search("type=u18") > -1) {
-            return 18;
-        }
-        return 99;
     }
 
     function showNextAgeValuesInTable() {
         const header = document.getElementById("team-value-header");
         if (header) {
-            if (header.age === 99) {
-                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
-                    } - U23`;
-                header.age = 23;
-                document.querySelectorAll("span.values-all")?.forEach((el) => {
-                    el.style.display = "none";
-                });
-                document.querySelectorAll("span.values-u23")?.forEach((el) => {
-                    el.style.display = "unset";
-                });
-            } else if (header.age === 23) {
-                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
-                    } - U21`;
-                header.age = 21;
-                document.querySelectorAll("span.values-u23")?.forEach((el) => {
-                    el.style.display = "none";
-                });
-                document.querySelectorAll("span.values-u21")?.forEach((el) => {
-                    el.style.display = "unset";
-                });
-            } else if (header.age === 21) {
-                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
-                    } - U18`;
-                header.age = 18;
-                document.querySelectorAll("span.values-u21")?.forEach((el) => {
-                    el.style.display = "none";
-                });
-                document.querySelectorAll("span.values-u18")?.forEach((el) => {
-                    el.style.display = "unset";
-                });
-            } else if (header.age === 18) {
-                header.innerText = `Top ${header.sport === "soccer" ? 11 : 21
-                    } - All`;
-                header.age = 99;
-                document.querySelectorAll("span.values-u18")?.forEach((el) => {
-                    el.style.display = "none";
-                });
-                document.querySelectorAll("span.values-all")?.forEach((el) => {
-                    el.style.display = "unset";
-                });
-            }
+            header.age = getNextAge(header.age);
+            header.innerText = getAgeHeader(header.sport, header.age);
+            toggleToAgeSpan(null, header.age);
         }
     }
 
@@ -1173,8 +1156,9 @@
         const valueH = document.createElement("th");
         valueH.classList.add("responsive-hide");
         valueH.style.textAlign = "center";
-        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21} - ${age === 99 ? "All" : "U" + age.toString()
-            }`;
+        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21} - ${
+            age === 99 ? "All" : "U" + age.toString()
+        }`;
         valueH.onclick = showNextAgeValuesInTable;
         valueH.age = age;
         valueH.sport = sport;
