@@ -1058,9 +1058,11 @@
             el.style.display = "none";
         });
         const ageClass = getAgeClass(age);
-        target.querySelectorAll("td.injected span." + ageClass)?.forEach((el) => {
-            el.style.display = "unset";
-        });
+        target
+            .querySelectorAll("td.injected span." + ageClass)
+            ?.forEach((el) => {
+                el.style.display = "unset";
+            });
     }
 
     function addTeamTopPlayersValueToTable(team, age, sport) {
@@ -1076,7 +1078,7 @@
         teamValue.classList.add("responsive-hide");
         teamValue.classList.add("team-value");
         teamValue.classList.add("injected");
-        teamValue.title = "Click to see quad summary";
+        teamValue.title = "Click to see squad summary";
         teamValue.style.textAlign = "center";
         teamValue.style.whiteSpace = "nowrap";
         teamValue.style.padding = "auto 3px";
@@ -1153,26 +1155,25 @@
         const sport = getSportType(document);
         const table = document.querySelector("table.nice_table");
 
-        const valueH = document.createElement("th");
-        valueH.classList.add("responsive-hide");
-        valueH.style.textAlign = "center";
-        valueH.innerText = `Top ${sport === "soccer" ? 11 : 21} - ${
-            age === 99 ? "All" : "U" + age.toString()
-        }`;
-        valueH.onclick = showNextAgeValuesInTable;
-        valueH.age = age;
-        valueH.sport = sport;
-        valueH.id = "team-value-header";
+        const valueHeader = document.createElement("th");
+        valueHeader.id = "team-value-header";
+        valueHeader.classList.add("responsive-hide");
+        valueHeader.style.textAlign = "center";
+        valueHeader.innerText = getAgeHeader(sport, age);
+        valueHeader.title = "Click to see the other age limits";
+        valueHeader.age = age;
+        valueHeader.sport = sport;
+        valueHeader.onclick = showNextAgeValuesInTable;
 
-        const ageH = document.createElement("th");
-        ageH.classList.add("responsive-hide");
-        ageH.style.textAlign = "center";
-        ageH.innerText = `Age`;
-        ageH.title = "Average Age Of the Top Players";
+        const ageHeader = document.createElement("th");
+        ageHeader.classList.add("responsive-hide");
+        ageHeader.style.textAlign = "center";
+        ageHeader.innerText = `Age`;
+        ageHeader.title = "Average Age Of the Top Players";
 
         const headers = table.querySelector("thead tr");
-        headers.appendChild(valueH);
-        headers.appendChild(ageH);
+        headers.appendChild(valueHeader);
+        headers.appendChild(ageHeader);
 
         const teams = table.querySelectorAll("tbody tr");
         for (const team of teams) {
