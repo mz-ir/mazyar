@@ -8,12 +8,16 @@ Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 
 ![Squad Summary](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/SquadSummary.png)
 
 
-## In League Pages
+## In Leagues & Cups Pages
 
 Adds top players' value and average age to the table.  
+Click on header to see other age limits.
+
+![League](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/LeaguePageToggle.gif)
+
 Click on team value to see squad summary. 
 
-![Match](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/LeaguePage.png)
+![League](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/LeaguePage.png)
 
 ## In Federation Front Page
 
