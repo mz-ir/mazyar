@@ -228,8 +228,8 @@
                 const sport = getSportType(doc);
                 const currency = getCurrency(doc);
                 const players = getPlayers(doc, currency);
-                const summary = getSquadSummary(players, currency, sport);
-                const table = createSquadTable(summary, currency, sport);
+                const summary = squadGetSummaryInfo(players, currency, sport);
+                const table = squadCreateSummaryTable(summary, currency, sport);
                 table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
                 table.style.width = "auto";
                 table.align = "center";
@@ -274,7 +274,7 @@
 
     /* *********************** Squad Summary ********************************** */
 
-    function getSquadSummary(players, currency = "USD", sport = "soccer") {
+    function squadGetSummaryInfo(players, currency = "USD", sport = "soccer") {
         const rows = [];
         if (players) {
             if (sport === "hockey") {
@@ -357,7 +357,7 @@
         return dl;
     }
 
-    function createSquadTable(rows, currency = "USD", sport = "soccer") {
+    function squadCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
         const table = document.createElement("table");
         table.classList.add("squad-summary");
 
@@ -461,12 +461,12 @@
         return table;
     }
 
-    function injectToSquadSummaryPage() {
+    function squadInjectSummaryInfo() {
         const sport = getSportType(document);
         const currency = getCurrency(document);
         const players = getPlayers(document, currency);
-        const summary = getSquadSummary(players, currency, sport);
-        const table = createSquadTable(summary, currency, sport);
+        const summary = squadGetSummaryInfo(players, currency, sport);
+        const table = squadCreateSummaryTable(summary, currency, sport);
 
         table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
         table.style.borderSpacing = 0;
@@ -487,7 +487,7 @@
                 clearInterval(interval);
                 if (!table.SummaryInfoInjected) {
                     table.SummaryInfoInjected = true;
-                    injectToSquadSummaryPage();
+                    squadInjectSummaryInfo();
                 }
             } else {
                 timeout -= step;
@@ -498,7 +498,7 @@
         }, step);
     }
 
-    function addClickCallbackForSquadSummary() {
+    function squadAddClickCallbackForSquadSummaryTab() {
         const summaryTab = document.querySelector(`a[href="#squad_summary"]`);
         if (summaryTab) {
             summaryTab.parentNode.onclick = squadWaitAndInjectSummaryInfo;
@@ -1261,9 +1261,9 @@
             }
         } else if (uri.search("/?p=players") > -1) {
             if (uri.search("/?p=players&sub=alt") > -1) {
-                injectToSquadSummaryPage();
+                squadInjectSummaryInfo();
             } else {
-                addClickCallbackForSquadSummary();
+                squadAddClickCallbackForSquadSummaryTab();
             }
         } else if (uri.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
