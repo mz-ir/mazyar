@@ -8,8 +8,7 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
-// @match        https://www.managerzone.com/?p=players&sub=alt
-// @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
+// @match        https://www.managerzone.com/?p=players*
 // @match        https://www.managerzone.com/?p=league*
 // @match        https://www.managerzone.com/?p=cup&*
 // @match        https://www.managerzone.com/?p=private_cup&*
