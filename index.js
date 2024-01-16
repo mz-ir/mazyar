@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.36
+// @version      0.37
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -193,9 +193,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -480,6 +480,32 @@
         }
     }
 
+    function squadWaitAndInjectSummaryInfo(timeout = 16000) {
+        const step = 500;
+        const interval = setInterval(() => {
+            const table = document.querySelector("table#playerAltViewTable");
+            if (table) {
+                clearInterval(interval);
+                if (!table.SummaryInfoInjected) {
+                    table.SummaryInfoInjected = true;
+                    injectToSquadSummaryPage();
+                }
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                }
+            }
+        }, step);
+    }
+
+    function addClickCallbackForSquadSummary() {
+        const summaryTab = document.querySelector(`a[href="#squad_summary"]`);
+        if (summaryTab) {
+            summaryTab.parentNode.onclick = squadWaitAndInjectSummaryInfo;
+        }
+    }
+
     /* *********************** Clash ********************************** */
 
     function getSquadSummaryLink(url) {
@@ -531,7 +557,7 @@
         }
 
         let timeout = 16000;
-        const step = 1000;
+        const step = 500;
         let interval = setInterval(() => {
             if (finals.every((a) => a.done)) {
                 clearInterval(interval);
@@ -728,7 +754,7 @@
         }
 
         let timeout = 60000;
-        const step = 1000;
+        const step = 500;
         const tableHeader = getTableHeader();
         let dots = 0;
         let interval = setInterval(() => {
@@ -823,9 +849,9 @@
         team.querySelector("table thead tr td").colSpan += 1;
 
         const lineupValue = getLineupPlayers(team, players, sport)
-        .filter((player) => player.starting && !player.exPlayer)
-        .map((player) => player.value)
-        .reduce((a, b) => a + b, 0);
+            .filter((player) => player.starting && !player.exPlayer)
+            .map((player) => player.value)
+            .reduce((a, b) => a + b, 0);
 
         const div = document.createElement("div");
         div.innerHTML =
@@ -1165,7 +1191,7 @@
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
-        const step = 1000;
+        const step = 500;
         const interval = setInterval(() => {
             const table = document.querySelector("table.nice_table");
             if (table) {
@@ -1173,8 +1199,6 @@
                 if (!table.TopPlayersInfoInjected) {
                     table.TopPlayersInfoInjected = true;
                     tableAddTopPlayersInfo(table);
-                } else {
-                    console.log("already injected");
                 }
             } else {
                 timeout -= step;
@@ -1236,8 +1260,12 @@
                 // redirect
                 window.location.href = url.replace("#", "&");
             }
-        } else if (uri.search("/?p=players&sub=alt") > -1) {
-            injectToSquadSummaryPage();
+        } else if (uri.search("/?p=players") > -1) {
+            if (uri.search("/?p=players&sub=alt") > -1) {
+                injectToSquadSummaryPage();
+            } else {
+                addClickCallbackForSquadSummary();
+            }
         } else if (uri.search("mid=") > -1) {
             injectTeamValuesToMatchPage();
         } else if (uri.search("/?p=league") > -1) {
