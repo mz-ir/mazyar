@@ -35,7 +35,7 @@ Also adds a new column to display team's top 11 players values.
 
 ## In Match Page
 
-Adds starting lineup value.  
-Also adds a new column to display player values.
+Adds starting lineup value and average age.  
+Also adds a new column to display player's value and age.
 
-![Match](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img//MatchPage.png)
+![Match](https://raw.githubusercontent.com/mz7z/mz-player-values/main/img/MatchPage.png)

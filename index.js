@@ -1,15 +1,14 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.36
+// @version      0.37
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
-// @match        https://www.managerzone.com/?p=players&sub=alt
-// @match        https://www.managerzone.com/?p=players&sub=alt&tid=*
+// @match        https://www.managerzone.com/?p=players*
 // @match        https://www.managerzone.com/?p=league*
 // @match        https://www.managerzone.com/?p=cup&*
 // @match        https://www.managerzone.com/?p=private_cup&*
@@ -104,7 +103,7 @@
         return "";
     }
 
-    function extractTeamID(link) {
+    function extractTeamId(link) {
         const regex = /tid=(\d+)/;
         const match = regex.exec(link);
         return match ? match[1] : null;
@@ -127,6 +126,13 @@
             return formattedParts.join(sep);
         }
         return "0";
+    }
+
+    function formatAverageAge(age, fractionDigits = 1) {
+        if (age) {
+            return age.toFixed(fractionDigits);
+        }
+        return "0.0";
     }
 
     function getPlayers(doc, currency) {
@@ -193,9 +199,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -229,8 +235,8 @@
                 const sport = getSportType(doc);
                 const currency = getCurrency(doc);
                 const players = getPlayers(doc, currency);
-                const summary = getSquadSummary(players, currency, sport);
-                const table = createSquadTable(summary, currency, sport);
+                const summary = squadGetSummaryInfo(players, currency, sport);
+                const table = squadCreateSummaryTable(summary, currency, sport);
                 table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
                 table.style.width = "auto";
                 table.align = "center";
@@ -275,7 +281,7 @@
 
     /* *********************** Squad Summary ********************************** */
 
-    function getSquadSummary(players, currency = "USD", sport = "soccer") {
+    function squadGetSummaryInfo(players, currency = "USD", sport = "soccer") {
         const rows = [];
         if (players) {
             if (sport === "hockey") {
@@ -358,7 +364,7 @@
         return dl;
     }
 
-    function createSquadTable(rows, currency = "USD", sport = "soccer") {
+    function squadCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
         const table = document.createElement("table");
         table.classList.add("squad-summary");
 
@@ -462,12 +468,12 @@
         return table;
     }
 
-    function injectToSquadSummaryPage() {
+    function squadInjectSummaryInfo() {
         const sport = getSportType(document);
         const currency = getCurrency(document);
         const players = getPlayers(document, currency);
-        const summary = getSquadSummary(players, currency, sport);
-        const table = createSquadTable(summary, currency, sport);
+        const summary = squadGetSummaryInfo(players, currency, sport);
+        const table = squadCreateSummaryTable(summary, currency, sport);
 
         table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
         table.style.borderSpacing = 0;
@@ -480,10 +486,36 @@
         }
     }
 
+    function squadWaitAndInjectSummaryInfo(timeout = 16000) {
+        const step = 500;
+        const interval = setInterval(() => {
+            const table = document.querySelector("table#playerAltViewTable");
+            if (table) {
+                clearInterval(interval);
+                if (!table.SummaryInfoInjected) {
+                    table.SummaryInfoInjected = true;
+                    squadInjectSummaryInfo();
+                }
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                }
+            }
+        }, step);
+    }
+
+    function squadAddClickCallbackForSquadSummaryTab() {
+        const summaryTab = document.querySelector(`a[href="#squad_summary"]`);
+        if (summaryTab) {
+            summaryTab.parentNode.onclick = squadWaitAndInjectSummaryInfo;
+        }
+    }
+
     /* *********************** Clash ********************************** */
 
     function getSquadSummaryLink(url) {
-        const tid = extractTeamID(url);
+        const tid = extractTeamId(url);
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
@@ -531,7 +563,7 @@
         }
 
         let timeout = 16000;
-        const step = 1000;
+        const step = 500;
         let interval = setInterval(() => {
             if (finals.every((a) => a.done)) {
                 clearInterval(interval);
@@ -728,7 +760,7 @@
         }
 
         let timeout = 60000;
-        const step = 1000;
+        const step = 500;
         const tableHeader = getTableHeader();
         let dots = 0;
         let interval = setInterval(() => {
@@ -808,7 +840,7 @@
         return lineup;
     }
 
-    function injectLineupValues(players, team, currency, sport) {
+    function matchInjectLineupValues(players, team, currency, sport) {
         const valueHeader = document.createElement("td");
         valueHeader.innerText = `Value`;
         valueHeader.title = `Player Value (in ${currency})`;
@@ -822,15 +854,18 @@
         team.querySelector("table tfoot tr td").colSpan += 1;
         team.querySelector("table thead tr td").colSpan += 1;
 
-        const lineupValue = getLineupPlayers(team, players, sport)
-        .filter((player) => player.starting && !player.exPlayer)
-        .map((player) => player.value)
-        .reduce((a, b) => a + b, 0);
+        const lineupPlayers = getLineupPlayers(team, players, sport).filter((player) => player.starting && !player.exPlayer);
+        const value = lineupPlayers?.map((player) => player.value).reduce((a, b) => a + b, 0);
+        let averageAge = lineupPlayers?.map((player) => player.age).reduce((a, b) => a + b, 0);
+        if (averageAge) {
+            averageAge /= lineupPlayers.length;
+        }
 
         const div = document.createElement("div");
         div.innerHTML =
-            `${sport === "soccer" ? "Starting " : ""}Lineup Value: ` +
-            `<b>${formatBigNumber(lineupValue, ",")}</b> ${currency}` +
+            `${sport === "soccer" ? "Starting " : ""}Lineup` +
+            `<br>Value: <b>${formatBigNumber(value, ",")}</b> ${currency}` +
+            `<br>Average Age: <b>${formatAverageAge(averageAge)}</b>` +
             `<br><br>Note: <span style="background:lightgreen">YYY</span>` +
             ` are ${sport === "soccer" ? "starting " : "current"} players and ` +
             `<span style="background:#DD0000">NNN</span> are ex-players.` +
@@ -846,7 +881,7 @@
 
     function addLineupValuesNational(team, sport) {
         const teamLink = team.querySelector("a").href;
-        const tid = extractTeamID(teamLink);
+        const tid = extractTeamId(teamLink);
         const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
         GM_xmlhttpRequest({
             method: "GET",
@@ -859,14 +894,14 @@
                 const players = getNationalPlayers(doc, currency);
                 const team = resp.context.team;
                 const sport = resp.context.sport;
-                injectLineupValues(players, team, currency, sport);
+                matchInjectLineupValues(players, team, currency, sport);
             },
         });
     }
 
-    function addLineupValues(team, sport) {
+    function matchAddLineupValues(team, sport) {
         const teamLink = team.querySelector("a").href;
-        const tid = extractTeamID(teamLink);
+        const tid = extractTeamId(teamLink);
         const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
         GM_xmlhttpRequest({
             method: "GET",
@@ -882,18 +917,18 @@
                     const players = getPlayers(doc, currency);
                     const team = resp.context.team;
                     const sport = resp.context.sport;
-                    injectLineupValues(players, team, currency, sport);
+                    matchInjectLineupValues(players, team, currency, sport);
                 }
             },
         });
     }
 
-    function injectTeamValuesToMatchPage() {
+    function matchInjectTeamValues() {
         const sport = getSportType();
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
             if (team.querySelector("table")) {
-                addLineupValues(team, sport);
+                matchAddLineupValues(team, sport);
             }
         }
     }
@@ -950,7 +985,7 @@
 
     function tableGetSquadSummaryUrl(team) {
         const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
-        const tid = extractTeamID(teamLink);
+        const tid = extractTeamId(teamLink);
         return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
@@ -1066,10 +1101,10 @@
                     const ageElement = team.querySelector("td.age-value");
                     // prettier-ignore
                     ageElement.innerHTML =
-                        `<span class="values-all" style="display:none;">${all?.avgAge?.toFixed(1)}</span>` +
-                        `<span class="values-u23" style="display:none;">${u23?.avgAge?.toFixed(1)}</span>` +
-                        `<span class="values-u21" style="display:none;">${u21?.avgAge?.toFixed(1)}</span>` +
-                        `<span class="values-u18" style="display:none;">${u18?.avgAge?.toFixed(1)}</span>`;
+                        `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
+                        `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
+                        `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
+                        `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
 
                     tableDisplayAgeInfo(team, ageLimit);
                 }
@@ -1165,7 +1200,7 @@
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
-        const step = 1000;
+        const step = 500;
         const interval = setInterval(() => {
             const table = document.querySelector("table.nice_table");
             if (table) {
@@ -1173,8 +1208,6 @@
                 if (!table.TopPlayersInfoInjected) {
                     table.TopPlayersInfoInjected = true;
                     tableAddTopPlayersInfo(table);
-                } else {
-                    console.log("already injected");
                 }
             } else {
                 timeout -= step;
@@ -1236,10 +1269,14 @@
                 // redirect
                 window.location.href = url.replace("#", "&");
             }
-        } else if (uri.search("/?p=players&sub=alt") > -1) {
-            injectToSquadSummaryPage();
+        } else if (uri.search("/?p=players") > -1) {
+            if (uri.search("/?p=players&sub=alt") > -1) {
+                squadInjectSummaryInfo();
+            } else {
+                squadAddClickCallbackForSquadSummaryTab();
+            }
         } else if (uri.search("mid=") > -1) {
-            injectTeamValuesToMatchPage();
+            matchInjectTeamValues();
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
         } else if (uri.search("/?p=friendlyseries") > -1) {
