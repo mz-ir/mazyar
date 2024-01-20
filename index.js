@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.37
+// @version      0.38
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -16,7 +16,7 @@
 // @match        https://www.managerzone.com/?p=federations
 // @match        https://www.managerzone.com/?p=federations&fid=*
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
-// @match        https://www.managerzone.com/?p=match&sub=result&mid=*
+// @match        https://www.managerzone.com/?p=match&sub=result&*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @downloadURL  https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
@@ -199,9 +199,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n);
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
