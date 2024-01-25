@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.40
+// @version      0.41
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -18,8 +18,8 @@
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
 // @match        https://www.managerzone.com/?p=match&sub=result&*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
-// @downloadURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
-// @updateURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
+// @updateURL    https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
 // ==/UserScript==
 (function () {
     "use strict";
@@ -75,6 +75,10 @@
     `;
 
     /* *********************** Utils ********************************** */
+
+    function hasDuplicates(array) {
+        return (new Set(array)).size !== array.length;
+    }
 
     function getSportType(doc = document) {
         const zone = doc.querySelector("a#shortcut_link_thezone");
@@ -1305,15 +1309,19 @@
                     // de-colorize
                     selected = "";
                     tableClearAllColorings(teams);
-                    console.log("de-colorize");
                 } else {
                     // colorize
                     selected = this.innerText;
                     tableColorizeThisTeam(teams, selected);
-                    console.log("colorize");
                 }
             });
         }
+    }
+
+    function tableHasDuplicateName(round) {
+        const teams = round.querySelectorAll("td:nth-child(odd)");
+        const names = [...teams].map((t) => t.innerText);
+        return hasDuplicates(names);
     }
 
     function tableWaitAndInjectScheduleColoring(timeout = 16000) {
@@ -1321,8 +1329,13 @@
         const interval = setInterval(() => {
             const firstRound = document.querySelector("div[aria-labelledby='league_tab_schedule'] div.mainContent");
             if (firstRound) {
-                console.log("content found");
                 const schedule = firstRound.parentNode;
+                if (tableHasDuplicateName(firstRound)) {
+                    const note = document.createElement("p");
+                    note.innerHTML = `<b style="color: red;">Note: </b><span>Some teams have similar names. Coloring will not work as expected.</span>`;
+                    note.style.fontSize = '1.2em';
+                    schedule.insertBefore(note, schedule.firstChild);
+                }
                 clearInterval(interval);
                 tableInjectColoring(schedule);
             } else {
@@ -1342,8 +1355,6 @@
                 tab.coloringInjected = true;
                 tab.onclick = tableWaitAndInjectScheduleColoring;
             }
-        } else {
-            console.log("tab not found");
         }
     }
 

@@ -38,3 +38,13 @@ Adds starting lineup value and average age.
 Also adds a new column to display player's value and age.
 
 ![Match](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/MatchPage.png)
+
+## In Official Leagues' Schedule
+
+Click on a team name to highlight its matches.  
+- win: green
+- loss: red
+- draw: yellow
+- incoming: cyan
+
+![Match](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring)
