@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.39
+// @version      0.40
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -18,8 +18,8 @@
 // @match        https://www.managerzone.com/?p=federations&sub=clash*
 // @match        https://www.managerzone.com/?p=match&sub=result&*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
-// @downloadURL  https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
-// @updateURL    https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
+// @downloadURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
+// @updateURL https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
 // ==/UserScript==
 (function () {
     "use strict";
@@ -199,9 +199,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n);
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1280,10 +1280,10 @@
                 const result = tr.querySelector("td:nth-child(2)").innerText.split(" - ");
                 const colors = tableResultColors(result);
                 if (opponents[0].innerText === selected) {
-                    opponents[0].style.backgroundColor = colors[0];
+                    opponents[0].style.setProperty('background-color', colors[0], 'important');
                 }
                 if (opponents[1].innerText === selected) {
-                    opponents[1].style.backgroundColor = colors[1];
+                    opponents[1].style.setProperty('background-color', colors[1], 'important');
                 }
             }
         });
@@ -1305,10 +1305,12 @@
                     // de-colorize
                     selected = "";
                     tableClearAllColorings(teams);
+                    console.log("de-colorize");
                 } else {
                     // colorize
                     selected = this.innerText;
                     tableColorizeThisTeam(teams, selected);
+                    console.log("colorize");
                 }
             });
         }
@@ -1319,6 +1321,7 @@
         const interval = setInterval(() => {
             const firstRound = document.querySelector("div[aria-labelledby='league_tab_schedule'] div.mainContent");
             if (firstRound) {
+                console.log("content found");
                 const schedule = firstRound.parentNode;
                 clearInterval(interval);
                 tableInjectColoring(schedule);
@@ -1339,6 +1342,8 @@
                 tab.coloringInjected = true;
                 tab.onclick = tableWaitAndInjectScheduleColoring;
             }
+        } else {
+            console.log("tab not found");
         }
     }
 
