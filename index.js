@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.38
+// @version      0.39
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -199,9 +199,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1249,6 +1249,99 @@
         }
     }
 
+    /* *********************** Schedule ********************************** */
+
+    function tableClearAllColorings(teams) {
+        teams.forEach((team) => {
+            team.style.backgroundColor = team.originalColor;
+        });
+    }
+
+    function tableResultColors(result) {
+        if (result.length < 2) {
+            return ["cyan", "cyan"];
+        }
+        if (result[0] === "X") {
+            return ["cyan", "cyan"];
+        }
+        if (result[0] < result[1]) {
+            return ["orangered", "lime"];
+        } else if (result[0] > result[1]) {
+            return ["lime", "orangered"];
+        }
+        return ["yellow", "yellow"];
+    }
+
+    function tableColorizeThisTeam(teams, selected) {
+        teams.forEach((team) => {
+            if (team.innerText === selected) {
+                const tr = team.parentNode;
+                const opponents = tr.querySelectorAll("td:nth-child(odd)");
+                const result = tr.querySelector("td:nth-child(2)").innerText.split(" - ");
+                const colors = tableResultColors(result);
+                if (opponents[0].innerText === selected) {
+                    opponents[0].style.backgroundColor = colors[0];
+                }
+                if (opponents[1].innerText === selected) {
+                    opponents[1].style.backgroundColor = colors[1];
+                }
+            }
+        });
+    }
+
+    function tableInjectColoring(tab) {
+        let selected = "";
+        const teams = tab.querySelectorAll("div.mainContent td:nth-child(odd)");
+        for (const team of teams) {
+            team.originalColor = team.style.backgroundColor;
+            team.onclick = null;
+            team.addEventListener("click", function (evt) {
+                if (selected && selected !== this.innerText) {
+                    // new team is selected
+                    tableClearAllColorings(teams);
+                    selected = "";
+                }
+                if (selected === this.innerText) {
+                    // de-colorize
+                    selected = "";
+                    tableClearAllColorings(teams);
+                } else {
+                    // colorize
+                    selected = this.innerText;
+                    tableColorizeThisTeam(teams, selected);
+                }
+            });
+        }
+    }
+
+    function tableWaitAndInjectScheduleColoring(timeout = 16000) {
+        const step = 500;
+        const interval = setInterval(() => {
+            const firstRound = document.querySelector("div[aria-labelledby='league_tab_schedule'] div.mainContent");
+            if (firstRound) {
+                const schedule = firstRound.parentNode;
+                clearInterval(interval);
+                tableInjectColoring(schedule);
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                }
+            }
+        }, step);
+    }
+
+    function tableInjectScheduleColoringToOfficialLeague() {
+        const link = document.getElementById("league_tab_schedule");
+        if (link) {
+            const tab = link.parentNode;
+            if (!tab.coloringInjected) {
+                tab.coloringInjected = true;
+                tab.onclick = tableWaitAndInjectScheduleColoring;
+            }
+        }
+    }
+
     /* *********************** Inject ********************************** */
 
     function isCupPage(uri) {
@@ -1257,7 +1350,6 @@
 
     function inject() {
         GM_addStyle(squadSummaryStyles);
-
         const uri = document.baseURI;
         const url = document.URL;
         if (uri.search("/?p=federations") > -1) {
@@ -1279,6 +1371,7 @@
             matchInjectTeamValues();
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
+            tableInjectScheduleColoringToOfficialLeague();
         } else if (uri.search("/?p=friendlyseries") > -1) {
             tableInjectTopPlayersInfoToFriendlyLeague();
         } else if (isCupPage(uri)) {
