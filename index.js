@@ -1309,12 +1309,10 @@
                     // de-colorize
                     selected = "";
                     tableClearAllColorings(teams);
-                    console.log("de-colorize");
                 } else {
                     // colorize
                     selected = this.innerText;
                     tableColorizeThisTeam(teams, selected);
-                    console.log("colorize");
                 }
             });
         }
