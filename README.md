@@ -47,4 +47,4 @@ Click on a team name to highlight its matches.
 - draw: yellow
 - incoming: cyan
 
-![Match](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring)
+![Schedule](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring.gif)
