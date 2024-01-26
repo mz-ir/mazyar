@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.42
+// @version      0.43
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -203,9 +203,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -880,6 +880,14 @@
         titleHeader.style.textAlign = "center";
         titleHeader.style.textDecoration = "none";
 
+        const countHeader = document.createElement("th");
+        tr.appendChild(countHeader);
+        countHeader.classList.add("header");
+        countHeader.innerText = "Count";
+        countHeader.title = "Number of Players";
+        countHeader.style.textAlign = "center";
+        countHeader.style.textDecoration = "none";
+
         if (sport === "soccer") {
             const top11Header = document.createElement("th");
             tr.appendChild(top11Header);
@@ -925,6 +933,11 @@
             title.innerHTML = `${row.title}`;
             title.classList.add("hitlist-compact-list-column");
             tr.appendChild(title);
+
+            const count = document.createElement("td");
+            count.innerHTML = `${row.count}`;
+            count.style.textAlign = "center";
+            tr.appendChild(count);
 
             if (sport === "soccer") {
                 const top11 = document.createElement("td");
