@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.41
+// @version      0.42
 // @description  Add Squad Value to some pages
 // @author       z7z
 // @license      MIT
@@ -77,7 +77,7 @@
     /* *********************** Utils ********************************** */
 
     function hasDuplicates(array) {
-        return (new Set(array)).size !== array.length;
+        return new Set(array).size !== array.length;
     }
 
     function getSportType(doc = document) {
@@ -289,59 +289,115 @@
         const rows = [];
         if (players) {
             if (sport === "hockey") {
-                rows.push({
-                    title: "All",
-                    count: players.length,
-                    all: filterPlayers(players).values,
-                    top21: filterPlayers(players, 21).values,
-                });
-                rows.push({
-                    title: "U23",
-                    count: getNumberOfPlayers(players, 0, 23),
-                    all: filterPlayers(players, 0, 0, 23).values,
-                    top21: filterPlayers(players, 21, 0, 23).values,
-                });
-                rows.push({
-                    title: "U21",
-                    count: getNumberOfPlayers(players, 0, 21),
-                    all: filterPlayers(players, 0, 0, 21).values,
-                    top21: filterPlayers(players, 21, 0, 21).values,
-                });
-                rows.push({
-                    title: "U18",
-                    count: getNumberOfPlayers(players, 0, 18),
-                    all: filterPlayers(players, 0, 0, 18).values,
-                    top21: filterPlayers(players, 21, 0, 18).values,
-                });
+                {
+                    const all = filterPlayers(players);
+                    const top21 = filterPlayers(players, 21);
+                    rows.push({
+                        title: "All",
+                        count: players.length,
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top21: top21.values,
+                        top21Age: top21.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 23);
+                    const top21 = filterPlayers(players, 21, 0, 23);
+                    rows.push({
+                        title: "U23",
+                        count: getNumberOfPlayers(players, 0, 23),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top21: top21.values,
+                        top21Age: top21.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 21);
+                    const top21 = filterPlayers(players, 21, 0, 21);
+                    rows.push({
+                        title: "U21",
+                        count: getNumberOfPlayers(players, 0, 21),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top21: top21.values,
+                        top21Age: top21.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 18);
+                    const top21 = filterPlayers(players, 21, 0, 18);
+                    rows.push({
+                        title: "U18",
+                        count: getNumberOfPlayers(players, 0, 18),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top21: top21.values,
+                        top21Age: top21.avgAge,
+                    });
+                }
             } else {
-                rows.push({
-                    title: "All",
-                    count: players.length,
-                    all: filterPlayers(players).values,
-                    top16: filterPlayers(players, 16).values,
-                    top11: filterPlayers(players, 11).values,
-                });
-                rows.push({
-                    title: "U23",
-                    count: getNumberOfPlayers(players, 0, 23),
-                    all: filterPlayers(players, 0, 0, 23).values,
-                    top16: filterPlayers(players, 16, 0, 23).values,
-                    top11: filterPlayers(players, 11, 0, 23).values,
-                });
-                rows.push({
-                    title: "U21",
-                    count: getNumberOfPlayers(players, 0, 21),
-                    all: filterPlayers(players, 0, 0, 21).values,
-                    top16: filterPlayers(players, 16, 0, 21).values,
-                    top11: filterPlayers(players, 11, 0, 21).values,
-                });
-                rows.push({
-                    title: "U18",
-                    count: getNumberOfPlayers(players, 0, 18),
-                    all: filterPlayers(players, 0, 0, 18).values,
-                    top16: filterPlayers(players, 16, 0, 18).values,
-                    top11: filterPlayers(players, 11, 0, 18).values,
-                });
+                {
+                    const all = filterPlayers(players);
+                    const top16 = filterPlayers(players, 16);
+                    const top11 = filterPlayers(players, 11);
+                    rows.push({
+                        title: "All",
+                        count: players.length,
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top16: top16.values,
+                        top16Age: top16.avgAge,
+                        top11: top11.values,
+                        top11Age: top11.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 23);
+                    const top16 = filterPlayers(players, 16, 0, 23);
+                    const top11 = filterPlayers(players, 11, 0, 23);
+                    rows.push({
+                        title: "U23",
+                        count: getNumberOfPlayers(players, 0, 23),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top16: top16.values,
+                        top16Age: top16.avgAge,
+                        top11: top11.values,
+                        top11Age: top11.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 21);
+                    const top16 = filterPlayers(players, 16, 0, 21);
+                    const top11 = filterPlayers(players, 11, 0, 21);
+                    rows.push({
+                        title: "U21",
+                        count: getNumberOfPlayers(players, 0, 21),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top16: top16.values,
+                        top16Age: top16.avgAge,
+                        top11: top11.values,
+                        top11Age: top11.avgAge,
+                    });
+                }
+                {
+                    const all = filterPlayers(players, 0, 0, 18);
+                    const top16 = filterPlayers(players, 16, 0, 18);
+                    const top11 = filterPlayers(players, 11, 0, 18);
+                    rows.push({
+                        title: "U18",
+                        count: getNumberOfPlayers(players, 0, 18),
+                        all: all.values,
+                        allAge: all.avgAge,
+                        top16: top16.values,
+                        top16Age: top16.avgAge,
+                        top11: top11.values,
+                        top11Age: top11.avgAge,
+                    });
+                }
             }
         }
         return rows;
@@ -706,7 +762,7 @@
                 value.style.width = "100%";
                 value.style.marginTop = "0.5em";
                 const count = resp.context.sport === "soccer" ? 11 : 21;
-                value.innerHTML = `<span style="color:red;">Top${count}: </span>` + `${formatBigNumber(team.values, ",")} ${team.currency}`;
+                value.innerHTML = `<span style="color:red;">Top${count}: </span>${formatBigNumber(team.values, ",")} ${team.currency}`;
                 team.node.querySelector("td").appendChild(value);
 
                 team.done = true;
@@ -789,7 +845,7 @@
                 total.style.color = "blue";
                 total.style.width = "100%";
                 total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>` + `${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
+                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
                 tbody.appendChild(total);
             } else {
                 timeout -= step;
@@ -805,7 +861,113 @@
 
     /* *********************** Match ********************************** */
 
-    function getLineupPlayers(teamNode, teamPlayers, sport) {
+    // ---------------- Top Players -------------
+
+    function matchCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
+        const table = document.createElement("table");
+        table.classList.add("squad-summary");
+
+        const thead = document.createElement("thead");
+        table.appendChild(thead);
+
+        const tr = document.createElement("tr");
+        thead.appendChild(tr);
+
+        const titleHeader = document.createElement("th");
+        tr.appendChild(titleHeader);
+        titleHeader.classList.add("header");
+        titleHeader.innerText = "Group";
+        titleHeader.style.textAlign = "center";
+        titleHeader.style.textDecoration = "none";
+
+        if (sport === "soccer") {
+            const top11Header = document.createElement("th");
+            tr.appendChild(top11Header);
+            top11Header.classList.add("header");
+            top11Header.innerHTML = "Top 11";
+            top11Header.title = "Value of Top 11 Players";
+            top11Header.style.textAlign = "center";
+            top11Header.style.textDecoration = "none";
+
+            const ageHeader = document.createElement("th");
+            tr.appendChild(ageHeader);
+            ageHeader.classList.add("header");
+            ageHeader.innerHTML = "Average Age";
+            ageHeader.title = "Average Age of Top 11 Players";
+            ageHeader.style.textAlign = "center";
+            ageHeader.style.textDecoration = "none";
+        } else {
+            const top21Header = document.createElement("th");
+            tr.appendChild(top21Header);
+            top21Header.classList.add("header");
+            top21Header.innerHTML = "Top 21";
+            top21Header.title = "Value of Top 21 Players";
+            top21Header.style.textAlign = "center";
+            top21Header.style.textDecoration = "none";
+
+            const ageHeader = document.createElement("th");
+            tr.appendChild(ageHeader);
+            ageHeader.classList.add("header");
+            ageHeader.innerHTML = "Average Age";
+            ageHeader.title = "Average Age of Top 21 Players";
+            ageHeader.style.textAlign = "center";
+            ageHeader.style.textDecoration = "none";
+        }
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+
+        for (const row of rows) {
+            const tr = document.createElement("tr");
+            tbody.appendChild(tr);
+
+            const title = document.createElement("td");
+            title.innerHTML = `${row.title}`;
+            title.classList.add("hitlist-compact-list-column");
+            tr.appendChild(title);
+
+            if (sport === "soccer") {
+                const top11 = document.createElement("td");
+                top11.innerText = `${formatBigNumber(row.top11)} ${currency}`;
+                top11.style.textAlign = "end";
+                tr.appendChild(top11);
+
+                const age = document.createElement("td");
+                age.innerText = `${formatAverageAge(row.top11Age)}`;
+                age.style.textAlign = "center";
+                tr.appendChild(age);
+            } else {
+                const top21 = document.createElement("td");
+                tr.appendChild(top21);
+                top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
+                top21.style.textAlign = "end";
+
+                const age = document.createElement("td");
+                age.innerText = `${formatAverageAge(row.top21Age)}`;
+                age.style.textAlign = "center";
+                tr.appendChild(age);
+            }
+        }
+
+        return table;
+    }
+
+    function matchInjectTopPlayersValues(players, team, currency, sport) {
+        const summary = squadGetSummaryInfo(players, currency, sport);
+        const table = matchCreateSummaryTable(summary, currency, sport);
+
+        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.style.borderSpacing = 0;
+        table.style.marginBottom = "10px";
+        table.align = "center";
+        table.style.marginTop = "2em";
+
+        team.appendChild(table);
+    }
+
+    // ---------------- Lineup --------------------
+
+    function matchGetLineupPlayers(teamNode, teamPlayers, sport) {
         const lineup = [];
         const teamPlayerIDs = teamPlayers.map((p) => p.id);
         const lineupPlayers = teamNode.querySelectorAll("tbody tr");
@@ -858,7 +1020,7 @@
         team.querySelector("table tfoot tr td").colSpan += 1;
         team.querySelector("table thead tr td").colSpan += 1;
 
-        const lineupPlayers = getLineupPlayers(team, players, sport).filter((player) => player.starting && !player.exPlayer);
+        const lineupPlayers = matchGetLineupPlayers(team, players, sport).filter((player) => player.starting && !player.exPlayer);
         const value = lineupPlayers?.map((player) => player.value).reduce((a, b) => a + b, 0);
         let averageAge = lineupPlayers?.map((player) => player.age).reduce((a, b) => a + b, 0);
         if (averageAge) {
@@ -883,7 +1045,57 @@
         team.insertBefore(div, place);
     }
 
-    function addLineupValuesNational(team, sport) {
+    // ---------------- Top Players -------------
+
+    function matchAddTopPlayersValueNational(team, sport) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context: { team, sport },
+            onload: function (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(resp.responseText, "text/html");
+                const currency = getNationalCurrency(doc);
+                const players = getNationalPlayers(doc, currency);
+                const team = resp.context.team;
+                const sport = resp.context.sport;
+
+                matchInjectTopPlayersValues(players, team, currency, sport);
+            },
+        });
+    }
+
+    function matchAddTopPlayersValue(team, sport) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        GM_xmlhttpRequest({
+            method: "GET",
+            url,
+            context: { team, sport },
+            onload: function (resp) {
+                if (resp.finalUrl.search("p=national_teams") > -1) {
+                    matchAddTopPlayersValueNational(resp.context.team, resp.context.sport);
+                } else {
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(resp.responseText, "text/html");
+                    const currency = getCurrency(doc);
+                    const players = getPlayers(doc, currency);
+                    const team = resp.context.team;
+                    const sport = resp.context.sport;
+
+                    matchInjectTopPlayersValues(players, team, currency, sport);
+                }
+            },
+        });
+    }
+
+    // ------------ Lineup -----------------------
+
+    function matchAddLineupValuesNational(team, sport) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamId(teamLink);
         const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
@@ -913,7 +1125,7 @@
             context: { team, sport },
             onload: function (resp) {
                 if (resp.finalUrl.search("p=national_teams") > -1) {
-                    addLineupValuesNational(resp.context.team, resp.context.sport);
+                    matchAddLineupValuesNational(resp.context.team, resp.context.sport);
                 } else {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(resp.responseText, "text/html");
@@ -933,6 +1145,8 @@
         for (const team of teams) {
             if (team.querySelector("table")) {
                 matchAddLineupValues(team, sport);
+            } else {
+                matchAddTopPlayersValue(team, sport);
             }
         }
     }
@@ -1284,10 +1498,10 @@
                 const result = tr.querySelector("td:nth-child(2)").innerText.split(" - ");
                 const colors = tableResultColors(result);
                 if (opponents[0].innerText === selected) {
-                    opponents[0].style.setProperty('background-color', colors[0], 'important');
+                    opponents[0].style.setProperty("background-color", colors[0], "important");
                 }
                 if (opponents[1].innerText === selected) {
-                    opponents[1].style.setProperty('background-color', colors[1], 'important');
+                    opponents[1].style.setProperty("background-color", colors[1], "important");
                 }
             }
         });
@@ -1333,7 +1547,7 @@
                 if (tableHasDuplicateName(firstRound)) {
                     const note = document.createElement("p");
                     note.innerHTML = `<b style="color: red;">Note: </b><span>Some teams have similar names. Coloring will not work as expected.</span>`;
-                    note.style.fontSize = '1.2em';
+                    note.style.fontSize = "1.2em";
                     schedule.insertBefore(note, schedule.firstChild);
                 }
                 clearInterval(interval);
