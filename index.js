@@ -1,22 +1,14 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.43
+// @version      0.44
 // @description  Add Squad Value to some pages
-// @author       z7z
+// @author       z7z @managerzone
 // @license      MIT
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
-// @match        https://www.managerzone.com/?p=players*
-// @match        https://www.managerzone.com/?p=league*
-// @match        https://www.managerzone.com/?p=cup&*
-// @match        https://www.managerzone.com/?p=private_cup&*
-// @match        https://www.managerzone.com/?p=friendlyseries&*
-// @match        https://www.managerzone.com/?p=federations
-// @match        https://www.managerzone.com/?p=federations&fid=*
-// @match        https://www.managerzone.com/?p=federations&sub=clash*
-// @match        https://www.managerzone.com/?p=match&sub=result&*
+// @match        https://www.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @downloadURL  https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476290/MZ%20Player%20Values.meta.js
@@ -115,6 +107,12 @@
 
     function extractPlayerID(link) {
         const regex = /pid=(\d+)/;
+        const match = regex.exec(link);
+        return match ? match[1] : null;
+    }
+
+    function extractMatchID(link) {
+        const regex = /mid=(\d+)/;
         const match = regex.exec(link);
         return match ? match[1] : null;
     }
@@ -1164,6 +1162,125 @@
         }
     }
 
+    /* ******************** In Progress Results ************************* */
+
+    function matchGetWinner(context) {
+        const h = Number(context.homeGoals);
+        const a = Number(context.awayGoals);
+        if (h > a) {
+            return context.homeId;
+        } else if (h < a) {
+            return context.awayId;
+        }
+        return null;
+    }
+
+    function matchUpdateResult(result, context) {
+        result.innerText = context.homeGoals + " - " + context.awayGoals;
+        if ([context.homeId, context.awayId].includes(context.targetId)) {
+            const winnerId = matchGetWinner(context);
+            if (winnerId) {
+                result.style.background = winnerId === context.targetId ? "#5D7F13" : "#930000";
+                result.style.color = "#fff";
+            } else {
+                // equal
+                result.style.background = "#F2D624";
+            }
+        } else {
+            result.style.background = "coral";
+            result.style.color = "#fff";
+        }
+    }
+
+    function matchGetPossiblyInProgressMatches(section) {
+        let days = 0;
+        const possiblyInProgress = [];
+        for (const child of [...section.children]) {
+            const classes = [...child.classList];
+            if (classes?.includes("odd")) {
+                possiblyInProgress.push(child);
+            } else if (classes?.includes("group")) {
+                days += 1;
+                if (days == 3) {
+                    break;
+                }
+            }
+        }
+        return possiblyInProgress;
+    }
+
+    function matchWaitAndInjectInProgressResults(timeout = 32000) {
+        const step = 500;
+        const interval = setInterval(() => {
+            const matchesSection = document.getElementById("fixtures-results-list");
+            if (matchesSection) {
+                const games = matchesSection.querySelectorAll("dd.group");
+                if (games.length > 0) {
+                    matchAddInProgressResults(matchesSection);
+                    clearInterval(interval);
+                }
+            } else {
+                timeout -= step;
+                if (timeout < 0) {
+                    clearInterval(interval);
+                }
+            }
+        }, step);
+    }
+
+    function matchAttachChangeEventToFilterForm() {
+        const filterForm = document.getElementById("matchListForm");
+        if (filterForm && !filterForm.eventAttached) {
+            filterForm.eventAttached = true;
+            // FIXME: when this event is fired, it is removed from the element or element is changed somehow.
+            // so for now we will attach it again after each change event.
+            filterForm.addEventListener("change", matchWaitAndInjectInProgressResults);
+        }
+    }
+
+    function matchAddInProgressResults(section) {
+        matchAttachChangeEventToFilterForm();
+        const sport = getSportType();
+        const matches = matchGetPossiblyInProgressMatches(section);
+        // when you visit someone else fixture, this return its id
+        let teamId = extractTeamId(document.baseURI);
+        for (const match of matches) {
+            const result = match.querySelector("dd.teams-wrapper a.score-shown");
+            const mid = extractMatchID(result.href);
+            // this always returns your id
+            const visitorId = extractTeamId(result.href);
+            const url = `http://www.managerzone.com/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            GM_xmlhttpRequest({
+                method: "GET",
+                url,
+                context: { result, teamId: teamId ?? visitorId },
+                onload: function (resp) {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(resp.responseText, "text/xml");
+                    if (!xmlDoc.querySelector("ManagerZone_Error")) {
+                        const home = xmlDoc.querySelector(`Team[field="home"]`);
+                        const away = xmlDoc.querySelector(`Team[field="away"]`);
+                        const context = {
+                            homeGoals: home.getAttribute("goals"),
+                            homeId: home.getAttribute("id"),
+                            awayGoals: away.getAttribute("goals"),
+                            awayId: away.getAttribute("id"),
+                            targetId: resp.context.teamId,
+                        };
+                        matchUpdateResult(resp.context.result, context);
+                    }
+                },
+            });
+        }
+    }
+
+    function matchInjectInProgressResults() {
+        const matchesSection = document.getElementById("fixtures-results-list");
+        if (matchesSection) {
+            matchAddInProgressResults(matchesSection);
+        }
+    }
+
     /* *********************** League ********************************** */
 
     function tableGetAgeLimit(url) {
@@ -1587,10 +1704,6 @@
 
     /* *********************** Inject ********************************** */
 
-    function isCupPage(uri) {
-        return document.baseURI.search("/?p=cup&") > -1 || document.baseURI.search("/?p=private_cup&") > -1;
-    }
-
     function inject() {
         GM_addStyle(squadSummaryStyles);
         const uri = document.baseURI;
@@ -1612,12 +1725,14 @@
             }
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
+        } else if (uri.search("/?p=match") > -1 && uri.search("&sub=scheduled") > -1) {
+            matchInjectInProgressResults();
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
             tableInjectScheduleColoringToOfficialLeague();
         } else if (uri.search("/?p=friendlyseries") > -1) {
             tableInjectTopPlayersInfoToFriendlyLeague();
-        } else if (isCupPage(uri)) {
+        } else if (uri.search("/?p=cup&") > -1 || uri.search("/?p=private_cup&") > -1) {
             tableInjectTopPlayersInfoToCup();
         }
     }
