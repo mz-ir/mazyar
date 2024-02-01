@@ -1762,7 +1762,6 @@
     /* *********************** Inject ********************************** */
 
     function inject() {
-        console.log("ddddd");
         GM_addStyle(squadSummaryStyles);
         const uri = document.baseURI;
         const url = document.URL;
