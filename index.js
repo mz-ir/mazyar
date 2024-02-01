@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.45
+// @version      0.46
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -66,6 +66,18 @@
     }
     `;
 
+    const inProgressStyles = `
+    a.in-progress-result {
+        animation: change-result-background 3s infinite;
+      }
+      
+      @keyframes change-result-background {
+        0%   {background-color: inherit;}
+        50%  {background-color: lightgreen;}
+        100%  {background-color: inherit;}
+      }
+    `;
+
     /* *********************** Utils ********************************** */
 
     function hasDuplicates(array) {
@@ -115,6 +127,11 @@
         const regex = /mid=(\d+)/;
         const match = regex.exec(link);
         return match ? match[1] : null;
+    }
+
+    function isMatchInProgress(resultText) {
+        const scoreRegex = /\b(X|0|[1-9]\d*) - (X|0|[1-9]\d*)\b/;
+        return !scoreRegex.test(resultText);
     }
 
     function formatBigNumber(n, sep = " ") {
@@ -1537,8 +1554,33 @@
         age.style.backgroundColor = "aqua";
     }
 
+    function tableInjectInProgressResults(sport = "soccer") {
+        const matches = document.querySelectorAll("table.hitlist.marker td > a");
+        const inProgressMatches = [...matches].filter((match) => isMatchInProgress(match.innerText));
+        for (const match of inProgressMatches) {
+            const mid = extractMatchID(match.href);
+            const url = `http://www.managerzone.com/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            GM_xmlhttpRequest({
+                method: "GET",
+                url,
+                context: { match },
+                onload: function (resp) {
+                    const parser = new DOMParser();
+                    const xmlDoc = parser.parseFromString(resp.responseText, "text/xml");
+                    if (!xmlDoc.querySelector("ManagerZone_Error")) {
+                        const home = xmlDoc.querySelector(`Team[field="home"]`).getAttribute("goals");
+                        const away = xmlDoc.querySelector(`Team[field="away"]`).getAttribute("goals");
+                        resp.context.match.innerText = home + " - " + away;
+                        resp.context.match.classList.add("in-progress-result");
+                    }
+                },
+            });
+        }
+    }
+
     function tableAddTopPlayersInfo(table) {
         GM_addStyle(tableMobileStyles);
+        GM_addStyle(inProgressStyles);
         createModal();
         const ageLimit = tableGetAgeLimit(document.baseURI);
         const sport = getSportType(document);
@@ -1555,6 +1597,7 @@
         for (const team of teams) {
             tableAddTeamTopPlayersInfo(team, ageLimit, sport);
         }
+        tableInjectInProgressResults(sport);
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
