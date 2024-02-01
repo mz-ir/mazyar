@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.46
+// @version      0.47
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -1266,6 +1266,10 @@
         let teamId = extractTeamId(document.baseURI);
         for (const match of matches) {
             const result = match.querySelector("dd.teams-wrapper a.score-shown");
+            if (!isMatchInProgress(result.innerText)) {
+                match.updated = true;
+                continue;
+            }
             const mid = extractMatchID(result.href);
             // this always returns your id
             const visitorId = extractTeamId(result.href);
