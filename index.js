@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.44
+// @version      0.45
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -1185,6 +1185,7 @@
             } else {
                 // equal
                 result.style.background = "#F2D624";
+                result.style.color = "#000";
             }
         } else {
             result.style.background = "coral";
@@ -1198,7 +1199,9 @@
         for (const child of [...section.children]) {
             const classes = [...child.classList];
             if (classes?.includes("odd")) {
-                possiblyInProgress.push(child);
+                if (!child.updated) {
+                    possiblyInProgress.push(child);
+                }
             } else if (classes?.includes("group")) {
                 days += 1;
                 if (days == 3) {
@@ -1253,7 +1256,7 @@
             GM_xmlhttpRequest({
                 method: "GET",
                 url,
-                context: { result, teamId: teamId ?? visitorId },
+                context: { match, result, teamId: teamId ?? visitorId },
                 onload: function (resp) {
                     const parser = new DOMParser();
                     const xmlDoc = parser.parseFromString(resp.responseText, "text/xml");
@@ -1269,15 +1272,22 @@
                         };
                         matchUpdateResult(resp.context.result, context);
                     }
+                    resp.context.match.updated = true;
                 },
             });
         }
     }
 
     function matchInjectInProgressResults() {
-        const matchesSection = document.getElementById("fixtures-results-list");
-        if (matchesSection) {
-            matchAddInProgressResults(matchesSection);
+        const fixturesLink = document.getElementById("matches_sub_nav")?.querySelector("div.flex-grow-0 span a");
+        if (fixturesLink) {
+            fixturesLink.addEventListener("click", matchWaitAndInjectInProgressResults);
+            if ([...fixturesLink.classList].includes("selected")) {
+                const matchesSection = document.getElementById("fixtures-results-list");
+                if (matchesSection) {
+                    matchAddInProgressResults(matchesSection);
+                }
+            }
         }
     }
 
@@ -1725,7 +1735,7 @@
             }
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
-        } else if (uri.search("/?p=match") > -1 && uri.search("&sub=scheduled") > -1) {
+        } else if (uri.search("/?p=match") > -1 && !uri.search("&sub=result") > -1) {
             matchInjectInProgressResults();
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
