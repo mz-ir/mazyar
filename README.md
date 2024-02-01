@@ -53,4 +53,4 @@ Click on a team name to highlight its matches.
 
 Adds final result of in progress matches
 
-![Fixture](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixture.png)
+![Fixtures](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png)
