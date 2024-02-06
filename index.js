@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.48
+// @version      0.49
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -1802,7 +1802,7 @@
 
         content.style.width = "fit-content";
         content.style.backgroundColor = "white";
-        content.style.border = "1px solid";
+        //content.style.border = "0px solid";
         content.style.borderRadius = "5px";
         content.classList.add("mzp-flex-wrap");
 
@@ -1816,6 +1816,8 @@
         div.appendChild(title);
 
         div.classList.add("win_bg");
+        div.style.height = "2.2rem";
+        div.style.borderRadius = "inherit";
 
         title.innerText = "MZP Settings";
         title.style.fontSize = "1.2rem";
@@ -1848,7 +1850,8 @@
         const button = document.createElement("button");
         div.appendChild(button);
 
-        div.style.width = "100%";
+        div.classList.add("mzp-flex-wrap");
+        div.style.flexBasis = "100%";
         div.style.margin = "1rem auto 0.3rem";
         div.classList.add("mzp-flex-wrap");
 
@@ -1856,6 +1859,10 @@
         button.style.fontSize = "1.2rem";
         button.style.fontWeight = "bold";
         button.style.alignSelf = "center";
+        button.style.background = "green";
+        button.style.color = "white";
+        button.style.border = "1px solid green";
+        button.style.borderRadius = "10px";
 
         return button;
     }
@@ -1889,25 +1896,26 @@
         div.style.position = "fixed";
         div.style.zIndex = "999";
         div.style.top = "50%";
+        div.style.width = "min-content";
         div.style.right = "3px";
         div.style.overflow = "auto";
-        // div.style.background = "black";
-        div.style.color = "red";
+        div.style.background = "black";
+        div.style.color = "white";
         div.style.textAlign = "center";
 
         cog.classList.add("fa", "fa-cog");
         cog.setAttribute("aria-hidden", "true");
-        cog.style.fontSize = "x-large";
+        cog.style.fontSize = "large";
         cog.style.flexBasis = "100%";
-        cog.style.margin = "0";
+        cog.style.margin = "1px";
         cog.style.padding = "0";
 
         text.innerText = "MZP";
-        text.style.fontSize = "0.8rem";
+        text.style.fontSize = "0.6rem";
         text.style.fontWeight = "bold";
         text.style.flexBasis = "100%";
         text.style.margin = "0";
-        text.style.padding = "0";
+        text.style.padding = "1px";
 
         return div;
     }
