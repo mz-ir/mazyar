@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.51
+// @version      0.52
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -92,6 +92,18 @@
         display: flex;
         align-items: center;
         justify-content: center;
+    }
+
+    div.mzp-flex-button {
+        margin: 0.3rem;
+    }
+
+    button.mzp-flex-button {
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: white;
+        border: 1px solid black;
+        border-radius: 10px;
     }
     `;
 
@@ -235,9 +247,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1801,11 +1813,11 @@
         modal.style.height = "100%";
         modal.style.overflow = "auto";
 
-        content.style.width = "fit-content";
-        content.style.backgroundColor = "white";
-        //content.style.border = "0px solid";
-        content.style.borderRadius = "5px";
         content.classList.add("mzp-flex-wrap");
+        content.style.width = "fit-content";
+        content.style.backgroundColor = "beige";
+        content.style.border = "1px solid black";
+        content.style.borderRadius = "5px";
 
         return { modal, modalContent: content };
     }
@@ -1827,43 +1839,36 @@
 
     function configCreateCheckBox(id, label) {
         const div = document.createElement("div");
+        const checkbox = document.createElement("input");
+        div.appendChild(checkbox);
+        const labelElement = document.createElement("label");
+        div.appendChild(labelElement);
+
         div.id = id;
-        div.style.width = "100%";
+        div.style.flexBasis = "100%";
         div.style.alignSelf = "flex-start";
         div.style.margin = "0.3rem 0.7rem";
 
-        const checkbox = document.createElement("input");
-        div.appendChild(checkbox);
-        checkbox.type = "checkbox";
         checkbox.id = id + "-checkbox";
+        checkbox.type = "checkbox";
 
-        const labelElement = document.createElement("label");
-        div.appendChild(labelElement);
-        labelElement.innerText = label;
         labelElement.htmlFor = id + "-checkbox";
+        labelElement.innerText = label;
 
         return div;
     }
 
-    function configAddSaveButton(parent) {
+    function configAddButton(parent, title, bgColor) {
         const div = document.createElement("div");
         parent.appendChild(div);
         const button = document.createElement("button");
         div.appendChild(button);
 
-        div.classList.add("mzp-flex-wrap");
-        div.style.flexBasis = "100%";
-        div.style.margin = "1rem auto 0.3rem";
-        div.classList.add("mzp-flex-wrap");
+        div.classList.add("mzp-flex-wrap", "mzp-flex-button");
 
-        button.innerText = "Save";
-        button.style.fontSize = "1.2rem";
-        button.style.fontWeight = "bold";
-        button.style.alignSelf = "center";
-        button.style.background = "green";
-        button.style.color = "white";
-        button.style.border = "1px solid green";
-        button.style.borderRadius = "10px";
+        button.classList.add("mzp-flex-button");
+        button.innerText = title;
+        button.style.background = bgColor;
 
         return button;
     }
@@ -1880,12 +1885,17 @@
         const tableInjection = configCreateCheckBox("mzp-enable-table-injection", "Display Teams' Top Players in Tables");
         modalContent.appendChild(tableInjection);
 
-        const saveButton = configAddSaveButton(modalContent);
+        const saveButton = configAddButton(modalContent, "Save", "green");
+        const cancelButton = configAddButton(modalContent, "Cancel", "orangered");
 
         saveButton.onclick = () => {
             // save then close
             GM_setValue("in_progress", inProgress.querySelector("input[type=checkbox]").checked);
             GM_setValue("table_top_players", tableInjection.querySelector("input[type=checkbox]").checked);
+            modal.style.display = "none";
+        };
+
+        cancelButton.onclick = () => {
             modal.style.display = "none";
         };
     }
