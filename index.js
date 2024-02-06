@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.50
+// @version      0.51
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -235,9 +235,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n);
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1577,7 +1577,8 @@
         age.style.backgroundColor = "aqua";
     }
 
-    function tableInjectInProgressResults(sport = "soccer") {
+    function tableInjectInProgressResults() {
+        const sport = getSportType();
         const matches = document.querySelectorAll("table.hitlist.marker td > a");
         const inProgressMatches = [...matches].filter((match) => isMatchInProgress(match.innerText));
         for (const match of inProgressMatches) {
@@ -1602,8 +1603,6 @@
     }
 
     function tableAddTopPlayersInfo(table) {
-        GM_addStyle(tableMobileStyles);
-        GM_addStyle(inProgressStyles);
         createModal();
         const ageLimit = tableGetAgeLimit(document.baseURI);
         const sport = getSportType(document);
@@ -1620,9 +1619,6 @@
         for (const team of teams) {
             tableAddTeamTopPlayersInfo(team, ageLimit, sport);
         }
-        if (GM_getValue("in_progress", true)) {
-            tableInjectInProgressResults(sport);
-        }
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
@@ -1633,7 +1629,12 @@
                 clearInterval(interval);
                 if (!table.TopPlayersInfoInjected) {
                     table.TopPlayersInfoInjected = true;
-                    tableAddTopPlayersInfo(table);
+                    if (GM_getValue("table_top_players", true)) {
+                        tableAddTopPlayersInfo(table);
+                    }
+                    if (GM_getValue("in_progress", true)) {
+                        tableInjectInProgressResults();
+                    }
                 }
             } else {
                 timeout -= step;
@@ -1645,38 +1646,32 @@
     }
 
     function tableInjectTopPlayersToOfficialLeague() {
-        if (GM_getValue("table_top_players", true)) {
-            // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
-            tableWaitAndInjectTopPlayersInfo();
+        // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
+        tableWaitAndInjectTopPlayersInfo();
 
-            // also add 'onclick' handler to Table tab
-            const links = document.getElementsByTagName("a");
-            for (const link of links) {
-                if (["p=league", "sub=table"].every((text) => link.href.indexOf(text) > -1)) {
-                    link.onclick = tableWaitAndInjectTopPlayersInfo;
-                }
+        // also add 'onclick' handler to Table tab
+        const links = document.getElementsByTagName("a");
+        for (const link of links) {
+            if (["p=league", "sub=table"].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = tableWaitAndInjectTopPlayersInfo;
             }
         }
     }
 
     function tableInjectTopPlayersInfoToFriendlyLeague() {
-        if (GM_getValue("table_top_players", true)) {
-            const links = document.getElementsByTagName("a");
-            for (const link of links) {
-                if (["p=friendlySeries", "sub=standings"].every((text) => link.href.indexOf(text) > -1)) {
-                    link.onclick = tableWaitAndInjectTopPlayersInfo;
-                }
+        const links = document.getElementsByTagName("a");
+        for (const link of links) {
+            if (["p=friendlySeries", "sub=standings"].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = tableWaitAndInjectTopPlayersInfo;
             }
         }
     }
 
     function tableInjectTopPlayersInfoToCup() {
-        if (GM_getValue("table_top_players", true)) {
-            const links = document.getElementsByTagName("a");
-            for (const link of links) {
-                if (["p=cups", "sub=groupplay"].every((text) => link.href.indexOf(text) > -1)) {
-                    link.onclick = tableWaitAndInjectTopPlayersInfo;
-                }
+        const links = document.getElementsByTagName("a");
+        for (const link of links) {
+            if (["p=cups", "sub=groupplay"].every((text) => link.href.indexOf(text) > -1)) {
+                link.onclick = tableWaitAndInjectTopPlayersInfo;
             }
         }
     }
@@ -1952,6 +1947,8 @@
 
     function inject() {
         GM_addStyle(squadSummaryStyles);
+        GM_addStyle(inProgressStyles);
+        GM_addStyle(tableMobileStyles);
         configInject();
         const uri = document.baseURI;
         const url = document.URL;
