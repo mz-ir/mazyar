@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.52
+// @version      0.53
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -81,21 +81,28 @@
     `;
 
     const configMenuStyles = `
-    .mzp-flex-wrap {
+    .mzp-config-menu-content {
+        min-width: 20%;
+        width: fit-content;
+        background-color: beige;
+        border: 1px solid black;
+        border-radius: 5px;
+    }
+
+    .mzp-flex-container {
         display: flex;
-        align-items: center;
+        flex-direction: column;
         justify-content: center;
+        align-items: center;
         flex-wrap: wrap;
     }
 
-    .mzp-flex-nowrap {
+    .mzp-flex-container-row {
         display: flex;
-        align-items: center;
+        flex-direction: row;
         justify-content: center;
-    }
-
-    div.mzp-flex-button {
-        margin: 0.3rem;
+        align-items: center;
+        flex-wrap: wrap;
     }
 
     button.mzp-flex-button {
@@ -104,6 +111,7 @@
         color: white;
         border: 1px solid black;
         border-radius: 10px;
+        margin: 0.3rem;
     }
     `;
 
@@ -1801,7 +1809,7 @@
         modal.appendChild(content);
 
         modal.id = "mzp-config-modal";
-        modal.classList.add("mzp-flex-wrap");
+        modal.classList.add("mzp-flex-container");
         modal.style.display = "none"; // switch to flex to display the modal
         modal.style.alignItems = "center";
         modal.style.justifyContent = "center";
@@ -1813,11 +1821,7 @@
         modal.style.height = "100%";
         modal.style.overflow = "auto";
 
-        content.classList.add("mzp-flex-wrap");
-        content.style.width = "fit-content";
-        content.style.backgroundColor = "beige";
-        content.style.border = "1px solid black";
-        content.style.borderRadius = "5px";
+        content.classList.add("mzp-flex-container", "mzp-config-menu-content");
 
         return { modal, modalContent: content };
     }
@@ -1845,7 +1849,6 @@
         div.appendChild(labelElement);
 
         div.id = id;
-        div.style.flexBasis = "100%";
         div.style.alignSelf = "flex-start";
         div.style.margin = "0.3rem 0.7rem";
 
@@ -1858,18 +1861,11 @@
         return div;
     }
 
-    function configAddButton(parent, title, bgColor) {
-        const div = document.createElement("div");
-        parent.appendChild(div);
+    function configAddButton(title, bgColor) {
         const button = document.createElement("button");
-        div.appendChild(button);
-
-        div.classList.add("mzp-flex-wrap", "mzp-flex-button");
-
         button.classList.add("mzp-flex-button");
         button.innerText = title;
         button.style.background = bgColor;
-
         return button;
     }
 
@@ -1885,8 +1881,14 @@
         const tableInjection = configCreateCheckBox("mzp-enable-table-injection", "Display Teams' Top Players in Tables");
         modalContent.appendChild(tableInjection);
 
-        const saveButton = configAddButton(modalContent, "Save", "green");
-        const cancelButton = configAddButton(modalContent, "Cancel", "orangered");
+        const buttonsDiv = document.createElement("div");
+        modalContent.appendChild(buttonsDiv);
+        buttonsDiv.classList.add("mzp-flex-container-row");
+
+        const cancelButton = configAddButton("Cancel", "orangered");
+        buttonsDiv.appendChild(cancelButton);
+        const saveButton = configAddButton("Save", "green");
+        buttonsDiv.appendChild(saveButton);
 
         saveButton.onclick = () => {
             // save then close
@@ -1907,13 +1909,11 @@
         const text = document.createElement("span");
         div.appendChild(text);
 
-        div.classList.add("mzp-flex-wrap");
+        div.classList.add("mzp-flex-container");
         div.style.position = "fixed";
         div.style.zIndex = "999";
         div.style.top = "50%";
-        div.style.width = "min-content";
-        div.style.right = "3px";
-        div.style.overflow = "auto";
+        div.style.right = "5px";
         div.style.background = "black";
         div.style.color = "white";
         div.style.textAlign = "center";
@@ -1921,14 +1921,12 @@
         cog.classList.add("fa", "fa-cog");
         cog.setAttribute("aria-hidden", "true");
         cog.style.fontSize = "large";
-        cog.style.flexBasis = "100%";
         cog.style.margin = "1px";
         cog.style.padding = "0";
 
         text.innerText = "MZP";
         text.style.fontSize = "0.6rem";
         text.style.fontWeight = "bold";
-        text.style.flexBasis = "100%";
         text.style.margin = "0";
         text.style.padding = "1px";
 
