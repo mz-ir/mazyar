@@ -1,10 +1,12 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.47
+// @version      0.48
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
+// @grant        GM_getValue
+// @grant        GM_setValue
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
@@ -69,13 +71,28 @@
     const inProgressStyles = `
     a.in-progress-result {
         animation: change-result-background 3s infinite;
-      }
-      
-      @keyframes change-result-background {
+    }
+
+    @keyframes change-result-background {
         0%   {background-color: inherit;}
         50%  {background-color: lightgreen;}
         100%  {background-color: inherit;}
-      }
+    }
+    `;
+
+    const configMenuStyles = `
+    .mzp-flex-wrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .mzp-flex-nowrap {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
     `;
 
     /* *********************** Utils ********************************** */
@@ -218,9 +235,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n);
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1300,13 +1317,15 @@
     }
 
     function matchInjectInProgressResults() {
-        const fixturesLink = document.getElementById("matches_sub_nav")?.querySelector("div.flex-grow-0 span a");
-        if (fixturesLink) {
-            fixturesLink.addEventListener("click", matchWaitAndInjectInProgressResults);
-            if ([...fixturesLink.classList].includes("selected")) {
-                const matchesSection = document.getElementById("fixtures-results-list");
-                if (matchesSection) {
-                    matchAddInProgressResults(matchesSection);
+        if (GM_getValue("in_progress", true)) {
+            const fixturesLink = document.getElementById("matches_sub_nav")?.querySelector("div.flex-grow-0 span a");
+            if (fixturesLink) {
+                fixturesLink.addEventListener("click", matchWaitAndInjectInProgressResults);
+                if ([...fixturesLink.classList].includes("selected")) {
+                    const matchesSection = document.getElementById("fixtures-results-list");
+                    if (matchesSection) {
+                        matchAddInProgressResults(matchesSection);
+                    }
                 }
             }
         }
@@ -1601,7 +1620,9 @@
         for (const team of teams) {
             tableAddTeamTopPlayersInfo(team, ageLimit, sport);
         }
-        tableInjectInProgressResults(sport);
+        if (GM_getValue("in_progress", true)) {
+            tableInjectInProgressResults(sport);
+        }
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
@@ -1759,10 +1780,158 @@
         }
     }
 
+    /* *********************** Config ********************************** */
+
+    function configCreateModal() {
+        const modal = document.createElement("div");
+        const content = document.createElement("div");
+        modal.appendChild(content);
+
+        modal.id = "mzp-config-modal";
+        modal.classList.add("mzp-flex-wrap");
+        modal.style.display = "none"; // switch to flex to display the modal
+        modal.style.alignItems = "center";
+        modal.style.justifyContent = "center";
+        modal.style.position = "fixed";
+        modal.style.zIndex = "1000";
+        modal.style.left = "0";
+        modal.style.top = "0";
+        modal.style.width = "100%";
+        modal.style.height = "100%";
+        modal.style.overflow = "auto";
+
+        content.style.width = "fit-content";
+        content.style.backgroundColor = "white";
+        content.style.border = "1px solid";
+        content.style.borderRadius = "5px";
+        content.classList.add("mzp-flex-wrap");
+
+        return { modal, modalContent: content };
+    }
+
+    function configAddTitle(parent) {
+        const div = document.createElement("div");
+        parent.appendChild(div);
+        const title = document.createElement("h1");
+        div.appendChild(title);
+
+        div.classList.add("win_bg");
+
+        title.innerText = "MZP Settings";
+        title.style.fontSize = "1.2rem";
+        title.style.margin = "0.4rem auto";
+    }
+
+    function configCreateCheckBox(id, label) {
+        const div = document.createElement("div");
+        div.id = id;
+        div.style.width = "100%";
+        div.style.alignSelf = "flex-start";
+        div.style.margin = "0.3rem 0.7rem";
+
+        const checkbox = document.createElement("input");
+        div.appendChild(checkbox);
+        checkbox.type = "checkbox";
+        checkbox.id = id + "-checkbox";
+
+        const labelElement = document.createElement("label");
+        div.appendChild(labelElement);
+        labelElement.innerText = label;
+        labelElement.htmlFor = id + "-checkbox";
+
+        return div;
+    }
+
+    function configAddSaveButton(parent) {
+        const div = document.createElement("div");
+        parent.appendChild(div);
+        const button = document.createElement("button");
+        div.appendChild(button);
+
+        div.style.width = "100%";
+        div.style.margin = "1rem auto 0.3rem";
+        div.classList.add("mzp-flex-wrap");
+
+        button.innerText = "Save";
+        button.style.fontSize = "1.2rem";
+        button.style.fontWeight = "bold";
+        button.style.alignSelf = "center";
+
+        return button;
+    }
+
+    function configCreateMenu() {
+        const { modal, modalContent } = configCreateModal();
+        document.body.appendChild(modal);
+
+        configAddTitle(modalContent);
+
+        const inProgress = configCreateCheckBox("mzp-enable-in-progress-results", "Display In Progress Results");
+        modalContent.appendChild(inProgress);
+
+        const saveButton = configAddSaveButton(modalContent);
+
+        saveButton.onclick = () => {
+            // save then close
+            GM_setValue("in_progress", inProgress.querySelector("input[type=checkbox]").checked);
+            modal.style.display = "none";
+        };
+    }
+
+    function configCreateMenuButton() {
+        const div = document.createElement("div");
+        const cog = document.createElement("i");
+        div.appendChild(cog);
+        const text = document.createElement("span");
+        div.appendChild(text);
+
+        div.classList.add("mzp-flex-wrap");
+        div.style.position = "fixed";
+        div.style.zIndex = "999";
+        div.style.top = "50%";
+        div.style.right = "3px";
+        div.style.overflow = "auto";
+        // div.style.background = "black";
+        div.style.color = "red";
+        div.style.textAlign = "center";
+
+        cog.classList.add("fa", "fa-cog");
+        cog.setAttribute("aria-hidden", "true");
+        cog.style.fontSize = "x-large";
+        cog.style.flexBasis = "100%";
+        cog.style.margin = "0";
+        cog.style.padding = "0";
+
+        text.innerText = "MZP";
+        text.style.fontSize = "0.8rem";
+        text.style.fontWeight = "bold";
+        text.style.flexBasis = "100%";
+        text.style.margin = "0";
+        text.style.padding = "0";
+
+        return div;
+    }
+
+    function configInject() {
+        GM_addStyle(configMenuStyles);
+        configCreateMenu();
+
+        const button = configCreateMenuButton();
+        document.body.appendChild(button);
+
+        button.onclick = () => {
+            const modal = document.getElementById("mzp-config-modal");
+            modal.style.display = "flex";
+            const inProgress = document.querySelector("div#mzp-enable-in-progress-results input[type=checkbox]");
+            inProgress.checked = GM_getValue("in_progress", true);
+        };
+    }
+
     /* *********************** Inject ********************************** */
 
     function inject() {
         GM_addStyle(squadSummaryStyles);
+        configInject();
         const uri = document.baseURI;
         const url = document.URL;
         if (uri.search("/?p=federations") > -1) {
