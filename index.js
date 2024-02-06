@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.49
+// @version      0.50
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -235,9 +235,9 @@
 
         const n = count === 0 ? players.length : count;
         const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
+            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+            .sort((a, b) => b.value - a.value)
+            .slice(0, n);
         if (filtered.length === 0) {
             return { values: 0, avgAge: 0.0 };
         }
@@ -1645,32 +1645,38 @@
     }
 
     function tableInjectTopPlayersToOfficialLeague() {
-        // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
-        tableWaitAndInjectTopPlayersInfo();
+        if (GM_getValue("table_top_players", true)) {
+            // default sub-page (or tab) for leagues is Table. so try to inject team value after table is loaded
+            tableWaitAndInjectTopPlayersInfo();
 
-        // also add 'onclick' handler to Table tab
-        const links = document.getElementsByTagName("a");
-        for (const link of links) {
-            if (["p=league", "sub=table"].every((text) => link.href.indexOf(text) > -1)) {
-                link.onclick = tableWaitAndInjectTopPlayersInfo;
+            // also add 'onclick' handler to Table tab
+            const links = document.getElementsByTagName("a");
+            for (const link of links) {
+                if (["p=league", "sub=table"].every((text) => link.href.indexOf(text) > -1)) {
+                    link.onclick = tableWaitAndInjectTopPlayersInfo;
+                }
             }
         }
     }
 
     function tableInjectTopPlayersInfoToFriendlyLeague() {
-        const links = document.getElementsByTagName("a");
-        for (const link of links) {
-            if (["p=friendlySeries", "sub=standings"].every((text) => link.href.indexOf(text) > -1)) {
-                link.onclick = tableWaitAndInjectTopPlayersInfo;
+        if (GM_getValue("table_top_players", true)) {
+            const links = document.getElementsByTagName("a");
+            for (const link of links) {
+                if (["p=friendlySeries", "sub=standings"].every((text) => link.href.indexOf(text) > -1)) {
+                    link.onclick = tableWaitAndInjectTopPlayersInfo;
+                }
             }
         }
     }
 
     function tableInjectTopPlayersInfoToCup() {
-        const links = document.getElementsByTagName("a");
-        for (const link of links) {
-            if (["p=cups", "sub=groupplay"].every((text) => link.href.indexOf(text) > -1)) {
-                link.onclick = tableWaitAndInjectTopPlayersInfo;
+        if (GM_getValue("table_top_players", true)) {
+            const links = document.getElementsByTagName("a");
+            for (const link of links) {
+                if (["p=cups", "sub=groupplay"].every((text) => link.href.indexOf(text) > -1)) {
+                    link.onclick = tableWaitAndInjectTopPlayersInfo;
+                }
             }
         }
     }
@@ -1876,11 +1882,15 @@
         const inProgress = configCreateCheckBox("mzp-enable-in-progress-results", "Display In Progress Results");
         modalContent.appendChild(inProgress);
 
+        const tableInjection = configCreateCheckBox("mzp-enable-table-injection", "Display Teams' Top Players in Tables");
+        modalContent.appendChild(tableInjection);
+
         const saveButton = configAddSaveButton(modalContent);
 
         saveButton.onclick = () => {
             // save then close
             GM_setValue("in_progress", inProgress.querySelector("input[type=checkbox]").checked);
+            GM_setValue("table_top_players", tableInjection.querySelector("input[type=checkbox]").checked);
             modal.style.display = "none";
         };
     }
@@ -1932,6 +1942,9 @@
             modal.style.display = "flex";
             const inProgress = document.querySelector("div#mzp-enable-in-progress-results input[type=checkbox]");
             inProgress.checked = GM_getValue("in_progress", true);
+
+            const tableInjection = document.querySelector("div#mzp-enable-table-injection input[type=checkbox]");
+            tableInjection.checked = GM_getValue("table_top_players", true);
         };
     }
 
