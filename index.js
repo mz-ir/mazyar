@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MZ Player Values
 // @namespace    http://tampermonkey.net/
-// @version      0.53
+// @version      1.0
 // @description  Add Squad Value to some pages
 // @author       z7z @managerzone
 // @license      MIT
@@ -20,72 +20,24 @@
 
     /* *********************** Styles ********************************** */
 
-    const squadSummaryStyles = `
-    table.squad-summary tbody td, table.squad-summary thead th {
-        padding: 0.3em 0.5em;
+    const mzpStyles = `
+    #mzp-modal {
+        display: none;
+        position: fixed;
+        z-index: 9999;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.4);
     }
-    `;
-
-    const clashStyles = `
-    .donut {
-        width: 1.7em;
-        height: 1.7em;
-        margin-right: 5px;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 1.2em;
-        padding: 3px;
-        background-color: yellow;
-        color: yellow;
-    }
-
-    .final-donut {
-        border: rgb(213, 232, 44) solid 2px;
-        color: inherit;
-        padding:0;
-    }
-
-    .loading-donut {
-        border-bottom-color: rgb(213, 232, 44);
-        animation: 1.5s donut-spin infinite linear;
-    }
-
-    @keyframes donut-spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-    `;
-
-    const tableMobileStyles = `
-    @media only screen and (max-device-width: 1020px) {
-        thead.responsive-show.mzp-responsive-show {
-            display: table-header-group !important;
-        }
-        tbody tr.responsive-show.mzp-responsive-show {
-          display: table-row !important;
-      }
-    }
-    `;
-
-    const inProgressStyles = `
-    a.in-progress-result {
-        animation: change-result-background 3s infinite;
-    }
-
-    @keyframes change-result-background {
-        0%   {background-color: inherit;}
-        50%  {background-color: lightgreen;}
-        100%  {background-color: inherit;}
-    }
-    `;
-
-    const configMenuStyles = `
-    .mzp-config-menu-content {
-        min-width: 20%;
+    
+    #mzp-modal-content {
+        // min-width: 20%;
         width: fit-content;
         background-color: beige;
-        border: 1px solid black;
+        // border: 1px solid beige;
         border-radius: 5px;
     }
 
@@ -105,15 +57,243 @@
         flex-wrap: wrap;
     }
 
-    button.mzp-flex-button {
-        font-size: 1.2rem;
-        font-weight: bold;
-        color: white;
-        border: 1px solid black;
-        border-radius: 10px;
-        margin: 0.3rem;
+    .mzp-donut {
+        width: 1.7em;
+        height: 1.7em;
+        margin-right: 5px;
+        border-radius: 50%;
+        text-align: center;
+        font-size: 1.2em;
+        padding: 3px;
+        background-color: yellow;
+        color: yellow;
+    }
+
+    .mzp-final-donut {
+        border: rgb(213, 232, 44) solid 2px;
+        color: inherit;
+        padding:0;
+    }
+
+    .mzp-loading-donut {
+        border-bottom-color: rgb(213, 232, 44);
+        animation: 1.5s mzp-donut-spin infinite linear;
+    }
+
+    @keyframes mzp-donut-spin {
+        to {
+            transform: rotate(360deg);
+        }
+    }
+
+    table.mzp-squad-summary tbody td, table.mzp-squad-summary thead th {
+        padding: 0.3em 0.5em;
+    }
+
+    @media only screen and (max-device-width: 1020px) {
+        thead.responsive-show.mzp-responsive-show {
+            display: table-header-group !important;
+        }
+        tbody tr.responsive-show.mzp-responsive-show {
+          display: table-row !important;
+      }
+    }
+
+    a.mzp-in-progress-result {
+        animation: mzp-change-result-background 3s infinite;
+    }
+
+    @keyframes mzp-change-result-background {
+        0%   {background-color: inherit;}
+        50%  {background-color: lightgreen;}
+        100%  {background-color: inherit;}
     }
     `;
+
+    /* *********************** Injector Class ********************************** */
+
+    function generateUuidV4() {
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
+            const r = (Math.random() * 16) | 0,
+                v = c == "x" ? r : (r & 0x3) | 0x8;
+            return v.toString(16);
+        });
+    }
+
+    function getMzButtonColorClass(color) {
+        if (color) {
+            if (color === "red") {
+                return "button_red";
+            } else if (color === "blue") {
+                return "button_blue";
+            }
+        }
+        return "button_account";
+    }
+
+    function createMzStyledButton(title, color = "", floatDirection = null) {
+        const div = document.createElement("div");
+        div.style.margin = "0.3rem";
+        if (floatDirection) {
+            // floatDirection: floatRight, floatLeft
+            div.classList.add(floatDirection);
+        }
+
+        const button = document.createElement("div");
+        button.classList.add("mzbtn", "buttondiv", getMzButtonColorClass(color));
+        button.innerHTML = `<span class="buttonClassMiddle"><span style="white-space: nowrap">${title}</span></span><span class="buttonClassRight">&nbsp;</span>`;
+
+        div.appendChild(button);
+        return div;
+    }
+
+    function createMzStyledTitle(text = "") {
+        const div = document.createElement("div");
+        div.classList.add("win_bg");
+
+        const title = document.createElement("h3");
+        title.innerText = text;
+        title.style.margin = "0.4rem auto";
+        title.style.padding = "0 0.6rem";
+
+        div.appendChild(title);
+        return div;
+    }
+
+    function configCreateCheckBox(label, initialValue = true) {
+        const id = generateUuidV4();
+
+        const div = document.createElement("div");
+        div.style.alignSelf = "flex-start";
+        div.style.margin = "0.3rem 0.7rem";
+
+        const checkbox = document.createElement("input");
+        checkbox.id = id;
+        checkbox.type = "checkbox";
+        checkbox.checked = initialValue;
+
+        const labelElement = document.createElement("label");
+        labelElement.htmlFor = id;
+        labelElement.innerText = label;
+
+        div.appendChild(checkbox);
+        div.appendChild(labelElement);
+        return div;
+    }
+
+    class MzpInjector {
+        modal;
+        content;
+        in_progress;
+        table_top_players;
+
+        constructor() {
+            this.in_progress = GM_getValue("in_progress", true);
+            this.table_top_players = GM_getValue("table_top_players", true);
+
+            this.modal = document.createElement("div");
+            this.modal.id = "mzp-modal";
+            this.modal.classList.add("mzp-flex-container");
+
+            this.content = document.createElement("div");
+            this.content.id = "mzp-modal-content";
+            this.content.classList.add("mzp-flex-container");
+
+            this.modal.appendChild(this.content);
+            this.hide();
+            document.body.appendChild(this.modal);
+        }
+
+        hide() {
+            this.modal.style.display = "none";
+        }
+
+        display() {
+            this.modal.style.display = "flex";
+        }
+
+        clearContent() {
+            this.content.innerText = "";
+        }
+
+        replaceContent(elements = []) {
+            this.clearContent();
+            for (const element of elements) {
+                if (element) {
+                    this.content.appendChild(element);
+                }
+            }
+        }
+
+        displayLoading(title = "MZP") {
+            const header = createMzStyledTitle(title);
+
+            const loading = document.createElement("p");
+            loading.innerText = "Loading...";
+            loading.style.padding = "1rem";
+
+            this.clearContent();
+            this.content.appendChild(header);
+            this.content.appendChild(loading);
+            this.display();
+        }
+
+        saveMenu() {
+            GM_setValue("in_progress", this.in_progress);
+            GM_setValue("table_top_players", this.table_top_players);
+        }
+
+        displayMenu() {
+            const that = this; // used in onclick event listener
+
+            const div = document.createElement("div");
+            div.classList.add("mzp-flex-container");
+
+            const title = createMzStyledTitle("MZP Settings");
+            const inProgress = configCreateCheckBox("Display In Progress Results", this.in_progress);
+            const tableInjection = configCreateCheckBox("Display Teams' Top Players in Tables", this.table_top_players);
+
+            const buttons = document.createElement("div");
+            buttons.classList.add("mzp-flex-container-row");
+
+            const cancel = createMzStyledButton("Cancel", "red");
+            cancel.onclick = () => {
+                that.hide();
+                that.clearContent();
+            };
+
+            const save = createMzStyledButton("Save", "green");
+            save.onclick = () => {
+                // save then close
+                that.in_progress = inProgress.querySelector("input[type=checkbox]").checked;
+                that.table_top_players = tableInjection.querySelector("input[type=checkbox]").checked;
+                that.saveMenu();
+                that.hide();
+                that.clearContent();
+            };
+
+            div.appendChild(title);
+            div.appendChild(inProgress);
+            div.appendChild(tableInjection);
+
+            buttons.appendChild(cancel);
+            buttons.appendChild(save);
+            div.appendChild(buttons);
+
+            this.replaceContent([div]);
+            this.display();
+        }
+
+        mustDisplayInProgressResults() {
+            return this.in_progress;
+        }
+
+        mustDisplayTopPlayersInTables() {
+            return this.table_top_players;
+        }
+    }
+
+    const injector = new MzpInjector();
 
     /* *********************** Utils ********************************** */
 
@@ -169,6 +349,10 @@
     function isMatchInProgress(resultText) {
         const scoreRegex = /\b(X|0|[1-9]\d*) - (X|0|[1-9]\d*)\b/;
         return !scoreRegex.test(resultText);
+    }
+
+    function getSquadSummaryLink(tid) {
+        return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
     }
 
     function formatBigNumber(n, sep = " ") {
@@ -266,22 +450,16 @@
         return { values, avgAge };
     }
 
-    function displayOnModal(url) {
-        const divContent = document.getElementById("squad-display-modal-content");
+    function getTopPlyers(doc) {
+        const currency = getCurrency(doc);
+        const players = getPlayers(doc, currency);
+        const sport = getSportType(doc);
+        const count = sport === "soccer" ? 11 : 21;
+        return players ? filterPlayers(players, count).values : 0;
+    }
 
-        const loading = document.createElement("p");
-        divContent.replaceChildren(loading);
-        loading.innerText = "loading...";
-        loading.style.width = "fit-content";
-        loading.style.textAlign = "center";
-        loading.style.backgroundColor = "#fefefe";
-        loading.style.padding = "0.5em";
-
-        const modal = document.getElementById("squad-display-modal");
-        modal.style.display = "flex";
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-
+    function displaySquadSummaryOnModal(url) {
+        injector.displayLoading("MZP Squad Summary");
         GM_xmlhttpRequest({
             method: "GET",
             url,
@@ -291,53 +469,26 @@
                 const sport = getSportType(doc);
                 const currency = getCurrency(doc);
                 const players = getPlayers(doc, currency);
-                const summary = squadGetSummaryInfo(players, currency, sport);
-                const table = squadCreateSummaryTable(summary, currency, sport);
-                table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-                table.style.width = "auto";
-                table.align = "center";
-                table.style.backgroundColor = "#fefefe";
-                table.style.padding = "0.5em";
+                const summary = squadSummaryGetInfo(players, sport);
+                const table = squadSummaryCreateInfoTable(summary, currency, sport);
 
-                const target = document.getElementById("squad-display-modal-content");
-                target.replaceChildren(table);
+                table.style.width = "auto";
+                table.style.marginTop = "2px";
+                table.style.padding = "0";
+
+                const header = createMzStyledTitle("MZP Squad Summary");
+                const button = createMzStyledButton("Close", "red");
+                button.onclick = () => {
+                    injector.hide();
+                };
+                injector.replaceContent([header, table, button]);
             },
         });
     }
 
-    function createModal() {
-        const modal = document.createElement("div");
-        document.body.appendChild(modal);
-
-        modal.classList.add("powerbox");
-
-        modal.style.display = "none";
-        modal.style.position = "fixed";
-        modal.style.zIndex = "1";
-        modal.style.left = "0";
-        modal.style.top = "0";
-        modal.style.width = "100%";
-        modal.style.height = "100%";
-        modal.style.overflow = "auto";
-        modal.style.backgroundColor = "rgba(0, 0, 0, 0.4)";
-        modal.id = "squad-display-modal";
-        modal.onclick = () => {
-            modal.style.display = "none";
-        };
-
-        const modalContent = document.createElement("div");
-        modal.appendChild(modalContent);
-        modalContent.style.margin = "15% auto";
-        modalContent.style.padding = "20px";
-
-        const divContent = document.createElement("div");
-        modalContent.appendChild(divContent);
-        divContent.id = "squad-display-modal-content";
-    }
-
     /* *********************** Squad Summary ********************************** */
 
-    function squadGetSummaryInfo(players, currency = "USD", sport = "soccer") {
+    function squadSummaryGetInfo(players, sport = "soccer") {
         const rows = [];
         if (players) {
             if (sport === "hockey") {
@@ -455,46 +606,38 @@
         return rows;
     }
 
-    function createCompactElement(title, value) {
+    function squadSummaryCreateCompactElement(title, value) {
         const dd = document.createElement("dd");
         dd.innerHTML = `<span class="listHeadColor">${title}</span><span class="clippable">${value}</span>`;
         return dd;
     }
 
-    function createCompactSquadRow(row, currency = "USD", sport = "soccer") {
+    function squadSummaryCreateCompactRow(row, currency = "USD", sport = "soccer") {
         const dl = document.createElement("dl");
         dl.classList.add("hitlist-compact-list", "columns");
 
-        dl.appendChild(createCompactElement("Count", row.count));
-        dl.appendChild(createCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
+        dl.appendChild(squadSummaryCreateCompactElement("Count", row.count));
+        dl.appendChild(squadSummaryCreateCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
         if (sport == "soccer") {
-            dl.appendChild(createCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
-            dl.appendChild(createCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
+            dl.appendChild(squadSummaryCreateCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
+            dl.appendChild(squadSummaryCreateCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
         } else {
-            dl.appendChild(createCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
+            dl.appendChild(squadSummaryCreateCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
         }
         return dl;
     }
 
-    function squadCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
-        const table = document.createElement("table");
-        table.classList.add("squad-summary");
-
+    function squadSummaryCreateInfoTable(rows, currency = "USD", sport = "soccer") {
         const thead = document.createElement("thead");
-        table.appendChild(thead);
-
         const tr = document.createElement("tr");
-        thead.appendChild(tr);
 
         const titleHeader = document.createElement("th");
-        tr.appendChild(titleHeader);
         titleHeader.classList.add("header");
         titleHeader.innerText = "Group";
         titleHeader.style.textAlign = "center";
         titleHeader.style.textDecoration = "none";
 
         const countHeader = document.createElement("th");
-        tr.appendChild(countHeader);
         countHeader.classList.add("header");
         countHeader.innerText = "Count";
         countHeader.title = "Number of Players";
@@ -502,16 +645,18 @@
         countHeader.style.textDecoration = "none";
 
         const totalHeader = document.createElement("th");
-        tr.appendChild(totalHeader);
         totalHeader.classList.add("header");
         totalHeader.innerHTML = "Total";
         totalHeader.title = "Total Value of Players";
         totalHeader.style.textAlign = "center";
         totalHeader.style.textDecoration = "none";
 
+        tr.appendChild(titleHeader);
+        tr.appendChild(countHeader);
+        tr.appendChild(totalHeader);
+
         if (sport === "soccer") {
             const top16Header = document.createElement("th");
-            tr.appendChild(top16Header);
             top16Header.classList.add("header");
             top16Header.innerHTML = "Top 16";
             top16Header.title = "Value of Top 16 Players";
@@ -519,86 +664,99 @@
             top16Header.style.textDecoration = "none";
 
             const top11Header = document.createElement("th");
-            tr.appendChild(top11Header);
             top11Header.classList.add("header");
             top11Header.innerHTML = "Top 11";
             top11Header.title = "Value of Top 11 Players";
             top11Header.style.textAlign = "center";
             top11Header.style.textDecoration = "none";
+
+            tr.appendChild(top16Header);
+            tr.appendChild(top11Header);
         } else {
             const top21Header = document.createElement("th");
-            tr.appendChild(top21Header);
             top21Header.classList.add("header");
             top21Header.innerHTML = "Top 21";
             top21Header.title = "Value of Top 21 Players";
             top21Header.style.textAlign = "center";
             top21Header.style.textDecoration = "none";
+
+            tr.appendChild(top21Header);
         }
+        thead.appendChild(tr);
 
         const tbody = document.createElement("tbody");
-        table.appendChild(tbody);
-
         for (const row of rows) {
-            const tr = document.createElement("tr");
-            tbody.appendChild(tr);
-
             const title = document.createElement("td");
             title.innerHTML = `${row.title}`;
             title.classList.add("hitlist-compact-list-column");
-            tr.appendChild(title);
-            const compact = createCompactSquadRow(row, currency, sport);
+            const compact = squadSummaryCreateCompactRow(row, currency, sport);
+
             title.appendChild(compact);
 
             const count = document.createElement("td");
             count.innerHTML = `${row.count}`;
             count.style.textAlign = "center";
-            tr.appendChild(count);
 
             const all = document.createElement("td");
             all.innerText = `${formatBigNumber(row.all)} ${currency}`;
             all.style.textAlign = "end";
+
+            const tr = document.createElement("tr");
+            tr.appendChild(title);
+            tr.appendChild(count);
             tr.appendChild(all);
+            tbody.appendChild(tr);
 
             if (sport === "soccer") {
                 const top16 = document.createElement("td");
                 top16.innerText = `${formatBigNumber(row.top16)} ${currency}`;
                 top16.style.textAlign = "end";
-                tr.appendChild(top16);
 
                 const top11 = document.createElement("td");
                 top11.innerText = `${formatBigNumber(row.top11)} ${currency}`;
                 top11.style.textAlign = "end";
+
+                tr.appendChild(top16);
                 tr.appendChild(top11);
             } else {
                 const top21 = document.createElement("td");
-                tr.appendChild(top21);
                 top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
                 top21.style.textAlign = "end";
+
+                tr.appendChild(top21);
             }
         }
+
+        const table = document.createElement("table");
+        table.classList.add("mzp-squad-summary", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.style.borderSpacing = "0";
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
 
         return table;
     }
 
-    function squadInjectSummaryInfo() {
-        const sport = getSportType(document);
-        const currency = getCurrency(document);
-        const players = getPlayers(document, currency);
-        const summary = squadGetSummaryInfo(players, currency, sport);
-        const table = squadCreateSummaryTable(summary, currency, sport);
-
-        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.style.borderSpacing = 0;
-        table.style.marginBottom = "10px";
-        table.align = "center";
-
+    function squadSummaryInjectInfo() {
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
-            place.parentNode?.insertBefore(table, place);
+            const sport = getSportType(document);
+            const currency = getCurrency(document);
+            const players = getPlayers(document, currency);
+            const summary = squadSummaryGetInfo(players, sport);
+            const table = squadSummaryCreateInfoTable(summary, currency, sport);
+            const div = document.createElement("div");
+
+            table.style.marginBottom = "10px";
+
+            div.classList.add("mzp-flex-container");
+
+            div.appendChild(table);
+            place.parentNode.insertBefore(div, place);
         }
     }
 
-    function squadWaitAndInjectSummaryInfo(timeout = 16000) {
+    function squadSummaryWaitAndInjectInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
             const table = document.querySelector("table#playerAltViewTable");
@@ -606,7 +764,7 @@
                 clearInterval(interval);
                 if (!table.SummaryInfoInjected) {
                     table.SummaryInfoInjected = true;
-                    squadInjectSummaryInfo();
+                    squadSummaryInjectInfo();
                 }
             } else {
                 timeout -= step;
@@ -617,34 +775,22 @@
         }, step);
     }
 
-    function squadAddClickCallbackForSquadSummaryTab() {
+    function squadSummaryAddClickCallbackForTab() {
         const summaryTab = document.querySelector(`a[href="#squad_summary"]`);
         if (summaryTab) {
-            summaryTab.parentNode.onclick = squadWaitAndInjectSummaryInfo;
+            summaryTab.parentNode.onclick = squadSummaryWaitAndInjectInfo;
         }
     }
 
     /* *********************** Clash ********************************** */
 
-    function getSquadSummaryLink(url) {
-        const tid = extractTeamId(url);
-        return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
-    }
-
-    function getTopPlyers(doc) {
-        const currency = getCurrency(doc);
-        const players = getPlayers(doc, currency);
-        const sport = getSportType(doc);
-        const count = sport === "soccer" ? 11 : 21;
-        return players ? filterPlayers(players, count).values : 0;
-    }
-
-    function calculateRankOfTeams(rows) {
+    function clashCalculateRankOfTeams(rows) {
         const finals = [];
         for (const row of rows) {
             if (!row.isMatchRow) {
                 const team = row.querySelector("a.team-name");
-                const url = getSquadSummaryLink(team.href);
+                const tid = extractTeamId(team.href);
+                const url = getSquadSummaryLink(tid);
                 finals.push({
                     target: team,
                     row,
@@ -684,10 +830,10 @@
                 for (const team of finals) {
                     rank++;
                     team.row.className = rank % 2 ? "odd" : "even";
-                    const target = team.row.querySelector("button.donut.rank");
+                    const target = team.row.querySelector("button.mzp-donut.rank");
                     if (target) {
-                        target.classList.remove("loading-donut");
-                        target.classList.add("final-donut");
+                        target.classList.remove("mzp-loading-donut");
+                        target.classList.add("mzp-final-donut");
                         target.innerText = `${rank}`;
                     }
                     const value = team.row.querySelector("td.value");
@@ -711,9 +857,9 @@
                 if (timeout < 0) {
                     clearInterval(interval);
                     for (const team of finals) {
-                        const target = team.row.querySelector("button.donut.rank");
-                        target.classList.remove("loading-donut");
-                        target.classList.add("final-donut");
+                        const target = team.row.querySelector("button.mzp-donut.rank");
+                        target.classList.remove("mzp-loading-donut");
+                        target.classList.add("mzp-final-donut");
                         target.innerText = `-`;
 
                         const value = team.row.querySelector("td.value");
@@ -724,7 +870,7 @@
         }, step);
     }
 
-    function addRankView(team, url = "") {
+    function clashAddRankElements(team, url = "") {
         const value = document.createElement("td");
         value.style.width = "max-content";
         value.innerText = "";
@@ -737,18 +883,15 @@
         team.insertBefore(rank, team.firstChild);
         const button = document.createElement("button");
         button.innerText = "_";
-        button.classList.add("donut", "loading-donut", "rank", "fix-width");
+        button.classList.add("mzp-donut", "mzp-loading-donut", "rank", "fix-width");
         button.title = "Click to see squad summary";
         rank.appendChild(button);
         button.onclick = () => {
-            displayOnModal(url);
+            displaySquadSummaryOnModal(url);
         };
     }
 
-    function injectToClashPage() {
-        GM_addStyle(clashStyles);
-        createModal();
-
+    function clashInjectRanks() {
         const table = document.querySelector("table.hitlist.challenges-list");
 
         const headers = table.querySelector("thead tr");
@@ -771,8 +914,9 @@
             // in mobile view played challenges are also <tr> and for this rows, the team name is not a hyperlink
             const name = row.querySelector("a.team-name");
             if (name?.href) {
-                const url = getSquadSummaryLink(name.href);
-                addRankView(row, url);
+                const tid = extractTeamId(name.href);
+                const url = getSquadSummaryLink(tid);
+                clashAddRankElements(row, url);
                 row.playedMatches = [];
                 row.isMatchRow = false;
             } else {
@@ -782,13 +926,12 @@
                 row.isMatchRow = true;
             }
         }
-        calculateRankOfTeams(rows);
+        clashCalculateRankOfTeams(rows);
     }
 
     /* *********************** Federation Page ********************************** */
 
-    function fetchTopPlayers(context, tid) {
-        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+    function federationFetchTopPlayers(context, url) {
         GM_xmlhttpRequest({
             method: "GET",
             url,
@@ -804,8 +947,8 @@
                 name.style.color = "blue";
                 name.style.width = "100%";
                 name.style.marginTop = "0.5em";
-                name.title = team.name;
-                const teamName = team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name;
+                name.title = team.teamName;
+                const teamName = team.teamName.length > 20 ? team.teamName.substring(0, 16) + " >>>" : team.teamName;
                 name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
                 team.node.querySelector("td").appendChild(name);
 
@@ -822,7 +965,7 @@
         });
     }
 
-    async function fetchTeamValue(sport, teams, username) {
+    function federationFetchTeamValue(sport, teams, username) {
         const url = `https://www.managerzone.com/xml/manager_data.php?username=${username}`;
         GM_xmlhttpRequest({
             method: "GET",
@@ -832,48 +975,49 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/xml");
                 const teamId = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamId");
-                const name = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamName");
-                resp.context.teams.find((t) => t.username === resp.context.username).name = name;
-                fetchTopPlayers(resp.context, teamId);
+                const teamName = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamName");
+                resp.context.teams.find((t) => t.username === resp.context.username).teamName = teamName;
+                const squadUrl = getSquadSummaryLink(teamId);
+                federationFetchTopPlayers(resp.context, squadUrl);
             },
         });
     }
 
-    function getUsername(node) {
+    function federationGetUsername(node) {
         return node.querySelector("a").innerText;
     }
 
-    function getTableHeader() {
+    function federationGetTableHeader() {
         const thead = document.querySelector("#federation_clash_members_list thead td");
         return thead.innerText;
     }
 
-    function setTableHeader(text) {
+    function federationSetTableHeader(text) {
         const thead = document.querySelector("#federation_clash_members_list thead td");
         thead.innerText = text;
     }
 
-    function sortFederationTeamsByTopPlayers() {
+    function federationSortTeamsByTopPlayers() {
         const tbody = document.querySelector("#federation_clash_members_list tbody");
         const sport = getSportType();
         const teams = [];
         for (const child of tbody.children) {
-            const username = getUsername(child);
+            const username = federationGetUsername(child);
             teams.push({
                 node: child,
                 username,
-                name,
+                teamName: "",
                 teamId: "",
                 values: 0,
                 currency: "",
                 done: false,
             });
-            fetchTeamValue(sport, teams, username);
+            federationFetchTeamValue(sport, teams, username);
         }
 
         let timeout = 60000;
         const step = 500;
-        const tableHeader = getTableHeader();
+        const tableHeader = federationGetTableHeader();
         let dots = 0;
         let interval = setInterval(() => {
             if (teams.every((t) => t.done)) {
@@ -886,7 +1030,7 @@
                     row.className = rank % 2 ? "odd" : "even";
                 }
                 tbody.replaceChildren(...newOrder);
-                setTableHeader(tableHeader + " ▼");
+                federationSetTableHeader(tableHeader + " ▼");
 
                 let totalValue = 0;
                 for (const team of teams) {
@@ -901,11 +1045,11 @@
                 tbody.appendChild(total);
             } else {
                 timeout -= step;
-                setTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
+                federationSetTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
                 dots++;
                 if (timeout < 0) {
                     clearInterval(interval);
-                    setTableHeader(tableHeader + " (failed)");
+                    federationSetTableHeader(tableHeader + " (failed)");
                 }
             }
         }, step);
@@ -915,119 +1059,107 @@
 
     // ---------------- Top Players -------------
 
-    function matchCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
-        const table = document.createElement("table");
-        table.classList.add("squad-summary");
-
+    function matchCreateTopPlayersHeader(sport = "soccer") {
         const thead = document.createElement("thead");
-        table.appendChild(thead);
-
         const tr = document.createElement("tr");
+        const title = document.createElement("th");
+        const count = document.createElement("th");
+        const tops = document.createElement("th");
+        const age = document.createElement("th");
+
+        const playerCount = sport === "soccer" ? 11 : 21;
+
+        title.classList.add("header");
+        title.innerText = "Group";
+        title.style.textAlign = "center";
+        title.style.textDecoration = "none";
+
+        count.classList.add("header");
+        count.innerText = "Count";
+        count.title = "Number of Players";
+        count.style.textAlign = "center";
+        count.style.textDecoration = "none";
+
+        tops.classList.add("header");
+        tops.innerHTML = `Top ${playerCount}`;
+        tops.title = "Value of Top 11 Players";
+        tops.style.textAlign = "center";
+        tops.style.textDecoration = "none";
+
+        age.classList.add("header");
+        age.innerHTML = "Average Age";
+        age.title = `Average Age of Top ${playerCount} Players`;
+        age.style.textAlign = "center";
+        age.style.textDecoration = "none";
+
+        tr.appendChild(title);
+        tr.appendChild(count);
+        tr.appendChild(tops);
+        tr.appendChild(age);
         thead.appendChild(tr);
+        return thead;
+    }
 
-        const titleHeader = document.createElement("th");
-        tr.appendChild(titleHeader);
-        titleHeader.classList.add("header");
-        titleHeader.innerText = "Group";
-        titleHeader.style.textAlign = "center";
-        titleHeader.style.textDecoration = "none";
-
-        const countHeader = document.createElement("th");
-        tr.appendChild(countHeader);
-        countHeader.classList.add("header");
-        countHeader.innerText = "Count";
-        countHeader.title = "Number of Players";
-        countHeader.style.textAlign = "center";
-        countHeader.style.textDecoration = "none";
-
-        if (sport === "soccer") {
-            const top11Header = document.createElement("th");
-            tr.appendChild(top11Header);
-            top11Header.classList.add("header");
-            top11Header.innerHTML = "Top 11";
-            top11Header.title = "Value of Top 11 Players";
-            top11Header.style.textAlign = "center";
-            top11Header.style.textDecoration = "none";
-
-            const ageHeader = document.createElement("th");
-            tr.appendChild(ageHeader);
-            ageHeader.classList.add("header");
-            ageHeader.innerHTML = "Average Age";
-            ageHeader.title = "Average Age of Top 11 Players";
-            ageHeader.style.textAlign = "center";
-            ageHeader.style.textDecoration = "none";
-        } else {
-            const top21Header = document.createElement("th");
-            tr.appendChild(top21Header);
-            top21Header.classList.add("header");
-            top21Header.innerHTML = "Top 21";
-            top21Header.title = "Value of Top 21 Players";
-            top21Header.style.textAlign = "center";
-            top21Header.style.textDecoration = "none";
-
-            const ageHeader = document.createElement("th");
-            tr.appendChild(ageHeader);
-            ageHeader.classList.add("header");
-            ageHeader.innerHTML = "Average Age";
-            ageHeader.title = "Average Age of Top 21 Players";
-            ageHeader.style.textAlign = "center";
-            ageHeader.style.textDecoration = "none";
-        }
-
+    function matchCreateTopPlayersBody(rows, currency = "USD", sport = "soccer") {
         const tbody = document.createElement("tbody");
-        table.appendChild(tbody);
-
         for (const row of rows) {
             const tr = document.createElement("tr");
-            tbody.appendChild(tr);
-
             const title = document.createElement("td");
+            const count = document.createElement("td");
+            const top = document.createElement("td");
+            const age = document.createElement("td");
+
             title.innerHTML = `${row.title}`;
             title.classList.add("hitlist-compact-list-column");
-            tr.appendChild(title);
 
-            const count = document.createElement("td");
             count.innerHTML = `${row.count}`;
             count.style.textAlign = "center";
-            tr.appendChild(count);
+
+            top.style.textAlign = "end";
+
+            age.style.textAlign = "center";
 
             if (sport === "soccer") {
-                const top11 = document.createElement("td");
-                top11.innerText = `${formatBigNumber(row.top11)} ${currency}`;
-                top11.style.textAlign = "end";
-                tr.appendChild(top11);
-
-                const age = document.createElement("td");
+                top.innerText = `${formatBigNumber(row.top11)} ${currency}`;
                 age.innerText = `${formatAverageAge(row.top11Age)}`;
-                age.style.textAlign = "center";
-                tr.appendChild(age);
             } else {
-                const top21 = document.createElement("td");
-                tr.appendChild(top21);
-                top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
-                top21.style.textAlign = "end";
-
-                const age = document.createElement("td");
+                top.innerText = `${formatBigNumber(row.top21)} ${currency}`;
                 age.innerText = `${formatAverageAge(row.top21Age)}`;
-                age.style.textAlign = "center";
-                tr.appendChild(age);
             }
-        }
 
+            tr.appendChild(title);
+            tr.appendChild(count);
+            tr.appendChild(top);
+            tr.appendChild(age);
+            tbody.appendChild(tr);
+        }
+        return tbody;
+    }
+
+    function matchCreateSummaryTable(rows, currency = "USD", sport = "soccer") {
+        const table = document.createElement("table");
+        const thead = matchCreateTopPlayersHeader(sport);
+        const tbody = matchCreateTopPlayersBody(rows, currency, sport);
+
+        table.classList.add("mzp-squad-summary", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
+        table.style.borderSpacing = "0";
+        table.style.marginBottom = "10px";
+        table.style.marginTop = "2em";
+
+        table.appendChild(thead);
+        table.appendChild(tbody);
         return table;
     }
 
     function matchInjectTopPlayersValues(players, team, currency, sport) {
-        const summary = squadGetSummaryInfo(players, currency, sport);
+        const summary = squadSummaryGetInfo(players, sport);
         const table = matchCreateSummaryTable(summary, currency, sport);
 
-        table.classList.add("tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.style.borderSpacing = 0;
-        table.style.marginBottom = "10px";
-        table.align = "center";
-        table.style.marginTop = "2em";
+        const div = document.createElement("div");
+        div.classList.add("mzp-flex-container");
 
-        team.appendChild(table);
+        div.appendChild(table);
+        team.appendChild(div);
     }
 
     // ---------------- Lineup --------------------
@@ -1136,7 +1268,7 @@
     function matchAddTopPlayersValue(team, sport) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamId(teamLink);
-        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        const url = getSquadSummaryLink(tid);
         GM_xmlhttpRequest({
             method: "GET",
             url,
@@ -1183,7 +1315,7 @@
     function matchAddLineupValues(team, sport) {
         const teamLink = team.querySelector("a").href;
         const tid = extractTeamId(teamLink);
-        const url = `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        const url = getSquadSummaryLink(tid);
         GM_xmlhttpRequest({
             method: "GET",
             url,
@@ -1337,7 +1469,7 @@
     }
 
     function matchInjectInProgressResults() {
-        if (GM_getValue("in_progress", true)) {
+        if (injector.mustDisplayInProgressResults()) {
             const fixturesLink = document.getElementById("matches_sub_nav")?.querySelector("div.flex-grow-0 span a");
             if (fixturesLink) {
                 fixturesLink.addEventListener("click", matchWaitAndInjectInProgressResults);
@@ -1404,7 +1536,7 @@
     function tableGetSquadSummaryUrl(team) {
         const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
         const tid = extractTeamId(teamLink);
-        return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        return getSquadSummaryLink(tid);
     }
 
     function tableModifyTeamInBodyForPcView(team, url) {
@@ -1420,7 +1552,7 @@
         teamValue.style.whiteSpace = "nowrap";
         teamValue.style.padding = "auto 3px";
         teamValue.onclick = () => {
-            displayOnModal(url);
+            displaySquadSummaryOnModal(url);
         };
 
         ageValue.classList.add("mzp-injected", "age-value");
@@ -1456,7 +1588,7 @@
         value.style.padding = "auto 3px";
         value.style.backgroundColor = "aquamarine";
         value.onclick = () => {
-            displayOnModal(url);
+            displaySquadSummaryOnModal(url);
         };
 
         age.colSpan = "2";
@@ -1615,7 +1747,7 @@
                         const home = xmlDoc.querySelector(`Team[field="home"]`).getAttribute("goals");
                         const away = xmlDoc.querySelector(`Team[field="away"]`).getAttribute("goals");
                         resp.context.match.innerText = home + " - " + away;
-                        resp.context.match.classList.add("in-progress-result");
+                        resp.context.match.classList.add("mzp-in-progress-result");
                     }
                 },
             });
@@ -1623,7 +1755,6 @@
     }
 
     function tableAddTopPlayersInfo(table) {
-        createModal();
         const ageLimit = tableGetAgeLimit(document.baseURI);
         const sport = getSportType(document);
         const mainHeader = table.querySelector("thead");
@@ -1649,10 +1780,10 @@
                 clearInterval(interval);
                 if (!table.TopPlayersInfoInjected) {
                     table.TopPlayersInfoInjected = true;
-                    if (GM_getValue("table_top_players", true)) {
+                    if (injector.mustDisplayTopPlayersInTables()) {
                         tableAddTopPlayersInfo(table);
                     }
-                    if (GM_getValue("in_progress", true)) {
+                    if (injector.mustDisplayInProgressResults()) {
                         tableInjectInProgressResults();
                     }
                 }
@@ -1698,13 +1829,13 @@
 
     /* *********************** Schedule ********************************** */
 
-    function tableClearAllColorings(teams) {
+    function scheduleClearAllColorings(teams) {
         teams.forEach((team) => {
             team.style.backgroundColor = team.originalColor;
         });
     }
 
-    function tableResultColors(result) {
+    function scheduleResultColors(result) {
         if (result.length < 2) {
             return ["cyan", "cyan"];
         }
@@ -1719,13 +1850,13 @@
         return ["yellow", "yellow"];
     }
 
-    function tableColorizeThisTeam(teams, selected) {
+    function scheduleColorizeThisTeam(teams, selected) {
         teams.forEach((team) => {
             if (team.innerText === selected) {
                 const tr = team.parentNode;
                 const opponents = tr.querySelectorAll("td:nth-child(odd)");
                 const result = tr.querySelector("td:nth-child(2)").innerText.split(" - ");
-                const colors = tableResultColors(result);
+                const colors = scheduleResultColors(result);
                 if (opponents[0].innerText === selected) {
                     opponents[0].style.setProperty("background-color", colors[0], "important");
                 }
@@ -1736,7 +1867,7 @@
         });
     }
 
-    function tableInjectColoring(tab) {
+    function scheduleInjectColoring(tab) {
         let selected = "";
         const teams = tab.querySelectorAll("div.mainContent td:nth-child(odd)");
         for (const team of teams) {
@@ -1745,42 +1876,42 @@
             team.addEventListener("click", function (evt) {
                 if (selected && selected !== this.innerText) {
                     // new team is selected
-                    tableClearAllColorings(teams);
+                    scheduleClearAllColorings(teams);
                     selected = "";
                 }
                 if (selected === this.innerText) {
                     // de-colorize
                     selected = "";
-                    tableClearAllColorings(teams);
+                    scheduleClearAllColorings(teams);
                 } else {
                     // colorize
                     selected = this.innerText;
-                    tableColorizeThisTeam(teams, selected);
+                    scheduleColorizeThisTeam(teams, selected);
                 }
             });
         }
     }
 
-    function tableHasDuplicateName(round) {
+    function scheduleHasDuplicateName(round) {
         const teams = round.querySelectorAll("td:nth-child(odd)");
         const names = [...teams].map((t) => t.innerText);
         return hasDuplicates(names);
     }
 
-    function tableWaitAndInjectScheduleColoring(timeout = 16000) {
+    function scheduleWaitAndInjectColoring(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
             const firstRound = document.querySelector("div[aria-labelledby='league_tab_schedule'] div.mainContent");
             if (firstRound) {
                 const schedule = firstRound.parentNode;
-                if (tableHasDuplicateName(firstRound)) {
+                if (scheduleHasDuplicateName(firstRound)) {
                     const note = document.createElement("p");
                     note.innerHTML = `<b style="color: red;">Note: </b><span>Some teams have similar names. Coloring will not work as expected.</span>`;
                     note.style.fontSize = "1.2em";
                     schedule.insertBefore(note, schedule.firstChild);
                 }
                 clearInterval(interval);
-                tableInjectColoring(schedule);
+                scheduleInjectColoring(schedule);
             } else {
                 timeout -= step;
                 if (timeout < 0) {
@@ -1790,117 +1921,18 @@
         }, step);
     }
 
-    function tableInjectScheduleColoringToOfficialLeague() {
+    function scheduleInjectColoringToOfficialLeague() {
         const link = document.getElementById("league_tab_schedule");
         if (link) {
             const tab = link.parentNode;
             if (!tab.coloringInjected) {
                 tab.coloringInjected = true;
-                tab.onclick = tableWaitAndInjectScheduleColoring;
+                tab.onclick = scheduleWaitAndInjectColoring;
             }
         }
     }
 
     /* *********************** Config ********************************** */
-
-    function configCreateModal() {
-        const modal = document.createElement("div");
-        const content = document.createElement("div");
-        modal.appendChild(content);
-
-        modal.id = "mzp-config-modal";
-        modal.classList.add("mzp-flex-container");
-        modal.style.display = "none"; // switch to flex to display the modal
-        modal.style.alignItems = "center";
-        modal.style.justifyContent = "center";
-        modal.style.position = "fixed";
-        modal.style.zIndex = "1000";
-        modal.style.left = "0";
-        modal.style.top = "0";
-        modal.style.width = "100%";
-        modal.style.height = "100%";
-        modal.style.overflow = "auto";
-
-        content.classList.add("mzp-flex-container", "mzp-config-menu-content");
-
-        return { modal, modalContent: content };
-    }
-
-    function configAddTitle(parent) {
-        const div = document.createElement("div");
-        parent.appendChild(div);
-        const title = document.createElement("h1");
-        div.appendChild(title);
-
-        div.classList.add("win_bg");
-        div.style.height = "2.2rem";
-        div.style.borderRadius = "inherit";
-
-        title.innerText = "MZP Settings";
-        title.style.fontSize = "1.2rem";
-        title.style.margin = "0.4rem auto";
-    }
-
-    function configCreateCheckBox(id, label) {
-        const div = document.createElement("div");
-        const checkbox = document.createElement("input");
-        div.appendChild(checkbox);
-        const labelElement = document.createElement("label");
-        div.appendChild(labelElement);
-
-        div.id = id;
-        div.style.alignSelf = "flex-start";
-        div.style.margin = "0.3rem 0.7rem";
-
-        checkbox.id = id + "-checkbox";
-        checkbox.type = "checkbox";
-
-        labelElement.htmlFor = id + "-checkbox";
-        labelElement.innerText = label;
-
-        return div;
-    }
-
-    function configAddButton(title, bgColor) {
-        const button = document.createElement("button");
-        button.classList.add("mzp-flex-button");
-        button.innerText = title;
-        button.style.background = bgColor;
-        return button;
-    }
-
-    function configCreateMenu() {
-        const { modal, modalContent } = configCreateModal();
-        document.body.appendChild(modal);
-
-        configAddTitle(modalContent);
-
-        const inProgress = configCreateCheckBox("mzp-enable-in-progress-results", "Display In Progress Results");
-        modalContent.appendChild(inProgress);
-
-        const tableInjection = configCreateCheckBox("mzp-enable-table-injection", "Display Teams' Top Players in Tables");
-        modalContent.appendChild(tableInjection);
-
-        const buttonsDiv = document.createElement("div");
-        modalContent.appendChild(buttonsDiv);
-        buttonsDiv.classList.add("mzp-flex-container-row");
-
-        const cancelButton = configAddButton("Cancel", "orangered");
-        buttonsDiv.appendChild(cancelButton);
-        const saveButton = configAddButton("Save", "green");
-        buttonsDiv.appendChild(saveButton);
-
-        saveButton.onclick = () => {
-            // save then close
-            GM_setValue("in_progress", inProgress.querySelector("input[type=checkbox]").checked);
-            GM_setValue("table_top_players", tableInjection.querySelector("input[type=checkbox]").checked);
-            modal.style.display = "none";
-        };
-
-        cancelButton.onclick = () => {
-            modal.style.display = "none";
-        };
-    }
 
     function configCreateMenuButton() {
         const div = document.createElement("div");
@@ -1934,46 +1966,36 @@
     }
 
     function configInject() {
-        GM_addStyle(configMenuStyles);
-        configCreateMenu();
-
         const button = configCreateMenuButton();
         document.body.appendChild(button);
 
         button.onclick = () => {
-            const modal = document.getElementById("mzp-config-modal");
-            modal.style.display = "flex";
-            const inProgress = document.querySelector("div#mzp-enable-in-progress-results input[type=checkbox]");
-            inProgress.checked = GM_getValue("in_progress", true);
-
-            const tableInjection = document.querySelector("div#mzp-enable-table-injection input[type=checkbox]");
-            tableInjection.checked = GM_getValue("table_top_players", true);
+            injector.displayMenu();
         };
     }
 
     /* *********************** Inject ********************************** */
 
     function inject() {
-        GM_addStyle(squadSummaryStyles);
-        GM_addStyle(inProgressStyles);
-        GM_addStyle(tableMobileStyles);
+        GM_addStyle(mzpStyles);
+
         configInject();
         const uri = document.baseURI;
         const url = document.URL;
         if (uri.search("/?p=federations") > -1) {
             if (uri.search("&sub=clash") > -1) {
-                injectToClashPage();
+                clashInjectRanks();
             } else if (uri.search("&fid=") > -1 || url.endsWith("p=federations")) {
-                sortFederationTeamsByTopPlayers();
+                federationSortTeamsByTopPlayers();
             } else if (url.search("p=federations#fid=") > -1) {
                 // redirect
                 window.location.href = url.replace("#", "&");
             }
         } else if (uri.search("/?p=players") > -1) {
             if (uri.search("/?p=players&sub=alt") > -1) {
-                squadInjectSummaryInfo();
+                squadSummaryInjectInfo();
             } else {
-                squadAddClickCallbackForSquadSummaryTab();
+                squadSummaryAddClickCallbackForTab();
             }
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
@@ -1981,7 +2003,7 @@
             matchInjectInProgressResults();
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
-            tableInjectScheduleColoringToOfficialLeague();
+            scheduleInjectColoringToOfficialLeague();
         } else if (uri.search("/?p=friendlyseries") > -1) {
             tableInjectTopPlayersInfoToFriendlyLeague();
         } else if (uri.search("/?p=cup&") > -1 || uri.search("/?p=private_cup&") > -1) {
