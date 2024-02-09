@@ -1,4 +1,4 @@
-# Mazyar - Swiss Army knife for managerzone.com
+# Mazyar
 
 This is a userscript to add some features to [www.managerzone.com](https://www.managerzone.com) pages.  
 
