@@ -1,4 +1,4 @@
-# MZ Player Values
+# Mazyar - Swiss Army knife for managerzone.com
 
 This is a userscript to add some features to [www.managerzone.com](https://www.managerzone.com) pages.  
 
