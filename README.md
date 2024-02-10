@@ -61,4 +61,5 @@
 
 ## Contributing
 
-Feel free to contribute to the [Mazyar](https://github.com/mz-ir/mazyar) project by creating an account on GitHub. Your input is valuable in making this Swiss Army knife even better!
+Feel free to contribute to the [Mazyar](https://github.com/mz-ir/mazyar) project by creating an account on GitHub.  
+Your input is valuable in making this Swiss Army knife even better!
