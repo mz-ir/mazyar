@@ -8,25 +8,25 @@
 
 - Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
 
-![Squad Summary](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/SquadSummary.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/SquadSummary.png" alt="Squad Summary" style="border: 2px solid black;">
 
 ## Leagues & Cups Pages
 
 - Enhances the table by including top players' values and average age.
 - Click on the header to explore other age limits.
 
-![League](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePageToggle.gif)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePageToggle.gif" alt="League" style="border: 2px solid black;">
 
 - Click on team value to see squad summary.
 
-![League](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePage.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePage.png" alt="League" style="border: 2px solid black;">
 
 ## Federation Front Page
 
 - Displays values of the top 11 players from each team member.
 - Sorts teams based on their total value.
 
-![Front Page](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/FrontPage.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/FrontPage.png" alt="Front Page" style="border: 2px solid black;">
 
 ## Clash Page
 
@@ -34,14 +34,14 @@
 - Also adds top players value for each team.
 - Click the rank button to view the "squad summary" in place.
 
-![Clash](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Clash.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Clash.png" alt="Clash" style="border: 2px solid black;">
 
 ## Match Page
 
 - Provides the starting lineup value and average age.
 - Adds a new column to display individual player values and ages.
 
-![Match](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/MatchPage.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/MatchPage.png" alt="Match" style="border: 2px solid black;">
 
 ## Official Leagues' Schedule
 
@@ -51,13 +51,13 @@
   - Draw: Yellow
   - Incoming: Cyan
 
-![Schedule](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring.gif)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring.gif" alt="Schedule" style="border: 2px solid black;">
 
 ## Fixture Page
 
 - Displays the final result of in-progress matches.
 
-![Fixtures](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png)
+<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png" alt="Fixtures" style="border: 2px solid black;">
 
 ## Contributing
 
