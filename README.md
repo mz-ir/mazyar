@@ -1,56 +1,64 @@
-# Mazyar
+# Mazyar: Swiss Army Knife for ManagerZone.com
 
-This is a userscript to add some features to [www.managerzone.com](https://www.managerzone.com) pages.  
+**![GitHub](https://img.shields.io/github/license/mz-ir/mazyar)**
 
-## In Squad Summary
+**Mazyar** is a userscript designed to enhance features on [www.managerzone.com](www.managerzone.com) pages. It adds useful functionalities to improve your experience. Here are the key features:
 
-Adds a table to 'Squad Summary' to show player values in groups such as 'Top 11 - U23'.  
+## Squad Summary
+
+- Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
 
 ![Squad Summary](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/SquadSummary.png)
 
-## In Leagues & Cups Pages
+## Leagues & Cups Pages
 
-Adds top players' value and average age to the table.  
-Click on header to see other age limits.
+- Enhances the table by including top players' values and average age.
+- Click on the header to explore other age limits.
 
 ![League](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePageToggle.gif)
 
-Click on team value to see squad summary.
+- Click on team value to see squad summary.
 
 ![League](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePage.png)
 
-## In Federation Front Page
+## Federation Front Page
 
-Adds values of top 11 players of first team members and name of the teams. Then it sorts the teams by their value.  
+- Displays values of the top 11 players from each team member.
+- Sorts teams based on their total value.
 
 ![Front Page](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/FrontPage.png)
 
-## In Clash Page
+## Clash Page
 
-Adds team rank in its federation, based on its Top 11 players. Click the rank button to view the 'squad summary' in place.
-Also adds a new column to display team's top 11 players values.  
+- Adds the team rank within its federation, based on its top players.
+- Also adds top players value for each team.
+- Click the rank button to view the "squad summary" in place.
 
 ![Clash](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Clash.png)
 
-## In Match Page
+## Match Page
 
-Adds starting lineup value and average age.  
-Also adds a new column to display player's value and age.
+- Provides the starting lineup value and average age.
+- Adds a new column to display individual player values and ages.
 
 ![Match](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/MatchPage.png)
 
-## In Official Leagues' Schedule
+## Official Leagues' Schedule
 
-Click on a team name to highlight its matches.  
-- win: green
-- loss: red
-- draw: yellow
-- incoming: cyan
+- Click on a team name to highlight its matches:
+  - Win: Green
+  - Loss: Red
+  - Draw: Yellow
+  - Incoming: Cyan
 
 ![Schedule](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring.gif)
 
-## In Fixture Page
+## Fixture Page
 
-Adds final result of in progress matches
+- Displays the final result of in-progress matches.
 
 ![Fixtures](https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png)
+
+## Contributing
+
+Feel free to contribute to the **Mazyar** project by creating an account on GitHub. Your input is valuable in making this Swiss Army knife even better!
