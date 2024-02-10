@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -502,7 +502,8 @@
         const toolbar = document.createElement("div");
         const logo = document.createElement("span");
         const menu = document.createElement("i");
-        const transfer = document.createElement("span");
+        const separator = document.createElement("span");
+        const transfer = document.createElement("div");
         const transferIcon = document.createElement("i");
         const transferCount = document.createElement("span");
 
@@ -518,28 +519,37 @@
         logo.innerText = "MZY";
         logo.style.fontSize = "0.6rem";
         logo.style.fontWeight = "bold";
-        logo.style.margin = "3px 0";
+        logo.style.margin = "2px";
         logo.style.padding = "1px";
 
         menu.classList.add("fa", "fa-cog");
         menu.setAttribute("aria-hidden", "true");
         menu.style.fontSize = "large";
-        menu.style.margin = "3px 0";
+        menu.style.margin = "0";
         menu.style.padding = "0";
+        menu.style.cursor = "pointer";
+
+        separator.innerText = "-------";
+        separator.style.textAlign = "center";
+        separator.style.fontSize = "0.6rem";
+        separator.style.fontWeight = "bolder";
+        separator.style.margin = "0";
+        separator.style.padding = "0";
 
         transfer.classList.add("mazyar-flex-container");
+        transfer.style.cursor = "pointer";
 
         transferIcon.classList.add("fa", "fa-search");
         transferIcon.setAttribute("aria-hidden", "true");
         transferIcon.style.fontSize = "large";
-        transferIcon.style.margin = "3px 0";
+        transferIcon.style.margin = "0";
         transferIcon.style.padding = "0";
 
         transferCount.id = "mazyar-transfer-filter-hits";
         transferCount.innerText = "0";
         transferCount.style.fontSize = "0.6rem";
         transferCount.style.fontWeight = "bold";
-        transferCount.style.margin = "3px 0";
+        transferCount.style.margin = "1px 0";
         transferCount.style.padding = "1px";
 
         transfer.appendChild(transferIcon);
@@ -547,6 +557,7 @@
 
         toolbar.appendChild(logo);
         toolbar.appendChild(menu);
+        toolbar.appendChild(separator);
         toolbar.appendChild(transfer);
 
         return { toolbar, menu, transfer };
