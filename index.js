@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -92,7 +92,12 @@
         }
     }
 
-    table.mazyar-squad-summary tbody td, table.mazyar-squad-summary thead th {
+    table.mazyar-table {
+        border-spacing: 0;
+        width: auto;
+    }
+
+    table.mazyar-table tbody td, table.mazyar-table thead th {
         padding: 0.3em 0.5em;
     }
 
@@ -489,8 +494,7 @@
         const thead = filtersViewCreateTableHeader();
         const tbody = filtersViewCreateTableBody(filters);
 
-        table.classList.add("mazyar-squad-summary", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.style.borderSpacing = "0";
+        table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
         table.style.margin = "0.5rem";
 
         table.appendChild(thead);
@@ -805,8 +809,7 @@
         }
 
         const table = document.createElement("table");
-        table.classList.add("mazyar-squad-summary", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.style.borderSpacing = "0";
+        table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
 
         table.appendChild(thead);
         table.appendChild(tbody);
@@ -1218,8 +1221,7 @@
         const thead = matchCreateTopPlayersHeader(sport);
         const tbody = matchCreateTopPlayersBody(rows, currency, sport);
 
-        table.classList.add("mazyar-squad-summary", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
-        table.style.borderSpacing = "0";
+        table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker", "hitlist-compact-list-included");
         table.style.marginBottom = "10px";
         table.style.marginTop = "2em";
 
@@ -2454,8 +2456,6 @@
                     const players = getPlayers(doc, currency);
                     const summary = squadSummaryGetInfo(players, sport);
                     const table = squadSummaryCreateInfoTable(summary, currency, sport);
-
-                    table.style.width = "auto";
                     table.style.margin = "2px 5px";
                     table.style.padding = "0";
 
