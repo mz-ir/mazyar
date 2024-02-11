@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -132,6 +132,31 @@
         cursor: pointer;
     }
     `;
+
+    /* ********************** Constants ******************************** */
+
+    const TRANSFER_INTERVALS = {
+        always: {
+            value: "0",
+            label: "always",
+        },
+        onceMinute: {
+            value: "1",
+            label: "once a minute",
+        },
+        onceHour: {
+            value: "2",
+            label: "once an hour",
+        },
+        onceDay: {
+            value: "3",
+            label: "once a day",
+        },
+        never: {
+            value: "4",
+            label: "never",
+        },
+    };
 
     /* *********************** Utils ********************************** */
 
@@ -393,6 +418,42 @@
 
         div.appendChild(checkbox);
         div.appendChild(labelElement);
+        return div;
+    }
+
+    function appendOptionList(parent, options, selected) {
+        // options = a object full of 'key: {value, label}'
+        for (const key in options) {
+            if (options.hasOwnProperty(key)) {
+                const child = document.createElement("option");
+                child.value = options[key].value;
+                child.innerText = options[key].label;
+                if (child.value === selected) {
+                    child.selected = true;
+                }
+                parent.appendChild(child);
+            }
+        }
+    }
+
+    function createMenuDropDown(label, options, initialValue) {
+        // options = a object full of 'key: {value, label}'
+        // initialValue = one of the options.value
+
+        const div = document.createElement("div");
+        const labelElement = document.createElement("label");
+        const dropdown = document.createElement("select");
+
+        div.style.alignSelf = "flex-start";
+        div.style.margin = "0.3rem 0.7rem";
+
+        labelElement.innerText = label;
+        labelElement.style.paddingRight = "0.5rem";
+
+        appendOptionList(dropdown, options, initialValue);
+
+        div.appendChild(labelElement);
+        div.appendChild(dropdown);
         return div;
     }
 
@@ -2095,13 +2156,25 @@
     class Mazyar {
         #modal = null; // dom element
         #content = null; // dom element
-        #settings = { in_progress_results: true, top_players_in_tables: true, transfer: false };
+        #settings = {
+            in_progress_results: true,
+            top_players_in_tables: true,
+            transfer: false,
+            transfer_interval: TRANSFER_INTERVALS.always.value,
+        };
         #filters = { soccer: [], hockey: [] }; // each key is like [{id, name, params}]
+        #cache = {
+            filters_last_check: 0,
+            filters_last_hits: 0,
+            // also a bunch of info for each filter like latest hit and ...
+            // we can access them by filter id
+        };
         #sport = "soccer";
 
         constructor() {
             this.#fetchSettings();
             this.#fetchFilters();
+            this.#fetchCache();
             this.#sport = getSportType();
 
             this.#addToolbar();
@@ -2114,17 +2187,24 @@
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
+            this.#settings.transfer_interval = GM_getValue("transfer_filters_interval", TRANSFER_INTERVALS.always.value);
         }
 
         #saveSettings() {
             GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
+            GM_setValue("transfer_filters_interval", this.#settings.transfer_interval);
         }
 
         updateSettings(settings) {
             this.#settings = settings;
             this.#saveSettings();
+            if (this.isTransferFiltersEnabled()) {
+                this.#checkAllFilters(true);
+            } else {
+                this.#setFilterHitsInToolbar(0);
+            }
         }
 
         mustDisplayInProgressResults() {
@@ -2137,6 +2217,73 @@
 
         isTransferFiltersEnabled() {
             return this.#settings.transfer;
+        }
+
+        #getTransferFiltersInterval() {
+            return this.#settings.transfer_interval;
+        }
+
+        // -------------------------------- Cache -------------------------------------
+
+        #fetchCache() {
+            this.#cache = GM_getValue("cache", { filters_last_check: 0, filters_last_hits: 0 });
+            if (typeof this.#cache.filters_last_check !== "number") {
+                this.#cache.filters_last_check = 0;
+            }
+            if (typeof this.#cache.filters_last_check !== "number") {
+                this.#cache.filters_last_hits = 0;
+            }
+            // console.log({ cache: this.#cache });
+        }
+
+        #saveCache() {
+            GM_setValue("cache", this.#cache);
+        }
+
+        #updateCache(key, value) {
+            this.#cache[key] = value;
+            this.#saveCache();
+        }
+
+        #removeFromCache(key) {
+            delete this.#cache[key];
+            this.#saveCache();
+        }
+
+        #deleteFiltersFromCache() {
+            for (const filter of this.#getCurrentFilters()) {
+                delete this.#cache[filter.id];
+            }
+            this.#saveCache();
+        }
+
+        #getLastFilterCheckFromCache() {
+            return this.#cache.filters_last_check;
+        }
+
+        #setLastFilterCheckInCache(hits = 0, id = "") {
+            if (id) {
+                if (this.#cache[id]) {
+                    this.#cache[id].hits = hits;
+                } else {
+                    this.#cache[id] = {
+                        hits: hits,
+                    };
+                }
+            } else {
+                // if no id is passed, it means total hits
+                this.#updateCache("filters_last_check", Date.now());
+                this.#updateCache("filters_last_hits", hits);
+            }
+        }
+
+        #getLastFilterHitsFromCache(id = "") {
+            if (id) {
+                // return hist of this filter only
+                return this.#cache[id]?.hits;
+            }
+            // return total hits
+            return this.#cache.filters_last_hits;
         }
 
         // -------------------------------- Filters -------------------------------------
@@ -2159,8 +2306,9 @@
         deleteFilter(id = "") {
             const filterIndex = this.#getCurrentFilters().findIndex((f) => f.id === id);
             if (filterIndex > -1) {
+                this.#removeFromCache(id);
                 this.#getCurrentFilters().splice(filterIndex, 1);
-                this.updateFiltersHitInToolbar();
+                this.#checkAllFilters(true);
                 this.#saveFilters();
             } else {
                 console.log("filter with id " + id + " is not found");
@@ -2168,8 +2316,9 @@
         }
 
         deleteAllFilters() {
+            this.#deleteFiltersFromCache();
             this.#getCurrentFilters().length = 0;
-            this.updateFiltersHitInToolbar();
+            this.#checkAllFilters(true);
             this.#saveFilters();
         }
 
@@ -2177,26 +2326,37 @@
             return this.#getCurrentFilters().find((f) => f.name === name)?.params;
         }
 
-        updateFilterDetails(name, params) {
-            // creates a new filter if name does not exist
+        async updateFilterDetails(name, params) {
             const filters = this.#getCurrentFilters();
-            const existing = filters.find((f) => f.name === name);
-
-            let filterId = "";
-            if (existing) {
-                existing.params = params;
-                filterId = existing.id;
+            let filter = filters.find((f) => f.name === name);
+            if (filter) {
+                filter.params = params;
             } else {
-                filterId = generateUuidV4();
-                filters.push({
+                // create a new filter if name does not exist
+                filter = filters.push({
                     name,
                     params,
-                    id: filterId,
+                    id: generateUuidV4(),
                 });
             }
-            this.updateFilterHits(filterId);
-            this.updateFiltersHitInToolbar(false);
             this.#saveFilters();
+            await this.#updateFilterHits(filter);
+            this.#checkAllFilters(true);
+        }
+
+        itsTimeToCheckFilters() {
+            const interval = this.#getTransferFiltersInterval();
+            if (interval === TRANSFER_INTERVALS.never.value) {
+                return false;
+            } else if (interval === TRANSFER_INTERVALS.onceDay.value) {
+                return Date.now() - this.#getLastFilterCheckFromCache() > 24 * 60 * 60 * 1000;
+            } else if (interval === TRANSFER_INTERVALS.onceHour.value) {
+                return Date.now() - this.#getLastFilterCheckFromCache() > 1 * 60 * 60 * 1000;
+            } else if (interval === TRANSFER_INTERVALS.onceMinute.value) {
+                return Date.now() - this.#getLastFilterCheckFromCache() > 1 * 60 * 1000;
+            }
+            // 'always' or any invalid value means always
+            return true;
         }
 
         async #getFilterHits(params = "") {
@@ -2211,9 +2371,9 @@
             return -1;
         }
 
-        async updateFilterHits(id = "") {
-            const filter = this.#getCurrentFilters().find((f) => f.id === id);
-            filter.hits = await this.#getFilterHits(filter.params);
+        async #updateFilterHits(filter) {
+            const hits = await this.#getFilterHits(filter.params);
+            this.#setLastFilterCheckInCache(hits, filter.id);
         }
 
         // -------------------------------- Display -------------------------------------
@@ -2276,27 +2436,43 @@
             const that = this; // used in onclick event listener
 
             const div = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
-
             const title = createMzStyledTitle("MZY Settings");
             const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
-
+            const transferInterval = createMenuDropDown("Check Interval", TRANSFER_INTERVALS, this.#settings.transfer_interval);
             const buttons = document.createElement("div");
+            const cancel = createMzStyledButton("Cancel", "red");
+            const save = createMzStyledButton("Save", "green");
+
+            div.classList.add("mazyar-flex-container");
+
+            transferInterval.style.paddingLeft = "2rem";
+            if (!this.#settings.transfer) {
+                transferInterval.style.display = "none";
+            }
+
+            transfer.oninput = () => {
+                if (transfer.querySelector("input[type='checkbox'").checked) {
+                    transferInterval.style.display = "unset";
+                } else {
+                    transferInterval.style.display = "none";
+                    transferInterval.querySelector("select").value = TRANSFER_INTERVALS.always.value;
+                }
+            };
+
             buttons.classList.add("mazyar-flex-container-row");
 
-            const cancel = createMzStyledButton("Cancel", "red");
             cancel.onclick = () => {
                 that.hideModal();
             };
 
-            const save = createMzStyledButton("Save", "green");
             save.onclick = () => {
                 that.updateSettings({
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
+                    transfer_interval: transferInterval.querySelector("select").value,
                 });
                 that.hideModal();
             };
@@ -2305,6 +2481,7 @@
             div.appendChild(inProgress);
             div.appendChild(tableInjection);
             div.appendChild(transfer);
+            div.appendChild(transferInterval);
 
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -2375,21 +2552,33 @@
             this.#replaceModalContent([div]);
         }
 
-        async updateFiltersHitInToolbar(forced = false) {
-            const filters = this.#getCurrentFilters();
-            for (const filter of filters) {
-                if (!filterHitsIsValid() || forced) {
-                    filter.hits = await this.#getFilterHits(filter.params);
-                }
-            }
-            const total = filters
-                .filter((f) => f.hits > 0)
-                .map((f) => f.hits)
-                .reduce((a, b) => a + b, 0);
+        #setFilterHitsInToolbar(total) {
             const hits = document.getElementById("mazyar-transfer-filter-hits");
             if (hits) {
                 hits.innerText = total > 100 ? "+100" : total.toString();
                 hits.style.color = total > 0 ? "cyan" : "white";
+            }
+        }
+
+        async #checkAllFilters(forced = false) {
+            const filters = this.#getCurrentFilters();
+            for (const filter of filters) {
+                const hitsInCache = this.#getLastFilterHitsFromCache(filter.id);
+                if (!filterHitsIsValid(hitsInCache) || forced) {
+                    await this.#updateFilterHits(filter);
+                }
+            }
+            const total = filters.map((filter) => this.#getLastFilterHitsFromCache(filter.id)).reduce((a, b) => a + b, 0);
+            this.#setFilterHitsInToolbar(total);
+            this.#setLastFilterCheckInCache(total);
+        }
+
+        async setInitialFiltersHitInToolbar() {
+            if (mazyar.itsTimeToCheckFilters()) {
+                this.#checkAllFilters(true);
+            } else {
+                console.log("do not check filters");
+                this.#setFilterHitsInToolbar(this.#getLastFilterHitsFromCache());
             }
         }
 
@@ -2418,7 +2607,8 @@
                     noFilterView.style.display = "unset";
                 };
 
-                const table = filtersViewCreateTable(filters);
+                const filtersData = filters.map((filter) => ({ ...filter, hits: this.#getLastFilterHitsFromCache(filter.id) }));
+                const table = filtersViewCreateTable(filtersData);
                 table.addEventListener("destroy", () => {
                     // remove delete all button if no filter is left
                     filtersView.style.display = "none";
@@ -2484,7 +2674,7 @@
 
         mazyar = new Mazyar();
         if (mazyar.isTransferFiltersEnabled()) {
-            mazyar.updateFiltersHitInToolbar(true);
+            mazyar.setInitialFiltersHitInToolbar();
         }
 
         const uri = document.baseURI;
