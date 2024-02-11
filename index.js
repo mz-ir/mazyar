@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -99,6 +99,7 @@
 
     table.mazyar-table tbody td, table.mazyar-table thead th {
         padding: 0.3em 0.5em;
+        vertical-align: middle;
     }
 
     @media only screen and (max-device-width: 1020px) {
@@ -2373,7 +2374,9 @@
 
         async #updateFilterHits(filter) {
             const hits = await this.#getFilterHits(filter.params);
-            this.#setLastFilterCheckInCache(hits, filter.id);
+            if (hits >= 0) {
+                this.#setLastFilterCheckInCache(hits, filter.id);
+            }
         }
 
         // -------------------------------- Display -------------------------------------
