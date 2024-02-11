@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -515,6 +515,14 @@
         return thead;
     }
 
+    function startSpinning(element) {
+        element.classList.add("fa-spin");
+    }
+
+    function stopSpinning(element) {
+        element.classList.remove("fa-spin");
+    }
+
     function filtersViewCreateTableBody(filters = []) {
         const tbody = document.createElement("tbody");
 
@@ -532,6 +540,7 @@
             hits.style.textAlign = "center";
 
             const del = createDeleteIcon("Delete the filter permanently.");
+            del.style.verticalAlign = "bottom";
             del.onclick = () => {
                 mazyar.deleteFilter(filter.id);
                 tbody.removeChild(tr);
@@ -540,8 +549,18 @@
                 }
             };
 
+            const refresh = createRefreshIcon("Refresh filter hits.");
+            refresh.style.fontSize = "1.1rem";
+            refresh.onclick = async () => {
+                startSpinning(refresh);
+                const newHits = await mazyar.refreshFilterHits(filter.id);
+                hits.innerText = filterHitsIsValid(newHits) ? newHits.toString() : "n/a";
+                stopSpinning(refresh);
+            };
+
             const tools = document.createElement("td");
             tools.appendChild(del);
+            tools.appendChild(refresh);
 
             tr.appendChild(tools);
             tr.appendChild(name);
@@ -564,13 +583,36 @@
         return table;
     }
 
+    function createIconFromFontAwesomeClass(iconClass, title = "") {
+        const icon = document.createElement("i");
+        icon.classList.add("fa", iconClass);
+        icon.setAttribute("aria-hidden", "true");
+        icon.style.cursor = "pointer";
+        if (title) {
+            icon.title = title;
+        }
+        return icon;
+    }
+
+    function createCogIcon(title = "") {
+        return createIconFromFontAwesomeClass("fa-cog", title);
+    }
+
+    function createSearchIcon(title = "") {
+        return createIconFromFontAwesomeClass("fa-search", title);
+    }
+
+    function createRefreshIcon(title = "") {
+        return createIconFromFontAwesomeClass("fa-refresh", title);
+    }
+
     function createToolbar() {
         const toolbar = document.createElement("div");
         const logo = document.createElement("span");
-        const menu = document.createElement("i");
+        const menu = createCogIcon();
         const separator = document.createElement("span");
         const transfer = document.createElement("div");
-        const transferIcon = document.createElement("i");
+        const transferIcon = createSearchIcon();
         const transferCount = document.createElement("span");
 
         toolbar.classList.add("mazyar-flex-container");
@@ -588,12 +630,8 @@
         logo.style.margin = "2px";
         logo.style.padding = "1px";
 
-        menu.classList.add("fa", "fa-cog");
-        menu.setAttribute("aria-hidden", "true");
         menu.style.fontSize = "large";
-        menu.style.margin = "0";
-        menu.style.padding = "0";
-        menu.style.cursor = "pointer";
+        transferIcon.style.fontSize = "large";
 
         separator.innerText = "-------";
         separator.style.textAlign = "center";
@@ -604,12 +642,6 @@
 
         transfer.classList.add("mazyar-flex-container");
         transfer.style.cursor = "pointer";
-
-        transferIcon.classList.add("fa", "fa-search");
-        transferIcon.setAttribute("aria-hidden", "true");
-        transferIcon.style.fontSize = "large";
-        transferIcon.style.margin = "0";
-        transferIcon.style.padding = "0";
 
         transferCount.id = "mazyar-transfer-filter-hits";
         transferCount.innerText = "0";
@@ -2377,6 +2409,19 @@
             if (hits >= 0) {
                 this.#setLastFilterCheckInCache(hits, filter.id);
             }
+        }
+
+        async refreshFilterHits(id = "") {
+            const filter = this.#getCurrentFilters().find((filter) => filter.id === id);
+            if (filter) {
+                const hits = await this.#getFilterHits(filter.params);
+                if (hits >= 0) {
+                    this.#setLastFilterCheckInCache(hits, filter.id);
+                    this.#checkAllFilters(false);
+                    return hits;
+                }
+            }
+            return -1;
         }
 
         // -------------------------------- Display -------------------------------------
