@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -40,7 +40,7 @@
         overflow: auto;
         background-color: rgba(0, 0, 0, 0.4);
     }
-    
+
     #mazyar-modal-content {
         width: fit-content;
         background-color: beige;
@@ -2327,8 +2327,8 @@
 
         #saveFilters() {
             GM_setValue("transfer_filters", {
-                soccer: this.#filters["soccer"].map(({ id, name, params }) => ({ id, name, params })),
-                hockey: this.#filters["hockey"].map(({ id, name, params }) => ({ id, name, params })),
+                soccer: this.#filters.soccer.map(({ id, name, params }) => ({ id, name, params })),
+                hockey: this.#filters.hockey.map(({ id, name, params }) => ({ id, name, params })),
             });
         }
 
