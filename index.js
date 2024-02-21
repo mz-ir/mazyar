@@ -976,6 +976,10 @@
 
         $("#filters_search").append("<div>" + links + "<div>");
         $("#filters_search a").click(function () {
+            //This if is to check if the user has the extension van.mz.playerAdvanced
+            if($('span[id^="GM_scout"]').length <= 0){
+                return false
+            }
           const current = $(this).text().trim();
           $( ".playerContainer" ).each(function(i, obj) {
             const idPlayer = $(this).find('.mainContent a').attr('name').substring(1);
