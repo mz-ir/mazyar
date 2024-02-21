@@ -966,6 +966,35 @@
         });
       }
 
+    function applyHFilter() {
+        const hValues = ['H2','H3','H4']
+        let links = "";
+
+        hValues.forEach(el => {
+            links += '<div><a href="javascript:;">' + el + "</a></div>";
+        })
+
+        $("#filters_search").append("<div>" + links + "<div>");
+        $("#filters_search a").click(function () {
+          const current = $(this).text().trim();
+          $( ".playerContainer" ).each(function(i, obj) {
+            const idPlayer = $(this).find('.mainContent a').attr('name').substring(1);
+              const textPlayer = $(this).find(`#GM_scout_${idPlayer}`).text()
+            if(textPlayer.includes(`[${current}`)){
+                $( this ).show();
+            } else {
+                $( this ).hide();
+            }
+          });
+        });
+        $('#resetb')[0].addEventListener('click', function () {
+            $( ".playerContainer" ).each(function(i, obj) {
+                $( this ).show();
+            });
+            return false;
+        });
+    }
+
     function squadSummaryWaitAndInjectInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
@@ -2793,6 +2822,7 @@
         } else if (uri.search("/?p=transfer") > -1) {
             if (mazyar.isTransferFiltersEnabled()) {
                 transferInject();
+                applyHFilter()
             }
         }
     }
