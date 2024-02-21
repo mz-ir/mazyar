@@ -930,6 +930,42 @@
         }
     }
 
+    function applyUxxFilter() {
+        const minAge = 16;
+        const maxAge = 21;
+        let links = "";
+     
+        for (let i = minAge; i <= maxAge; ++i) {
+          if (i !== minAge) {
+            links += " ";
+          }
+          links += '<a href="#">' + i + "</a>";
+        }
+     
+        $(".age-wrapper label").append(" " + links);
+     
+        let last = null;
+        $(".age-wrapper label a").click(function () {
+          const current = $(this).text().trim();
+     
+          if (last === current) {
+            $("#age_from").val(current);
+            $("#age_from").change();
+          }
+     
+          $("#age_to").val(current);
+          $("#age_to").change();
+     
+          if (parseInt($("#age_from").val()) > parseInt($("#age_to").val())) {
+            $("#age_from").val($("#age_to").val());
+            $("#age_from").change();
+          }
+     
+          $("#filterSubmit").click();
+          last = current;
+        });
+      }
+
     function squadSummaryWaitAndInjectInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
@@ -2741,6 +2777,7 @@
                 squadSummaryInjectInfo();
             } else {
                 squadSummaryAddClickCallbackForTab();
+                applyUxxFilter()
             }
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
