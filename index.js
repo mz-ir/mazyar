@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -2359,6 +2359,42 @@
         }
     }
 
+    /* *********************** Managerzone Events ********************************** */
+
+    function eventsAddNotice() {
+        const target = document.getElementById("event-reset-purchase");
+        if (target) {
+            const notice = document.createElement("div");
+            const status = `<strong style="color: maroon;">${mazyar.isAutoClaimEnabled() ? "on" : "off"}</strong>`;
+            notice.innerHTML = `<strong style="color: crimson;">MZY Notice: </strong>Auto Claim is ${status}.`;
+            notice.classList.add("textCenter");
+            target.parentNode.insertBefore(notice, target);
+        }
+    }
+
+    function eventsInject() {
+        eventsAddNotice();
+        if (mazyar.isAutoClaimEnabled()) {
+            // Callback function to execute when mutations are observed
+            const callback = function (mutationsList) {
+                for (const mutation of mutationsList) {
+                    if (mutation.type == "attributes") {
+                        const claim = document.getElementById("claim");
+                        if (!claim?.classList.contains("buttondiv_disabled")) {
+                            claim?.click();
+                        }
+                    }
+                }
+            };
+            const observer = new MutationObserver(callback);
+            const claim = document.getElementById("claim");
+            observer.observe(claim, {
+                attributes: true,
+                attributeFilter: ["class"],
+            });
+        }
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -2368,6 +2404,7 @@
             in_progress_results: true,
             top_players_in_tables: true,
             transfer: false,
+            auto_claim: false,
         };
         #transferOptions = {
             hide: true,
@@ -2713,12 +2750,14 @@
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
+            this.#settings.auto_claim = GM_getValue("enable_auto_claim", false);
         }
 
         #saveSettings() {
             GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
+            GM_setValue("enable_auto_claim", this.#settings.auto_claim);
         }
 
         updateSettings(settings) {
@@ -2741,6 +2780,10 @@
 
         isTransferFiltersEnabled() {
             return this.#settings.transfer;
+        }
+
+        isAutoClaimEnabled() {
+            return this.#settings.auto_claim;
         }
 
         // -------------------------------- Transfer Options -------------------------------------
@@ -2839,7 +2882,6 @@
                 };
                 filters.push(filter);
             }
-            console.log({ filter });
             this.#saveFilters();
             const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
             if (totalHits >= 0) {
@@ -2849,9 +2891,6 @@
         }
 
         #itsTimeToCheckFilter(filter, lastCheck) {
-            if (filter.interval === undefined) {
-                console.log("filter interval is undefined.");
-            }
             const passed = Date.now() - lastCheck;
             if (filter.interval === TRANSFER_INTERVALS.never.value) {
                 return false;
@@ -2993,6 +3032,7 @@
                 in_progress_results: false,
                 top_players_in_tables: false,
                 transfer: false,
+                auto_claim: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3038,6 +3078,7 @@
             const div = document.createElement("div");
             const title = createMzStyledTitle("MZY Settings");
             const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
+            const autoClaim = createMenuCheckBox("Enable Auto Claim in Events", this.#settings.auto_claim);
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const buttons = document.createElement("div");
@@ -3058,6 +3099,7 @@
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
+                    auto_claim: autoClaim.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3072,6 +3114,7 @@
             div.appendChild(inProgress);
             div.appendChild(tableInjection);
             div.appendChild(transfer);
+            div.appendChild(autoClaim);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -3196,9 +3239,6 @@
             for (const filter of filters) {
                 let { totalHits: hits, lastCheck } = await this.getFilterHitsFromIndexedDb(filter.id);
                 const needRefresh = this.#itsTimeToCheckFilter(filter, lastCheck);
-                if (needRefresh) {
-                    console.log(`filter ${filter.name} needs refresh. (interval ${filter.interval})`);
-                }
                 if (!filterHitsIsValid(hits) || forced || needRefresh) {
                     const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
                     if (totalHits >= 0) {
@@ -3439,6 +3479,8 @@
                 transferInject();
                 mazyar.extractScoutReports();
             }
+        } else if (uri.search("/?p=event") > -1) {
+            eventsInject();
         }
     }
 
