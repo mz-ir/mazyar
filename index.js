@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -3058,7 +3058,12 @@
             notice.style.padding = "1rem";
 
             clean.onclick = async () => {
-                that.cleanInstall();
+                await that.cleanInstall();
+                that.hideModal();
+                that.displaySettingsMenu();
+            };
+
+            cancel.onclick = () => {
                 that.hideModal();
                 that.displaySettingsMenu();
             };
@@ -3191,9 +3196,9 @@
                         high.length === 0 && low.length === 0
                             ? null
                             : {
-                                  high,
-                                  low,
-                              };
+                                high,
+                                low,
+                            };
                     const interval = checkInterval.querySelector("select").value;
                     that.updateFilterDetails(name, params, scout, interval);
                     that.hideModal();
