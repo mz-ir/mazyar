@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      2.0
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z@managerzone
 // @author       z7z@managerzone
@@ -14,11 +14,12 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
+// @require      https://unpkg.com/dexie/dist/dexie.js
 // @match        https://www.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
+// @supportURL   https://github.com/mz-ir/mazyar
 // @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
 // @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
-// @supportURL   https://github.com/mz-ir/mazyar
 // ==/UserScript==
 
 (async function () {
@@ -45,6 +46,7 @@
         width: fit-content;
         background-color: beige;
         border-radius: 5px;
+        max-height: 100%;
     }
 
     .mazyar-flex-container {
@@ -53,6 +55,7 @@
         justify-content: center;
         align-items: center;
         flex-wrap: wrap;
+        max-height: 100%;
     }
 
     .mazyar-flex-container-row {
@@ -132,9 +135,61 @@
     button.mazyar-button {
         cursor: pointer;
     }
+
+    div.mazyar-transfer-control-area {
+        width: 50%;
+    }
+
+    .mazyar-dim-50 {
+        opacity: 50%;
+    }
+
+    .mazyar-dim-60 {
+        opacity: 60%;
+    }
+
+    .mazyar-hide {
+        display: none;
+    }
+
+    .mazyar-scout-h {
+        font-weight: bold;
+      }
+
+    .mazyar-scout-1 {
+        color:red;
+      }
+
+    .mazyar-scout-2 {
+        color:darkgoldenrod;
+      }
+
+    .mazyar-scout-3 {
+        color:blue;
+      }
+
+    .mazyar-scout-4 {
+        color:fuchsia;
+      }
     `;
 
     /* ********************** Constants ******************************** */
+
+    const SKILLS_ORDER = [
+        "Speed",
+        "Stamina",
+        "Play Intelligence",
+        "Passing",
+        "Shooting",
+        "Heading",
+        "Keeping",
+        "Ball Control",
+        "Tackling",
+        "Aerial_Passing",
+        "Set Plays",
+        "Experience",
+        "Form",
+    ];
 
     const TRANSFER_INTERVALS = {
         always: {
@@ -249,6 +304,16 @@
             return age.toFixed(fractionDigits);
         }
         return "0.0";
+    }
+
+    function formatFileSize(b) {
+        const s = 1024;
+        let u = 0;
+        while (b >= s || -b >= s) {
+            b /= s;
+            u++;
+        }
+        return (u ? b.toFixed(1) + " " : b) + " KMGTPEZY"[u] + "B";
     }
 
     function getPlayers(doc, currency) {
@@ -401,12 +466,19 @@
         return div;
     }
 
-    function createMenuCheckBox(label, initialValue = true) {
+    function createMenuCheckBox(
+        label,
+        initialValue = true,
+        style = {
+            alignSelf: "flex-start",
+            margin: "0.3rem 0.7rem",
+        }
+    ) {
         const id = generateUuidV4();
 
         const div = document.createElement("div");
-        div.style.alignSelf = "flex-start";
-        div.style.margin = "0.3rem 0.7rem";
+        div.style.alignSelf = style?.alignSelf ?? "flex-start";
+        div.style.margin = style?.margin ?? "0.3rem 0.7rem";
 
         const checkbox = document.createElement("input");
         checkbox.id = id;
@@ -415,7 +487,7 @@
 
         const labelElement = document.createElement("label");
         labelElement.htmlFor = id;
-        labelElement.innerText = label;
+        labelElement.innerHTML = label;
 
         div.appendChild(checkbox);
         div.appendChild(labelElement);
@@ -489,16 +561,23 @@
         name.classList.add("header");
         name.innerText = "Name";
         name.title = "Filter' name";
-        name.style.textAlign = "center";
+        name.style.textAlign = "left";
         name.style.textDecoration = "none";
         name.style.width = "11rem";
 
-        const hits = document.createElement("th");
-        hits.classList.add("header");
-        hits.innerText = "Hits";
-        hits.title = "Hits founds for this filter";
-        hits.style.textAlign = "center";
-        hits.style.textDecoration = "none";
+        const totalHits = document.createElement("th");
+        totalHits.classList.add("header");
+        totalHits.innerText = "Total";
+        totalHits.title = "Total hits founds for this filter";
+        totalHits.style.textAlign = "center";
+        totalHits.style.textDecoration = "none";
+
+        const scoutHits = document.createElement("th");
+        scoutHits.classList.add("header");
+        scoutHits.innerText = "Scout";
+        scoutHits.title = "Hits found after applying scout filters";
+        scoutHits.style.textAlign = "center";
+        scoutHits.style.textDecoration = "none";
 
         const tools = document.createElement("th");
         tools.classList.add("header");
@@ -508,7 +587,8 @@
 
         tr.appendChild(tools);
         tr.appendChild(name);
-        tr.appendChild(hits);
+        tr.appendChild(totalHits);
+        tr.appendChild(scoutHits);
 
         const thead = document.createElement("thead");
         thead.appendChild(tr);
@@ -535,9 +615,26 @@
             name.innerHTML = `<a target="_blank" href="https://www.managerzone.com/?p=transfer&mzy_filter_name=${filter.name}">${filterName}</a>`;
             name.title = filter.name.length > 32 ? `Filter's full name: ${filter.name}` : "Filter's name";
 
-            const hits = document.createElement("td");
-            hits.innerText = filterHitsIsValid(filter.hits) ? filter.hits.toString() : "n/a";
-            hits.style.textAlign = "center";
+            const total = document.createElement("td");
+            const scout = document.createElement("td");
+            total.style.textAlign = "center";
+            scout.style.textAlign = "center";
+
+            mazyar.getFilterHitsFromIndexedDb(filter.id).then(({ totalHits, scoutHits }) => {
+                total.innerText = filterHitsIsValid(totalHits) ? totalHits.toString() : "n/a";
+                if (filter.scout) {
+                    scout.innerHTML = `<a style="cursor: pointer;">${filterHitsIsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                } else {
+                    scout.innerHTML = "X";
+                }
+            });
+
+            if (filter.scout) {
+                scout.onclick = () => {
+                    const info = { name: filter.name, scout: filter.scout, count: scout.innerText };
+                    mazyar.displayFilterResults(filter.id, info);
+                };
+            }
 
             const del = createDeleteIcon("Delete the filter permanently.");
             del.style.verticalAlign = "bottom";
@@ -553,8 +650,15 @@
             refresh.style.fontSize = "1.1rem";
             refresh.onclick = async () => {
                 startSpinning(refresh);
-                const newHits = await mazyar.refreshFilterHits(filter.id);
-                hits.innerText = filterHitsIsValid(newHits) ? newHits.toString() : "n/a";
+                total.replaceChildren(createLoadingIcon());
+                scout.replaceChildren(createLoadingIcon());
+                const { totalHits, scoutHits } = await mazyar.refreshFilterHits(filter.id);
+                total.innerText = filterHitsIsValid(totalHits) ? totalHits.toString() : "n/a";
+                if (filter.scout) {
+                    scout.innerHTML = `<a style="cursor: pointer;">${filterHitsIsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                } else {
+                    scout.innerHTML = "X";
+                }
                 stopSpinning(refresh);
             };
 
@@ -564,7 +668,8 @@
 
             tr.appendChild(tools);
             tr.appendChild(name);
-            tr.appendChild(hits);
+            tr.appendChild(total);
+            tr.appendChild(scout);
             tbody.appendChild(tr);
         }
         return tbody;
@@ -604,6 +709,13 @@
 
     function createRefreshIcon(title = "") {
         return createIconFromFontAwesomeClass("fa-refresh", title);
+    }
+
+    function createLoadingIcon(title = "") {
+        const icon = createIconFromFontAwesomeClass("fa-spinner", title);
+        icon.classList.add("fa-spin");
+        icon.style.curser = "unset";
+        return icon;
     }
 
     function createToolbar() {
@@ -2167,9 +2279,73 @@
         }
     }
 
+    function transferCreateScoutOptions() {
+        const div = document.createElement("div");
+        div.classList.add("mazyar-flex-container-row");
+        div.style.justifyContent = "left";
+        div.style.marginTop = "6px";
+
+        const highs = document.createElement("div");
+        highs.classList.add("mazyar-flex-container-row");
+        highs.style.justifyContent = "left";
+        highs.style.border = "1px inset black";
+        highs.style.marginRight = "2rem";
+
+        const lows = document.createElement("div");
+        lows.classList.add("mazyar-flex-container-row");
+        lows.style.justifyContent = "left";
+        lows.style.border = "1px outset black";
+        lows.style.marginRight = "2rem";
+
+        const transferOptions = mazyar.getTransferOptions();
+        const H4 = createMenuCheckBox("H4", transferOptions.H4, { margin: "auto 4px auto 1px" });
+        const H3 = createMenuCheckBox("H3", transferOptions.H3, { margin: "auto 4px auto 1px" });
+        const L2 = createMenuCheckBox("L2", transferOptions.L2, { margin: "auto 4px auto 1px" });
+        const L1 = createMenuCheckBox("L1", transferOptions.L1, { margin: "auto 4px auto 1px" });
+        const hide = createMenuCheckBox("Hide Others", transferOptions.hide, { margin: "auto 4px auto 1px" });
+
+        H4.onclick = () => {
+            mazyar.updateTransferOptions("H4", H4.querySelector("input[type=checkbox]").checked);
+            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+        };
+
+        H3.onclick = () => {
+            mazyar.updateTransferOptions("H3", H3.querySelector("input[type=checkbox]").checked);
+            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+        };
+
+        L2.onclick = () => {
+            mazyar.updateTransferOptions("L2", L2.querySelector("input[type=checkbox]").checked);
+            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+        };
+
+        L1.onclick = () => {
+            mazyar.updateTransferOptions("L1", L1.querySelector("input[type=checkbox]").checked);
+            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+        };
+
+        hide.onclick = () => {
+            mazyar.updateTransferOptions("hide", hide.querySelector("input[type=checkbox]").checked);
+            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+        };
+
+        highs.appendChild(H4);
+        highs.appendChild(H3);
+        lows.appendChild(L2);
+        lows.appendChild(L1);
+        div.appendChild(highs);
+        div.appendChild(lows);
+        div.appendChild(hide);
+        div.appendChild(hide);
+        return div;
+    }
+
     function transferInject() {
         const form = document.getElementById("searchform");
         if (form) {
+            const scoutOptions = transferCreateScoutOptions();
+            form.parentNode.appendChild(scoutOptions);
+            transferInjectButtons(form);
             const filterName = transferGetFilterNameFromUrl();
             if (filterName) {
                 const filterParams = mazyar.getFilterParams(filterName);
@@ -2180,7 +2356,6 @@
                     }, 5000);
                 }
             }
-            transferInjectButtons(form);
         }
     }
 
@@ -2193,25 +2368,343 @@
             in_progress_results: true,
             top_players_in_tables: true,
             transfer: false,
-            transfer_interval: TRANSFER_INTERVALS.always.value,
         };
-        #filters = { soccer: [], hockey: [] }; // each key is like [{id, name, params}]
-        #cache = {
-            filters_last_check: 0,
-            filters_last_hits: 0,
-            // also a bunch of info for each filter like latest hit and ...
-            // we can access them by filter id
+        #transferOptions = {
+            hide: true,
+            H4: false,
+            H3: false,
+            L2: false,
+            L1: false,
         };
+        #filters = { soccer: [], hockey: [] }; // each key is like [{id, name, params, scout, interval}]
         #sport = "soccer";
+        #db;
 
         constructor() {
+            this.#initializeIndexedDb("Mazyar");
             this.#fetchSettings();
+            this.#fetchTransferOptions();
             this.#fetchFilters();
-            this.#fetchCache();
+
             this.#sport = getSportType();
 
             this.#addToolbar();
             this.#createModal();
+        }
+
+        async #initializeIndexedDb(name = "db") {
+            this.#db = new Dexie(name);
+            this.#db.version(1).stores({
+                scout: "[sport+pid]",
+                hit: "[fid+pid],deadline",
+                filter: "&fid,totalHits,scoutHits,lastCheck",
+            });
+            this.#db.open();
+            const info = await navigator?.storage?.estimate();
+            if (info) {
+                console.log("ManagerZone IndexedDB size: " + formatFileSize(info.usage));
+            }
+        }
+
+        async #clearIndexedDb() {
+            await this.#db.scout.clear();
+            await this.#db.hit.clear();
+            await this.#db.filter.clear();
+        }
+
+        async #fetchScoutReportFromIndexedDb(pid) {
+            return await this.#db.scout.get({ pid, sport: this.#sport });
+        }
+
+        async #setScoutReportInIndexedDb(report) {
+            if (report) {
+                report.sport = this.#sport;
+                await this.#db.scout.put(report);
+            }
+        }
+
+        async #setHitInIndexedDb(filterId = "", playerId = "") {
+            if (filterId && playerId) {
+                await this.#db.hit.put({ fid: filterId, pid: playerId });
+            }
+        }
+
+        async #removeHitFromIndexedDb(filterId = "", playerId = "") {
+            if (filterId && playerId) {
+                await this.#db.hit.delete([filterId, playerId]);
+            }
+        }
+
+        async #removeAllHitsOfFilterFromIndexedDb(filterId = "") {
+            if (filterId) {
+                await this.#db.hit.where("fid").equals(filterId).delete();
+            }
+        }
+
+        async #getHitsFromIndexedDb(filterId = "") {
+            if (filterId) {
+                return this.#db.hit.filter((hit) => hit.fid === filterId).toArray();
+            }
+            return [];
+        }
+
+        async #setFilterHitsInIndexedDb(filterId = "", totalHits = 0, scoutHits = -1) {
+            if (filterId) {
+                const item = {
+                    fid: filterId,
+                    totalHits,
+                    scoutHits,
+                    lastCheck: Date.now(),
+                };
+                await this.#db.filter.put(item);
+            }
+        }
+
+        async getFilterHitsFromIndexedDb(filterId = "") {
+            if (filterId) {
+                const filter = await this.#db.filter.get(filterId);
+                if (filter) {
+                    return { totalHits: filter.totalHits, scoutHits: filter.scoutHits, lastCheck: filter.lastCheck };
+                }
+            }
+            return { totalHits: -1, scoutHits: -1, lastCheck: Date.now() };
+        }
+
+        async #removeFilterFromIndexedDb(filterId = "") {
+            await this.#db.filter.delete(filterId);
+            await this.#removeAllHitsOfFilterFromIndexedDb(filterId);
+        }
+
+        async #removeAllFilterFromIndexedDb() {
+            await this.#db.filter.clear();
+            await this.#db.hit.clear();
+        }
+
+        #extractSkillNamesFromPlayerInfo(player) {
+            const skills = player?.querySelectorAll("table.player_skills > tbody > tr > td > span.clippable");
+            return [...skills].map((el) => el.innerText);
+        }
+
+        #extractStarsFromScoutReport(section) {
+            return section.querySelectorAll(".stars i.lit")?.length;
+        }
+
+        #extractSkillsFromScoutReport(section, skillList) {
+            const skills = section.querySelectorAll("div.flex-grow-1 ul li.blurred span");
+            return [...skills].map((el) => skillList.indexOf(el.innerText));
+        }
+
+        async #extractPlayerScoutReport(pid, skills) {
+            const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
+            const resp = await fetch(url).catch((error) => {
+                console.log(error);
+            });
+            if (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(await resp.text(), "text/html");
+                const report = doc.querySelectorAll(".paper-content.clearfix dl dd");
+                if (report.length == 3) {
+                    const high = this.#extractStarsFromScoutReport(report[0]);
+                    const highSkills = this.#extractSkillsFromScoutReport(report[0], skills);
+                    const low = this.#extractStarsFromScoutReport(report[1]);
+                    const lowSkills = this.#extractSkillsFromScoutReport(report[1], skills);
+                    const trainingSpeed = this.#extractStarsFromScoutReport(report[2]);
+                    return {
+                        pid,
+                        H: high,
+                        HS: highSkills,
+                        L: low,
+                        LS: lowSkills,
+                        S: trainingSpeed,
+                    };
+                }
+            }
+            return null;
+        }
+
+        #colorizeSkills(player, report) {
+            const playerSkills = player.querySelectorAll("table.player_skills tr td:nth-child(1)");
+            playerSkills[report.HS[0]].classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+            playerSkills[report.HS[1]].classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+            playerSkills[report.LS[0]].classList.add(`mazyar-scout-${report.L}`);
+            playerSkills[report.LS[1]].classList.add(`mazyar-scout-${report.L}`);
+        }
+
+        async #fetchOrExtractPlayerScoutReport(player, skills) {
+            const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+            let scoutReport = await this.#fetchScoutReportFromIndexedDb(playerId);
+            if (!scoutReport) {
+                scoutReport = await this.#extractPlayerScoutReport(playerId, skills);
+                this.#setScoutReportInIndexedDb(scoutReport);
+            }
+            this.#colorizeSkills(player, scoutReport);
+            return scoutReport;
+        }
+
+        async #extractScoutReportsFromSearchResults(players, callback = null) {
+            const reports = [];
+            const firstPlayer = players.querySelector("#thePlayers_0");
+            if (firstPlayer) {
+                const skills = this.#extractSkillNamesFromPlayerInfo(firstPlayer);
+                const jobs = [];
+                for (const player of [...players.children]) {
+                    if (player.classList.contains("playerContainer")) {
+                        if (player.querySelector("span.scout_report > a")) {
+                            jobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills));
+                        } else if (callback) {
+                            callback(player);
+                        }
+                    }
+                }
+                const scoutReports = await Promise.all(jobs);
+                for (const scoutReport of scoutReports) {
+                    if (scoutReport) {
+                        reports.push(scoutReport);
+                    }
+                }
+            }
+            return reports;
+        }
+
+        #isTransferHighOptionsEnabled() {
+            return this.#transferOptions.H4 || this.#transferOptions.H3;
+        }
+
+        #isTransferLowOptionsEnabled() {
+            return this.#transferOptions.L2 || this.#transferOptions.L1;
+        }
+
+        #isTransferOptionsEnabled() {
+            return this.#isTransferHighOptionsEnabled() || this.#isTransferLowOptionsEnabled();
+        }
+
+        #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
+            return highs.includes(report.H) && lows.includes(report.L);
+        }
+
+        #getAcceptableHighsAndLows() {
+            let lows = [];
+            let highs = [];
+
+            if (this.#isTransferLowOptionsEnabled()) {
+                if (this.#transferOptions.L2) {
+                    lows.push(2);
+                }
+                if (this.#transferOptions.L1) {
+                    lows.push(1);
+                }
+            } else {
+                lows = [1, 2, 3];
+            }
+
+            if (this.#isTransferHighOptionsEnabled()) {
+                if (this.#transferOptions.H4) {
+                    highs.push(4);
+                }
+                if (this.#transferOptions.H3) {
+                    highs.push(3);
+                }
+            } else {
+                highs = [1, 2, 3, 4];
+            }
+
+            return { lows, highs };
+        }
+
+        #getAcceptableHighsAndLowsForFilter(scout) {
+            const lows = scout.low.length > 0 ? scout.low : [1, 2, 3];
+            const highs = scout.high.length > 0 ? scout.high : [1, 2, 3, 4];
+            return { lows, highs };
+        }
+
+        async hideOtherPlayersBasedOnScoutReport(clear = false) {
+            if (clear) {
+                document.querySelectorAll(".mazyar-hide")?.forEach((el) => {
+                    el.classList.remove("mazyar-hide");
+                });
+                document.querySelectorAll(".mazyar-dim-50")?.forEach((el) => el.classList.remove("mazyar-dim-50"));
+                document.querySelectorAll(".mazyar-dim-60")?.forEach((el) => el.classList.remove("mazyar-dim-60"));
+            }
+            if (!this.#isTransferOptionsEnabled()) {
+                return;
+            }
+
+            const players = document.getElementById("players_container");
+            const reports = await this.#extractScoutReportsFromSearchResults(players, (player) => {
+                if (this.#transferOptionsMustHide()) {
+                    player.classList.add("mazyar-hide");
+                } else {
+                    player.classList.add("mazyar-dim-50");
+                }
+            });
+            const { lows, highs } = this.#getAcceptableHighsAndLows();
+            for (const report of reports) {
+                if (!this.#isQualifiedForTransferScoutFilter(report, lows, highs)) {
+                    const player = document.getElementById(`player_id_${report.pid}`);
+                    if (player) {
+                        const playerContainer = player.parentNode.parentNode.parentNode;
+                        if (this.#transferOptionsMustHide()) {
+                            playerContainer.classList.add("mazyar-hide");
+                        } else {
+                            playerContainer.classList.add("mazyar-dim-60");
+                        }
+                    }
+                }
+            }
+        }
+
+        async extractScoutReports() {
+            this.hideOtherPlayersBasedOnScoutReport();
+
+            const that = this;
+            // Callback function to execute when mutations are observed
+            const callback = function (mutationsList) {
+                for (const mutation of mutationsList) {
+                    if (mutation.type == "childList") {
+                        that.hideOtherPlayersBasedOnScoutReport();
+                    }
+                }
+            };
+            const observer = new MutationObserver(callback);
+            const players = document.getElementById("players_container");
+            observer.observe(players, {
+                childList: true,
+            });
+        }
+
+        #getSelectedScoutsOptionText() {
+            const texts = [];
+            const options = this.getTransferOptions();
+            if (options.H4) {
+                texts.push('<span class="mazyar-scout-4">H4<span>');
+            }
+            if (options.H3) {
+                texts.push('<span class="mazyar-scout-3">H3<span>');
+            }
+            if (options.L2) {
+                texts.push('<span class="mazyar-scout-2">L2<span>');
+            }
+            if (options.L1) {
+                texts.push('<span class="mazyar-scout-1">L1<span>');
+            }
+            return texts.join(", ");
+        }
+
+        #getSelectedScoutsOptionTextForFilter(scout) {
+            const texts = [];
+            if (scout.high.includes(4)) {
+                texts.push('<span class="mazyar-scout-4">H4<span>');
+            }
+            if (scout.high.includes(3)) {
+                texts.push('<span class="mazyar-scout-3">H3<span>');
+            }
+            if (scout.low.includes(2)) {
+                texts.push('<span class="mazyar-scout-2">L2<span>');
+            }
+            if (scout.low.includes(1)) {
+                texts.push('<span class="mazyar-scout-1">L1<span>');
+            }
+            return texts.join(", ");
         }
 
         // -------------------------------- Settings -------------------------------------
@@ -2220,14 +2713,12 @@
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
-            this.#settings.transfer_interval = GM_getValue("transfer_filters_interval", TRANSFER_INTERVALS.always.value);
         }
 
         #saveSettings() {
             GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
-            GM_setValue("transfer_filters_interval", this.#settings.transfer_interval);
         }
 
         updateSettings(settings) {
@@ -2252,71 +2743,44 @@
             return this.#settings.transfer;
         }
 
-        #getTransferFiltersInterval() {
-            return this.#settings.transfer_interval;
+        // -------------------------------- Transfer Options -------------------------------------
+
+        #fetchTransferOptions() {
+            this.#transferOptions.hide = GM_getValue("transfer_options_hide", true);
+            this.#transferOptions.H4 = GM_getValue("transfer_options_H4", false);
+            this.#transferOptions.H3 = GM_getValue("transfer_options_H3", false);
+            this.#transferOptions.L2 = GM_getValue("transfer_options_L2", false);
+            this.#transferOptions.L1 = GM_getValue("transfer_options_L1", false);
         }
 
-        // -------------------------------- Cache -------------------------------------
-
-        #fetchCache() {
-            this.#cache = GM_getValue("cache", { filters_last_check: 0, filters_last_hits: 0 });
-            if (typeof this.#cache.filters_last_check !== "number") {
-                this.#cache.filters_last_check = 0;
-            }
-            if (typeof this.#cache.filters_last_check !== "number") {
-                this.#cache.filters_last_hits = 0;
-            }
-            // console.log({ cache: this.#cache });
+        #saveTransferOptions() {
+            GM_setValue("transfer_options_hide", this.#transferOptions.hide);
+            GM_setValue("transfer_options_H4", this.#transferOptions.H4);
+            GM_setValue("transfer_options_H3", this.#transferOptions.H3);
+            GM_setValue("transfer_options_L2", this.#transferOptions.L2);
+            GM_setValue("transfer_options_L1", this.#transferOptions.L1);
         }
 
-        #saveCache() {
-            GM_setValue("cache", this.#cache);
+        #transferOptionsMustHide() {
+            return this.#transferOptions.hide;
         }
 
-        #updateCache(key, value) {
-            this.#cache[key] = value;
-            this.#saveCache();
+        getTransferOptions() {
+            return this.#transferOptions;
         }
 
-        #removeFromCache(key) {
-            delete this.#cache[key];
-            this.#saveCache();
+        updateTransferOptions(key, value) {
+            this.#transferOptions[key] = value;
+            this.#saveTransferOptions();
         }
 
-        #deleteFiltersFromCache() {
-            for (const filter of this.#getCurrentFilters()) {
-                delete this.#cache[filter.id];
-            }
-            this.#saveCache();
-        }
-
-        #getLastFilterCheckFromCache() {
-            return this.#cache.filters_last_check;
-        }
-
-        #setLastFilterCheckInCache(hits = 0, id = "") {
-            if (id) {
-                if (this.#cache[id]) {
-                    this.#cache[id].hits = hits;
-                } else {
-                    this.#cache[id] = {
-                        hits: hits,
-                    };
-                }
-            } else {
-                // if no id is passed, it means total hits
-                this.#updateCache("filters_last_check", Date.now());
-                this.#updateCache("filters_last_hits", hits);
-            }
-        }
-
-        #getLastFilterHitsFromCache(id = "") {
-            if (id) {
-                // return hist of this filter only
-                return this.#cache[id]?.hits;
-            }
-            // return total hits
-            return this.#cache.filters_last_hits;
+        #resetTransferOptions() {
+            this.#transferOptions.hide = false;
+            this.#transferOptions.H4 = false;
+            this.#transferOptions.H3 = false;
+            this.#transferOptions.L2 = false;
+            this.#transferOptions.L1 = false;
+            this.#saveTransferOptions();
         }
 
         // -------------------------------- Filters -------------------------------------
@@ -2327,8 +2791,8 @@
 
         #saveFilters() {
             GM_setValue("transfer_filters", {
-                soccer: this.#filters.soccer.map(({ id, name, params }) => ({ id, name, params })),
-                hockey: this.#filters.hockey.map(({ id, name, params }) => ({ id, name, params })),
+                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
+                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
             });
         }
 
@@ -2339,17 +2803,15 @@
         deleteFilter(id = "") {
             const filterIndex = this.#getCurrentFilters().findIndex((f) => f.id === id);
             if (filterIndex > -1) {
-                this.#removeFromCache(id);
+                this.#removeFilterFromIndexedDb(id);
                 this.#getCurrentFilters().splice(filterIndex, 1);
                 this.#checkAllFilters(true);
                 this.#saveFilters();
-            } else {
-                console.log("filter with id " + id + " is not found");
             }
         }
 
         deleteAllFilters() {
-            this.#deleteFiltersFromCache();
+            this.#removeAllFilterFromIndexedDb();
             this.#getCurrentFilters().length = 0;
             this.#checkAllFilters(true);
             this.#saveFilters();
@@ -2359,69 +2821,115 @@
             return this.#getCurrentFilters().find((f) => f.name === name)?.params;
         }
 
-        async updateFilterDetails(name, params) {
+        async updateFilterDetails(name, params, scout, interval) {
             const filters = this.#getCurrentFilters();
             let filter = filters.find((f) => f.name === name);
             if (filter) {
                 filter.params = params;
+                filter.scout = scout;
+                filter.interval = interval;
             } else {
                 // create a new filter if name does not exist
-                filter = filters.push({
+                filter = {
                     name,
                     params,
+                    scout,
+                    interval,
                     id: generateUuidV4(),
-                });
+                };
+                filters.push(filter);
             }
+            console.log({ filter });
             this.#saveFilters();
-            await this.#updateFilterHits(filter);
-            this.#checkAllFilters(true);
+            const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
+            if (totalHits >= 0) {
+                await this.#setFilterHitsInIndexedDb(filter.id, totalHits, scoutHits);
+                this.#checkAllFilters(true);
+            }
         }
 
-        itsTimeToCheckFilters() {
-            const interval = this.#getTransferFiltersInterval();
-            if (interval === TRANSFER_INTERVALS.never.value) {
+        #itsTimeToCheckFilter(filter, lastCheck) {
+            if (filter.interval === undefined) {
+                console.log("filter interval is undefined.");
+            }
+            const passed = Date.now() - lastCheck;
+            if (filter.interval === TRANSFER_INTERVALS.never.value) {
                 return false;
-            } else if (interval === TRANSFER_INTERVALS.onceDay.value) {
-                return Date.now() - this.#getLastFilterCheckFromCache() > 24 * 60 * 60 * 1000;
-            } else if (interval === TRANSFER_INTERVALS.onceHour.value) {
-                return Date.now() - this.#getLastFilterCheckFromCache() > 1 * 60 * 60 * 1000;
-            } else if (interval === TRANSFER_INTERVALS.onceMinute.value) {
-                return Date.now() - this.#getLastFilterCheckFromCache() > 1 * 60 * 1000;
+            } else if (filter.interval === TRANSFER_INTERVALS.onceDay.value) {
+                return passed > 24 * 60 * 60 * 1000;
+            } else if (filter.interval === TRANSFER_INTERVALS.onceHour.value) {
+                return passed > 1 * 60 * 60 * 1000;
+            } else if (filter.interval === TRANSFER_INTERVALS.onceMinute.value) {
+                return passed > 1 * 60 * 1000;
             }
             // 'always' or any invalid value means always
             return true;
         }
 
-        async #getFilterHits(params = "") {
-            const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${params}`;
+        getPlayerIdsFromTransferSearchResults(players) {
+            return [...players.querySelectorAll("h2 span.player_id_span")].map((player) => player.innerText);
+        }
+
+        async #getFilterHitsByOffset(filter, offset = 0) {
+            let totalHits = -1;
+            let scoutHits = -1;
+            const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${filter.params}&o=${offset}`;
             const response = await fetch(url).catch((error) => {
                 console.log(error);
             });
             if (response) {
                 const data = await response.json();
-                return Number(data?.totalHits);
+                totalHits = Number(data?.totalHits);
+                const searchResults = document.createElement("div");
+                searchResults.innerHTML = data.players;
+                if (filter.scout) {
+                    const playersReport = await this.#extractScoutReportsFromSearchResults(searchResults);
+                    const { lows, highs } = this.#getAcceptableHighsAndLowsForFilter(filter.scout);
+                    const scouted = playersReport.filter((report) => this.#isQualifiedForTransferScoutFilter(report, lows, highs));
+                    scoutHits = scouted.length;
+                    // save scout hits in indexed db
+                    const jobs = [];
+                    for (const player of scouted) {
+                        jobs.push(this.#setHitInIndexedDb(filter.id, player.pid));
+                    }
+                    await Promise.all(jobs);
+                }
             }
-            return -1;
+            return { totalHits, scoutHits };
         }
 
-        async #updateFilterHits(filter) {
-            const hits = await this.#getFilterHits(filter.params);
-            if (hits >= 0) {
-                this.#setLastFilterCheckInCache(hits, filter.id);
+        async #getFilterTotalHits(filter) {
+            // get first page of the results
+            await this.#removeAllHitsOfFilterFromIndexedDb(filter.id);
+            let { totalHits, scoutHits } = await this.#getFilterHitsByOffset(filter);
+            if (totalHits >= 0) {
+                if (filter.scout) {
+                    const pages = Math.min(Math.ceil(totalHits / 20), 26);
+                    const jobs = [];
+                    // when filter uses scout report, get next pages too
+                    for (let i = 1; i < pages; i++) {
+                        jobs.push(this.#getFilterHitsByOffset(filter, 20 * i));
+                    }
+                    const results = await Promise.all(jobs);
+                    for (const result of results) {
+                        scoutHits += result.scoutHits;
+                    }
+                }
             }
+            return { totalHits, scoutHits };
         }
 
         async refreshFilterHits(id = "") {
             const filter = this.#getCurrentFilters().find((filter) => filter.id === id);
             if (filter) {
-                const hits = await this.#getFilterHits(filter.params);
-                if (hits >= 0) {
-                    this.#setLastFilterCheckInCache(hits, filter.id);
+                const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
+                if (totalHits >= 0) {
+                    this.#setFilterHitsInIndexedDb(filter.id, totalHits, scoutHits);
                     this.#checkAllFilters(false);
-                    return hits;
+                    return { totalHits, scoutHits };
                 }
             }
-            return -1;
+            return { totalHits: -1, scoutHits: -1 };
         }
 
         // -------------------------------- Display -------------------------------------
@@ -2480,6 +2988,50 @@
             this.#replaceModalContent([header, loading]);
         }
 
+        async cleanInstall() {
+            this.updateSettings({
+                in_progress_results: false,
+                top_players_in_tables: false,
+                transfer: false,
+            });
+            this.deleteAllFilters();
+            await this.#clearIndexedDb();
+            this.#resetTransferOptions();
+            this.#resetTransferOptions();
+        }
+
+        displayCleanMenu() {
+            const that = this;
+
+            const div = document.createElement("div");
+            const title = createMzStyledTitle("MZY Settings");
+            const notice = document.createElement("div");
+            const buttons = document.createElement("div");
+            const cancel = createMzStyledButton("Cancel", "red");
+            const clean = createMzStyledButton("Clean", "blue");
+
+            div.classList.add("mazyar-flex-container");
+
+            buttons.classList.add("mazyar-flex-container-row");
+
+            notice.innerHTML = "All Settings, Filters, Scout Reports and ... will be deleted.<br>Are you sure?";
+            notice.style.padding = "1rem";
+
+            clean.onclick = async () => {
+                that.cleanInstall();
+                that.hideModal();
+                that.displaySettingsMenu();
+            };
+
+            div.appendChild(title);
+            div.appendChild(notice);
+            buttons.appendChild(cancel);
+            buttons.appendChild(clean);
+            div.appendChild(buttons);
+
+            this.#replaceModalContent([div]);
+        }
+
         displaySettingsMenu() {
             const that = this; // used in onclick event listener
 
@@ -2488,26 +3040,12 @@
             const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
-            const transferInterval = createMenuDropDown("Check Interval", TRANSFER_INTERVALS, this.#settings.transfer_interval);
             const buttons = document.createElement("div");
+            const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
             const save = createMzStyledButton("Save", "green");
 
             div.classList.add("mazyar-flex-container");
-
-            transferInterval.style.paddingLeft = "2rem";
-            if (!this.#settings.transfer) {
-                transferInterval.style.display = "none";
-            }
-
-            transfer.oninput = () => {
-                if (transfer.querySelector("input[type='checkbox'").checked) {
-                    transferInterval.style.display = "unset";
-                } else {
-                    transferInterval.style.display = "none";
-                    transferInterval.querySelector("select").value = TRANSFER_INTERVALS.always.value;
-                }
-            };
 
             buttons.classList.add("mazyar-flex-container-row");
 
@@ -2520,17 +3058,21 @@
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
-                    transfer_interval: transferInterval.querySelector("select").value,
                 });
                 that.hideModal();
+            };
+
+            clean.style.marginBottom = "0";
+            clean.onclick = () => {
+                that.hideModal();
+                that.displayCleanMenu();
             };
 
             div.appendChild(title);
             div.appendChild(inProgress);
             div.appendChild(tableInjection);
             div.appendChild(transfer);
-            div.appendChild(transferInterval);
-
+            div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
             div.appendChild(buttons);
@@ -2542,10 +3084,15 @@
             const filters = this.#getCurrentFilters();
             const that = this; // used in onclick event listener
 
+            const scoutText = this.#getSelectedScoutsOptionText();
+
             const title = createMzStyledTitle("MZY Transfer Filter");
             const div = document.createElement("div");
             const datalist = createSuggestionList(filters.map((f) => f.name));
             const filterName = createTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
+            const useScout = createMenuCheckBox(`Use scout reports too (${scoutText})`);
+            const checkInterval = createMenuDropDown("Check Interval", TRANSFER_INTERVALS, TRANSFER_INTERVALS.onceHour.value);
+
             const validation = document.createElement("div");
             const buttons = document.createElement("div");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -2580,7 +3127,32 @@
                 // save then close
                 const name = filterName.querySelector("input[type=text]").value;
                 if (name) {
-                    that.updateFilterDetails(name, params);
+                    const high = [];
+                    const low = [];
+                    if (useScout.querySelector("input[type=checkbox]").checked) {
+                        const options = that.getTransferOptions();
+                        if (options.H4) {
+                            high.push(4);
+                        }
+                        if (options.H3) {
+                            high.push(3);
+                        }
+                        if (options.L2) {
+                            low.push(2);
+                        }
+                        if (options.L1) {
+                            low.push(1);
+                        }
+                    }
+                    const scout =
+                        high.length === 0 && low.length === 0
+                            ? null
+                            : {
+                                  high,
+                                  low,
+                              };
+                    const interval = checkInterval.querySelector("select").value;
+                    that.updateFilterDetails(name, params, scout, interval);
                     that.hideModal();
                 } else {
                     validation.style.display = "unset";
@@ -2593,6 +3165,10 @@
 
             div.appendChild(title);
             div.appendChild(filterName);
+            div.appendChild(checkInterval);
+            if (scoutText) {
+                div.appendChild(useScout);
+            }
             div.appendChild(datalist);
             div.appendChild(validation);
             div.appendChild(buttons);
@@ -2600,37 +3176,47 @@
             this.#replaceModalContent([div]);
         }
 
-        #setFilterHitsInToolbar(total) {
+        #setFilterHitsInToolbar(total = -1) {
+            // pass negative to create loading animation.
             const hits = document.getElementById("mazyar-transfer-filter-hits");
             if (hits) {
-                hits.innerText = total > 100 ? "+100" : total.toString();
-                hits.style.color = total > 0 ? "cyan" : "white";
+                if (total < 0) {
+                    hits.replaceChildren(createLoadingIcon());
+                } else {
+                    hits.innerText = total > 100 ? "+100" : total.toString();
+                    hits.style.color = total > 0 ? "cyan" : "white";
+                }
             }
         }
 
         async #checkAllFilters(forced = false) {
+            this.#setFilterHitsInToolbar(-1);
             const filters = this.#getCurrentFilters();
+            let total = 0;
             for (const filter of filters) {
-                const hitsInCache = this.#getLastFilterHitsFromCache(filter.id);
-                if (!filterHitsIsValid(hitsInCache) || forced) {
-                    await this.#updateFilterHits(filter);
+                let { totalHits: hits, lastCheck } = await this.getFilterHitsFromIndexedDb(filter.id);
+                const needRefresh = this.#itsTimeToCheckFilter(filter, lastCheck);
+                if (needRefresh) {
+                    console.log(`filter ${filter.name} needs refresh. (interval ${filter.interval})`);
                 }
+                if (!filterHitsIsValid(hits) || forced || needRefresh) {
+                    const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
+                    if (totalHits >= 0) {
+                        hits = filter.scout ? scoutHits : totalHits;
+                        await this.#setFilterHitsInIndexedDb(filter.id, totalHits, scoutHits);
+                    }
+                }
+                total += hits;
             }
-            const total = filters.map((filter) => this.#getLastFilterHitsFromCache(filter.id)).reduce((a, b) => a + b, 0);
             this.#setFilterHitsInToolbar(total);
-            this.#setLastFilterCheckInCache(total);
+            return total;
         }
 
         async setInitialFiltersHitInToolbar() {
-            if (mazyar.itsTimeToCheckFilters()) {
-                this.#checkAllFilters(true);
-            } else {
-                console.log("do not check filters");
-                this.#setFilterHitsInToolbar(this.#getLastFilterHitsFromCache());
-            }
+            await this.#checkAllFilters(false);
         }
 
-        displayTransferFilters() {
+        async displayTransferFilters() {
             const that = this; // used in onclick event listener
 
             const div = document.createElement("div");
@@ -2654,15 +3240,12 @@
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
                 };
-
-                const filtersData = filters.map((filter) => ({ ...filter, hits: this.#getLastFilterHitsFromCache(filter.id) }));
-                const table = filtersViewCreateTable(filtersData);
+                const table = filtersViewCreateTable(filters);
                 table.addEventListener("destroy", () => {
-                    // remove delete all button if no filter is left
+                    // remove 'delete all' button if no filter is left
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
                 });
-
                 filtersView.appendChild(deleteAll);
                 filtersView.appendChild(table);
             } else {
@@ -2707,6 +3290,104 @@
                 .catch((error) => {
                     console.log(error);
                 });
+        }
+
+        #createFilterInfo(data = { name: "", scout: { high: [], low: [] }, count: "" }) {
+            const info = document.createElement("div");
+            const nameSpan = document.createElement("span");
+            const scoutSpan = document.createElement("span");
+            const countSpan = document.createElement("span");
+
+            info.style.margin = "3px";
+            info.style.padding = "3px";
+            info.style.alignSelf = "flex-start";
+
+            nameSpan.innerHTML = `<strong>Filter Name: </strong>${data.name}<br>`;
+            scoutSpan.innerHTML = `<strong>Selected: ${this.#getSelectedScoutsOptionTextForFilter(data.scout)}<strong><br>`;
+            countSpan.innerHTML = `<strong>Hit Count: </strong><span class="filter-count-span">${data.count}<span>`;
+
+            info.appendChild(nameSpan);
+            info.appendChild(scoutSpan);
+            info.appendChild(countSpan);
+            return info;
+        }
+
+        async displayFilterResults(filterId, filterInfo) {
+            const div = document.createElement("div");
+
+            const header = createMzStyledTitle("MZY Filter Results");
+            const info = this.#createFilterInfo(filterInfo);
+            const middle = document.createElement("div");
+            const close = createMzStyledButton("Close", "red");
+
+            div.classList.add("mazyar-flex-container");
+
+            middle.style.flex = "1";
+            middle.style.overflowY = "auto"; // make it scrollable
+            middle.style.margin = "5px 2px";
+
+            close.style.marginBottom = "1px";
+            close.onclick = () => {
+                this.hideModal();
+                this.displayTransferFilters();
+            };
+
+            const players = await this.#getHitsFromIndexedDb(filterId);
+            this.#displayLoading("MZY Filter Results");
+            const jobs = [];
+            for (const player of players) {
+                const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${player.pid}`;
+                jobs.push(
+                    fetch(url)
+                        .then((resp) => resp.json())
+                        .then((content) => {
+                            return { playerId: player.pid, content };
+                        })
+                );
+            }
+            const searchResults = await Promise.all(jobs);
+            let skills = [];
+            const parser = new DOMParser();
+            for (const result of searchResults) {
+                const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
+                if (!skills) {
+                    skills = this.#extractSkillNamesFromPlayerInfo(player);
+                }
+                player.id = "";
+                this.#fetchOrExtractPlayerScoutReport(player, skills);
+                const a = player.querySelector("h2>div>a.subheader");
+                if (a) {
+                    a.href = `https://www.managerzone.com/?p=transfer&u=${result.playerId}`;
+                    a.target = "_blank";
+                    const tools = player.querySelector("td span.player_icon_placeholder.bid_button")?.parentNode;
+                    if (tools) {
+                        tools.style.display = "none";
+                    }
+                    player.querySelector("div.floatRight.transfer-control-area")?.classList.add("mazyar-transfer-control-area");
+                    middle.appendChild(player);
+                } else {
+                    this.#removeHitFromIndexedDb(filterId, result.playerId);
+                }
+            }
+            const noResult = middle.childNodes.length === 0;
+            if (noResult) {
+                middle.innerHTML = "<h3>No Players To Display</h3><span>Please refresh the filter to update hits.</span>";
+                middle.style.padding = "10px";
+                middle.style.textAlign = "center";
+            } else {
+                info.querySelector(".filter-count-span").innerText = middle.childNodes.length.toString();
+            }
+
+            div.appendChild(header);
+            if (noResult) {
+                div.appendChild(middle);
+                div.appendChild(close);
+            } else {
+                div.appendChild(close);
+                div.appendChild(info);
+                div.appendChild(middle);
+            }
+            this.#replaceModalContent([div]);
         }
 
         hideModal() {
@@ -2756,6 +3437,7 @@
         } else if (uri.search("/?p=transfer") > -1) {
             if (mazyar.isTransferFiltersEnabled()) {
                 transferInject();
+                mazyar.extractScoutReports();
             }
         }
     }
