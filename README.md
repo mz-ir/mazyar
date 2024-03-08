@@ -4,6 +4,10 @@
 
 **Mazyar** is a userscript designed to enhance features on [www.managerzone.com](www.managerzone.com) pages. It adds useful functionalities to improve your experience. Here are the key features:
 
+## Video Tutorials
+* [How to use Scout Filters](https://www.youtube.com/watch?v=zUy_3dTN-1A)
+* [How to setup and use Transfer Filters](https://www.youtube.com/watch?v=By3Q6ayD6Ww)
+
 ## Squad Summary
 
 - Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
