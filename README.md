@@ -9,10 +9,6 @@
 * [How to use Scout Filters](https://www.youtube.com/watch?v=zUy_3dTN-1A)
 * [How to setup and use Transfer Filters](https://www.youtube.com/watch?v=By3Q6ayD6Ww)
 
-## Auto Claim
-
-When enabled from Settings, script can claim the tickets automatically if you keep a managerzone event page open.
-
 ## Squad Summary
 
 * Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
