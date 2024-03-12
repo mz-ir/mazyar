@@ -1,0 +1,33 @@
+{
+    "version": "0.2",
+    "ignorePaths": [],
+    "dictionaryDefinitions": [],
+    "dictionaries": [],
+    "words": [
+        "buttondiv",
+        "clearfix",
+        "clippable",
+        "darkgoldenrod",
+        "Dexie",
+        "friendlyseries",
+        "groupplay",
+        "hitlist",
+        "KMGTPEZY",
+        "labelledby",
+        "lightgreen",
+        "managerzone",
+        "Mazyar",
+        "mzbtn",
+        "orangered",
+        "playerview",
+        "searchb",
+        "searchform",
+        "tablesorter",
+        "thezone",
+        "userscript",
+        "xmlhttp",
+        "yxxx"
+    ],
+    "ignoreWords": [],
+    "import": []
+}

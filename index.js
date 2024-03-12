@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Swiss Army knife for managerzone.com
-// @copyright    z7z@managerzone
-// @author       z7z@managerzone
+// @copyright    z7z from managerzone.com
+// @author       z7z from managerzone.com
 // @license      MIT
 // @run-at       document-idle
 // @noframes
@@ -157,39 +157,23 @@
       }
 
     .mazyar-scout-1 {
-        color:red;
+        color: red;
       }
 
     .mazyar-scout-2 {
-        color:darkgoldenrod;
+        color: darkgoldenrod;
       }
 
     .mazyar-scout-3 {
-        color:blue;
+        color: blue;
       }
 
     .mazyar-scout-4 {
-        color:fuchsia;
+        color: fuchsia;
       }
     `;
 
     /* ********************** Constants ******************************** */
-
-    const SKILLS_ORDER = [
-        "Speed",
-        "Stamina",
-        "Play Intelligence",
-        "Passing",
-        "Shooting",
-        "Heading",
-        "Keeping",
-        "Ball Control",
-        "Tackling",
-        "Aerial_Passing",
-        "Set Plays",
-        "Experience",
-        "Form",
-    ];
 
     const TRANSFER_INTERVALS = {
         always: {
@@ -1706,7 +1690,7 @@
         const filterForm = document.getElementById("matchListForm");
         if (filterForm && !filterForm.eventAttached) {
             filterForm.eventAttached = true;
-            // FIXME: when this event is fired, it is removed from the element or element is changed somehow.
+            // Note: when this event is fired, it is removed from the element or element is changed somehow.
             // so for now we will attach it again after each change event.
             filterForm.addEventListener("change", matchWaitAndInjectInProgressResults);
         }
@@ -2834,8 +2818,20 @@
 
         #saveFilters() {
             GM_setValue("transfer_filters", {
-                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
-                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
+                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({
+                    id,
+                    name,
+                    params,
+                    scout,
+                    interval,
+                })),
+                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({
+                    id,
+                    name,
+                    params,
+                    scout,
+                    interval,
+                })),
             });
         }
 
@@ -3192,13 +3188,7 @@
                             low.push(1);
                         }
                     }
-                    const scout =
-                        high.length === 0 && low.length === 0
-                            ? null
-                            : {
-                                high,
-                                low,
-                            };
+                    const scout = high.length === 0 && low.length === 0 ? null : { high, low };
                     const interval = checkInterval.querySelector("select").value;
                     that.updateFilterDetails(name, params, scout, interval);
                     that.hideModal();
