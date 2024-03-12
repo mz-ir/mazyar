@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Swiss Army knife for managerzone.com
-// @copyright    z7z@managerzone
-// @author       z7z@managerzone
+// @copyright    z7z from managerzone.com
+// @author       z7z from managerzone.com
 // @license      MIT
 // @run-at       document-idle
 // @noframes
@@ -157,39 +157,23 @@
       }
 
     .mazyar-scout-1 {
-        color:red;
+        color: red;
       }
 
     .mazyar-scout-2 {
-        color:darkgoldenrod;
+        color: darkgoldenrod;
       }
 
     .mazyar-scout-3 {
-        color:blue;
+        color: blue;
       }
 
     .mazyar-scout-4 {
-        color:fuchsia;
+        color: fuchsia;
       }
     `;
 
     /* ********************** Constants ******************************** */
-
-    const SKILLS_ORDER = [
-        "Speed",
-        "Stamina",
-        "Play Intelligence",
-        "Passing",
-        "Shooting",
-        "Heading",
-        "Keeping",
-        "Ball Control",
-        "Tackling",
-        "Aerial_Passing",
-        "Set Plays",
-        "Experience",
-        "Form",
-    ];
 
     const TRANSFER_INTERVALS = {
         always: {
@@ -1706,7 +1690,7 @@
         const filterForm = document.getElementById("matchListForm");
         if (filterForm && !filterForm.eventAttached) {
             filterForm.eventAttached = true;
-            // FIXME: when this event is fired, it is removed from the element or element is changed somehow.
+            // Note: when this event is fired, it is removed from the element or element is changed somehow.
             // so for now we will attach it again after each change event.
             filterForm.addEventListener("change", matchWaitAndInjectInProgressResults);
         }
@@ -2359,42 +2343,6 @@
         }
     }
 
-    /* *********************** Managerzone Events ********************************** */
-
-    function eventsAddNotice() {
-        const target = document.getElementById("event-reset-purchase");
-        if (target) {
-            const notice = document.createElement("div");
-            const status = `<strong style="color: maroon;">${mazyar.isAutoClaimEnabled() ? "on" : "off"}</strong>`;
-            notice.innerHTML = `<strong style="color: crimson;">MZY Notice: </strong>Auto Claim is ${status}.`;
-            notice.classList.add("textCenter");
-            target.parentNode.insertBefore(notice, target);
-        }
-    }
-
-    function eventsInject() {
-        eventsAddNotice();
-        if (mazyar.isAutoClaimEnabled()) {
-            // Callback function to execute when mutations are observed
-            const callback = function (mutationsList) {
-                for (const mutation of mutationsList) {
-                    if (mutation.type == "attributes") {
-                        const claim = document.getElementById("claim");
-                        if (!claim?.classList.contains("buttondiv_disabled")) {
-                            claim?.click();
-                        }
-                    }
-                }
-            };
-            const observer = new MutationObserver(callback);
-            const claim = document.getElementById("claim");
-            observer.observe(claim, {
-                attributes: true,
-                attributeFilter: ["class"],
-            });
-        }
-    }
-
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -2404,7 +2352,6 @@
             in_progress_results: true,
             top_players_in_tables: true,
             transfer: false,
-            auto_claim: false,
         };
         #transferOptions = {
             hide: true,
@@ -2750,14 +2697,12 @@
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
-            this.#settings.auto_claim = GM_getValue("enable_auto_claim", false);
         }
 
         #saveSettings() {
             GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
-            GM_setValue("enable_auto_claim", this.#settings.auto_claim);
         }
 
         updateSettings(settings) {
@@ -2780,10 +2725,6 @@
 
         isTransferFiltersEnabled() {
             return this.#settings.transfer;
-        }
-
-        isAutoClaimEnabled() {
-            return this.#settings.auto_claim;
         }
 
         // -------------------------------- Transfer Options -------------------------------------
@@ -2834,8 +2775,20 @@
 
         #saveFilters() {
             GM_setValue("transfer_filters", {
-                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
-                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({ id, name, params, scout, interval })),
+                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({
+                    id,
+                    name,
+                    params,
+                    scout,
+                    interval,
+                })),
+                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({
+                    id,
+                    name,
+                    params,
+                    scout,
+                    interval,
+                })),
             });
         }
 
@@ -3032,7 +2985,6 @@
                 in_progress_results: false,
                 top_players_in_tables: false,
                 transfer: false,
-                auto_claim: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3083,7 +3035,6 @@
             const div = document.createElement("div");
             const title = createMzStyledTitle("MZY Settings");
             const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
-            const autoClaim = createMenuCheckBox("Enable Auto Claim in Events", this.#settings.auto_claim);
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const buttons = document.createElement("div");
@@ -3104,7 +3055,6 @@
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
-                    auto_claim: autoClaim.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3119,7 +3069,6 @@
             div.appendChild(inProgress);
             div.appendChild(tableInjection);
             div.appendChild(transfer);
-            div.appendChild(autoClaim);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -3192,13 +3141,7 @@
                             low.push(1);
                         }
                     }
-                    const scout =
-                        high.length === 0 && low.length === 0
-                            ? null
-                            : {
-                                high,
-                                low,
-                            };
+                    const scout = high.length === 0 && low.length === 0 ? null : { high, low };
                     const interval = checkInterval.querySelector("select").value;
                     that.updateFilterDetails(name, params, scout, interval);
                     that.hideModal();
@@ -3484,8 +3427,6 @@
                 transferInject();
                 mazyar.extractScoutReports();
             }
-        } else if (uri.search("/?p=event") > -1) {
-            eventsInject();
         }
     }
 
