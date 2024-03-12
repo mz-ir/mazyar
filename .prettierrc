@@ -1,5 +1,6 @@
 {
   "tabWidth": 4,
   "useTabs": false,
-  "printWidth": 180
+  "printWidth": 180,
+  "endOfLine": "lf"
 }
