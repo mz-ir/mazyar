@@ -2290,27 +2290,27 @@
 
         H4.onclick = () => {
             mazyar.updateTransferOptions("H4", H4.querySelector("input[type=checkbox]").checked);
-            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+            mazyar.applyFiltersAndStylesToTransferResult(true);
         };
 
         H3.onclick = () => {
             mazyar.updateTransferOptions("H3", H3.querySelector("input[type=checkbox]").checked);
-            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+            mazyar.applyFiltersAndStylesToTransferResult(true);
         };
 
         L2.onclick = () => {
             mazyar.updateTransferOptions("L2", L2.querySelector("input[type=checkbox]").checked);
-            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+            mazyar.applyFiltersAndStylesToTransferResult(true);
         };
 
         L1.onclick = () => {
             mazyar.updateTransferOptions("L1", L1.querySelector("input[type=checkbox]").checked);
-            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+            mazyar.applyFiltersAndStylesToTransferResult(true);
         };
 
         hide.onclick = () => {
             mazyar.updateTransferOptions("hide", hide.querySelector("input[type=checkbox]").checked);
-            mazyar.hideOtherPlayersBasedOnScoutReport(true);
+            mazyar.applyFiltersAndStylesToTransferResult(true);
         };
 
         highs.appendChild(H4);
@@ -2352,6 +2352,7 @@
             in_progress_results: true,
             top_players_in_tables: true,
             transfer: false,
+            transfer_maxed: false,
         };
         #transferOptions = {
             hide: true,
@@ -2478,6 +2479,30 @@
             return [...skills].map((el) => skillList.indexOf(el.innerText));
         }
 
+        async #markMaxedSkills(player) {
+            const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+            const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+            const resp = await fetch(url).catch((error) => {
+                console.log(error);
+            });
+            if (resp) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(await resp.text(), "text/html");
+                const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
+                let i = 0;
+                const maxed = [];
+                for (const skill of skills) {
+                    if (skill.querySelector(".maxed")) {
+                        maxed.push(i);
+                    }
+                    i++;
+                }
+                if (maxed) {
+                    this.#colorizeMaxedSkills(player, maxed);
+                }
+            }
+        }
+
         async #extractPlayerScoutReport(pid, skills) {
             const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
             const resp = await fetch(url).catch((error) => {
@@ -2506,6 +2531,13 @@
             return null;
         }
 
+        #colorizeMaxedSkills(player, maxed) {
+            const playerSkills = player.querySelectorAll("table.player_skills tr td.skillval span");
+            for (const skill of maxed) {
+                playerSkills[skill].classList.add("maxed");
+            }
+        }
+
         #colorizeSkills(player, report) {
             const playerSkills = player.querySelectorAll("table.player_skills tr td:nth-child(1)");
             playerSkills[report.HS[0]].classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
@@ -2525,22 +2557,29 @@
             return scoutReport;
         }
 
-        async #extractScoutReportsFromSearchResults(players, callback = null) {
+        async #processTransferSearchResults(players, callback = null) {
             const reports = [];
             const firstPlayer = players.querySelector("#thePlayers_0");
             if (firstPlayer) {
                 const skills = this.#extractSkillNamesFromPlayerInfo(firstPlayer);
-                const jobs = [];
+                const scoutJobs = [];
+                const maxedJobs = [];
                 for (const player of [...players.children]) {
                     if (player.classList.contains("playerContainer")) {
-                        if (player.querySelector("span.scout_report > a")) {
-                            jobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills));
-                        } else if (callback) {
-                            callback(player);
+                        if (this.#isTransferMaxedSkillsEnabled()) {
+                            maxedJobs.push(this.#markMaxedSkills(player));
+                        }
+                        if (this.#isTransferOptionsEnabled()) {
+                            if (player.querySelector("span.scout_report > a")) {
+                                scoutJobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills));
+                            } else if (callback) {
+                                callback(player);
+                            }
                         }
                     }
                 }
-                const scoutReports = await Promise.all(jobs);
+                await Promise.all(maxedJobs);
+                const scoutReports = await Promise.all(scoutJobs);
                 for (const scoutReport of scoutReports) {
                     if (scoutReport) {
                         reports.push(scoutReport);
@@ -2560,6 +2599,10 @@
 
         #isTransferOptionsEnabled() {
             return this.#isTransferHighOptionsEnabled() || this.#isTransferLowOptionsEnabled();
+        }
+
+        #isTransferMaxedSkillsEnabled() {
+            return this.#settings.transfer_maxed;
         }
 
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
@@ -2601,26 +2644,7 @@
             return { lows, highs };
         }
 
-        async hideOtherPlayersBasedOnScoutReport(clear = false) {
-            if (clear) {
-                document.querySelectorAll(".mazyar-hide")?.forEach((el) => {
-                    el.classList.remove("mazyar-hide");
-                });
-                document.querySelectorAll(".mazyar-dim-50")?.forEach((el) => el.classList.remove("mazyar-dim-50"));
-                document.querySelectorAll(".mazyar-dim-60")?.forEach((el) => el.classList.remove("mazyar-dim-60"));
-            }
-            if (!this.#isTransferOptionsEnabled()) {
-                return;
-            }
-
-            const players = document.getElementById("players_container");
-            const reports = await this.#extractScoutReportsFromSearchResults(players, (player) => {
-                if (this.#transferOptionsMustHide()) {
-                    player.classList.add("mazyar-hide");
-                } else {
-                    player.classList.add("mazyar-dim-50");
-                }
-            });
+        #applyTransferFilters(reports) {
             const { lows, highs } = this.#getAcceptableHighsAndLows();
             for (const report of reports) {
                 if (!this.#isQualifiedForTransferScoutFilter(report, lows, highs)) {
@@ -2637,15 +2661,44 @@
             }
         }
 
-        async extractScoutReports() {
-            this.hideOtherPlayersBasedOnScoutReport();
+        #clearTransferFilters() {
+            document.querySelectorAll(".mazyar-hide")?.forEach((el) => {
+                el.classList.remove("mazyar-hide");
+            });
+            document.querySelectorAll(".mazyar-dim-50")?.forEach((el) => el.classList.remove("mazyar-dim-50"));
+            document.querySelectorAll(".mazyar-dim-60")?.forEach((el) => el.classList.remove("mazyar-dim-60"));
+        }
+
+        async applyFiltersAndStylesToTransferResult(clear = false) {
+            if (clear) {
+                this.#clearTransferFilters();
+            }
+            if (this.#isTransferOptionsEnabled() || this.#isTransferMaxedSkillsEnabled()) {
+                const players = document.getElementById("players_container");
+                const reports = await this.#processTransferSearchResults(players, (player) => {
+                    if (this.#isTransferOptionsEnabled()) {
+                        if (this.#transferOptionsMustHide()) {
+                            player.classList.add("mazyar-hide");
+                        } else {
+                            player.classList.add("mazyar-dim-50");
+                        }
+                    }
+                });
+                if (this.#isTransferOptionsEnabled()) {
+                    this.#applyTransferFilters(reports);
+                }
+            }
+        }
+
+        async executeTransferTasks() {
+            this.applyFiltersAndStylesToTransferResult();
 
             const that = this;
             // Callback function to execute when mutations are observed
             const callback = function (mutationsList) {
                 for (const mutation of mutationsList) {
                     if (mutation.type == "childList") {
-                        that.hideOtherPlayersBasedOnScoutReport();
+                        that.applyFiltersAndStylesToTransferResult();
                     }
                 }
             };
@@ -2697,12 +2750,14 @@
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
+            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
         }
 
         #saveSettings() {
             GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
+            GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
         }
 
         updateSettings(settings) {
@@ -2875,7 +2930,7 @@
                 const searchResults = document.createElement("div");
                 searchResults.innerHTML = data.players;
                 if (filter.scout) {
-                    const playersReport = await this.#extractScoutReportsFromSearchResults(searchResults);
+                    const playersReport = await this.#processTransferSearchResults(searchResults);
                     const { lows, highs } = this.#getAcceptableHighsAndLowsForFilter(filter.scout);
                     const scouted = playersReport.filter((report) => this.#isQualifiedForTransferScoutFilter(report, lows, highs));
                     scoutHits = scouted.length;
@@ -2985,6 +3040,7 @@
                 in_progress_results: false,
                 top_players_in_tables: false,
                 transfer: false,
+                transfer_maxed: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3037,6 +3093,7 @@
             const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
+            const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3055,6 +3112,7 @@
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
+                    transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3069,6 +3127,7 @@
             div.appendChild(inProgress);
             div.appendChild(tableInjection);
             div.appendChild(transfer);
+            div.appendChild(transferMaxed);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -3341,6 +3400,7 @@
                 if (!skills) {
                     skills = this.#extractSkillNamesFromPlayerInfo(player);
                 }
+                this.#markMaxedSkills(player);
                 player.id = "";
                 this.#fetchOrExtractPlayerScoutReport(player, skills);
                 const a = player.querySelector("h2>div>a.subheader");
@@ -3425,7 +3485,7 @@
         } else if (uri.search("/?p=transfer") > -1) {
             if (mazyar.isTransferFiltersEnabled()) {
                 transferInject();
-                mazyar.extractScoutReports();
+                mazyar.executeTransferTasks();
             }
         }
     }
