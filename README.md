@@ -9,6 +9,10 @@
 * [How to use Scout Filters](https://www.youtube.com/watch?v=zUy_3dTN-1A)
 * [How to setup and use Transfer Filters](https://www.youtube.com/watch?v=By3Q6ayD6Ww)
 
+## Transfer Market
+
+If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Settings**, maxed skills of the players are marked with red color.
+
 ## Squad Summary
 
 * Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
