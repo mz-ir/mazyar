@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.4
+// @version      2.5
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -224,7 +224,7 @@
         return "soccer";
     }
 
-    function getCurrency(doc) {
+    function getClubCurrency(doc) {
         const players = doc.getElementById("playerAltViewTable")?.querySelectorAll("tbody tr");
         if (players && players.length > 0) {
             const parts = players[0].querySelector("td:nth-child(3)")?.innerText.split(" ");
@@ -300,7 +300,7 @@
         return (u ? b.toFixed(1) + " " : b) + " KMGTPEZY"[u] + "B";
     }
 
-    function getPlayers(doc, currency) {
+    function getClubPlayers(doc, currency) {
         const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
         if (!playerNodes) {
             return [];
@@ -375,9 +375,59 @@
         return { values, avgAge };
     }
 
-    function getTopPlyers(doc) {
-        const currency = getCurrency(doc);
-        const players = getPlayers(doc, currency);
+    async function getNationalPlayersAndCurrency(team, sport) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
+        let players = [];
+        let currency = '';
+        await fetch(url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(content, "text/html");
+                currency = getNationalCurrency(doc);
+                players = getNationalPlayers(doc, currency);
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+        return { players, currency };
+    }
+
+    async function getClubPlayersAndCurrency(team) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const url = getSquadSummaryLink(tid);
+        let players = [];
+        let currency = '';
+        await fetch(url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(content, "text/html");
+                currency = getClubCurrency(doc);
+                players = getClubPlayers(doc, currency);
+            })
+            .catch((error) => {
+                console.log(error);
+            });
+        return { players, currency };
+    }
+
+    async function getPlayersAndCurrency(team, sport) {
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const url = getSquadSummaryLink(tid);
+        const isNational = await fetch(url, { method: "HEAD" })
+            .then((resp) => (resp.url.search("p=national_teams") > -1));
+        const { players, currency } = isNational ? await getNationalPlayersAndCurrency(team, sport) : await getClubPlayersAndCurrency(team);
+        return { players, currency };
+    }
+
+    function getClubTopPlyers(doc) {
+        const currency = getClubCurrency(doc);
+        const players = getClubPlayers(doc, currency);
         const sport = getSportType(doc);
         const count = sport === "soccer" ? 11 : 21;
         return players ? filterPlayers(players, count).values : 0;
@@ -1011,8 +1061,8 @@
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
             const sport = getSportType(document);
-            const currency = getCurrency(document);
-            const players = getPlayers(document, currency);
+            const currency = getClubCurrency(document);
+            const players = getClubPlayers(document, currency);
             const summary = squadSummaryGetInfo(players, sport);
             const table = squadSummaryCreateInfoTable(summary, currency, sport);
             const div = document.createElement("div");
@@ -1077,8 +1127,8 @@
                     onload: function (resp) {
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(resp.responseText, "text/html");
-                        const currency = getCurrency(doc);
-                        const values = getTopPlyers(doc);
+                        const currency = getClubCurrency(doc);
+                        const values = getClubTopPlyers(doc);
                         const fin = resp.context?.find((p) => resp.finalUrl === p.url);
                         if (fin) {
                             fin.values = values;
@@ -1210,8 +1260,8 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
-                team.currency = getCurrency(doc);
-                team.values = getTopPlyers(doc);
+                team.currency = getClubCurrency(doc);
+                team.values = getClubTopPlyers(doc);
 
                 const name = document.createElement("div");
                 name.style.color = "blue";
@@ -1511,98 +1561,14 @@
         team.insertBefore(div, place);
     }
 
-    // ---------------- Top Players -------------
-
-    function matchAddTopPlayersValueNational(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, sport },
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const currency = getNationalCurrency(doc);
-                const players = getNationalPlayers(doc, currency);
-                const team = resp.context.team;
-                const sport = resp.context.sport;
-
-                matchInjectTopPlayersValues(players, team, currency, sport);
-            },
-        });
+    async function matchAddTopPlayersValue(team, sport) {
+        const { players, currency } = await getPlayersAndCurrency(team, sport);
+        matchInjectTopPlayersValues(players, team, currency, sport);
     }
 
-    function matchAddTopPlayersValue(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const url = getSquadSummaryLink(tid);
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, sport },
-            onload: function (resp) {
-                if (resp.finalUrl.search("p=national_teams") > -1) {
-                    matchAddTopPlayersValueNational(resp.context.team, resp.context.sport);
-                } else {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(resp.responseText, "text/html");
-                    const currency = getCurrency(doc);
-                    const players = getPlayers(doc, currency);
-                    const team = resp.context.team;
-                    const sport = resp.context.sport;
-
-                    matchInjectTopPlayersValues(players, team, currency, sport);
-                }
-            },
-        });
-    }
-
-    // ------------ Lineup -----------------------
-
-    function matchAddLineupValuesNational(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, sport },
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const currency = getNationalCurrency(doc);
-                const players = getNationalPlayers(doc, currency);
-                const team = resp.context.team;
-                const sport = resp.context.sport;
-                matchInjectLineupValues(players, team, currency, sport);
-            },
-        });
-    }
-
-    function matchAddLineupValues(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const url = getSquadSummaryLink(tid);
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, sport },
-            onload: function (resp) {
-                if (resp.finalUrl.search("p=national_teams") > -1) {
-                    matchAddLineupValuesNational(resp.context.team, resp.context.sport);
-                } else {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(resp.responseText, "text/html");
-                    const currency = getCurrency(doc);
-                    const players = getPlayers(doc, currency);
-                    const team = resp.context.team;
-                    const sport = resp.context.sport;
-                    matchInjectLineupValues(players, team, currency, sport);
-                }
-            },
-        });
+    async function matchAddLineupValues(team, sport) {
+        const { players, currency } = await getPlayersAndCurrency(team, sport);
+        matchInjectLineupValues(players, team, currency, sport);
     }
 
     function matchInjectTeamValues() {
@@ -1875,60 +1841,46 @@
         return secondRow;
     }
 
-    function tableAddTeamTopPlayersInfo(team, ageLimit, sport) {
+    async function tableAddTeamTopPlayersInfo(team, ageLimit, sport) {
         const url = tableGetSquadSummaryUrl(team);
+
+        // for pc
+        team.classList.add("responsive-hide");
+        tableModifyTeamInBodyForPcView(team, url);
+        const pcView = team;
 
         // for mobile
         const mobileView = tableAddTeamToBodyForMobileView(team, url);
 
-        // for PC
-        team.classList.add("responsive-hide");
-        tableModifyTeamInBodyForPcView(team, url);
+        const { players, currency } = await getPlayersAndCurrency(team, sport);
 
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, mobileView, sport, ageLimit },
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const currency = getCurrency(doc);
-                const players = getPlayers(doc, currency);
+        const playersOfSport = sport === "soccer" ? 11 : 21;
+        const all = filterPlayers(players, playersOfSport, 0, 99);
+        const u23 = filterPlayers(players, playersOfSport, 0, 23);
+        const u21 = filterPlayers(players, playersOfSport, 0, 21);
+        const u18 = filterPlayers(players, playersOfSport, 0, 18);
 
-                const pcView = resp.context.team;
-                const mobileView = resp.context.mobileView;
-                const sport = resp.context.sport;
-                const ageLimit = resp.context.ageLimit;
+        for (const team of [pcView, mobileView]) {
+            const valueElement = team.querySelector("td.team-value");
+            // prettier-ignore
+            valueElement.innerHTML =
+                `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
+                `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
+                `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
+                `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
+            valueElement.style.textAlign = "right";
 
-                const playersOfSport = sport === "soccer" ? 11 : 21;
+            const ageElement = team.querySelector("td.age-value");
+            // prettier-ignore
+            ageElement.innerHTML =
+                `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
+                `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
+                `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
+                `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
 
-                const all = filterPlayers(players, playersOfSport, 0, 99);
-                const u23 = filterPlayers(players, playersOfSport, 0, 23);
-                const u21 = filterPlayers(players, playersOfSport, 0, 21);
-                const u18 = filterPlayers(players, playersOfSport, 0, 18);
+            tableDisplayAgeInfo(team, ageLimit);
+        }
 
-                for (const team of [pcView, mobileView]) {
-                    const valueElement = team.querySelector("td.team-value");
-                    // prettier-ignore
-                    valueElement.innerHTML =
-                        `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
-                        `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
-                        `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
-                        `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
-                    valueElement.style.textAlign = "right";
-
-                    const ageElement = team.querySelector("td.age-value");
-                    // prettier-ignore
-                    ageElement.innerHTML =
-                        `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
-                        `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
-                        `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
-                        `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
-
-                    tableDisplayAgeInfo(team, ageLimit);
-                }
-            },
-        });
     }
 
     function tableDisplayNextAgeInfo() {
@@ -3320,8 +3272,8 @@
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(content, "text/html");
                     const sport = getSportType(doc);
-                    const currency = getCurrency(doc);
-                    const players = getPlayers(doc, currency);
+                    const currency = getClubCurrency(doc);
+                    const players = getClubPlayers(doc, currency);
                     const summary = squadSummaryGetInfo(players, sport);
                     const table = squadSummaryCreateInfoTable(summary, currency, sport);
                     table.style.margin = "2px 5px";
