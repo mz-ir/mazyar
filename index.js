@@ -1841,60 +1841,46 @@
         return secondRow;
     }
 
-    function tableAddTeamTopPlayersInfo(team, ageLimit, sport) {
+    async function tableAddTeamTopPlayersInfo(team, ageLimit, sport) {
         const url = tableGetSquadSummaryUrl(team);
+
+        // for pc
+        team.classList.add("responsive-hide");
+        tableModifyTeamInBodyForPcView(team, url);
+        const pcView = team;
 
         // for mobile
         const mobileView = tableAddTeamToBodyForMobileView(team, url);
 
-        // for PC
-        team.classList.add("responsive-hide");
-        tableModifyTeamInBodyForPcView(team, url);
+        const { players, currency } = await getPlayersAndCurrency(team, sport);
 
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context: { team, mobileView, sport, ageLimit },
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const currency = getClubCurrency(doc);
-                const players = getClubPlayers(doc, currency);
+        const playersOfSport = sport === "soccer" ? 11 : 21;
+        const all = filterPlayers(players, playersOfSport, 0, 99);
+        const u23 = filterPlayers(players, playersOfSport, 0, 23);
+        const u21 = filterPlayers(players, playersOfSport, 0, 21);
+        const u18 = filterPlayers(players, playersOfSport, 0, 18);
 
-                const pcView = resp.context.team;
-                const mobileView = resp.context.mobileView;
-                const sport = resp.context.sport;
-                const ageLimit = resp.context.ageLimit;
+        for (const team of [pcView, mobileView]) {
+            const valueElement = team.querySelector("td.team-value");
+            // prettier-ignore
+            valueElement.innerHTML =
+                `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
+                `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
+                `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
+                `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
+            valueElement.style.textAlign = "right";
 
-                const playersOfSport = sport === "soccer" ? 11 : 21;
+            const ageElement = team.querySelector("td.age-value");
+            // prettier-ignore
+            ageElement.innerHTML =
+                `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
+                `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
+                `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
+                `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
 
-                const all = filterPlayers(players, playersOfSport, 0, 99);
-                const u23 = filterPlayers(players, playersOfSport, 0, 23);
-                const u21 = filterPlayers(players, playersOfSport, 0, 21);
-                const u18 = filterPlayers(players, playersOfSport, 0, 18);
+            tableDisplayAgeInfo(team, ageLimit);
+        }
 
-                for (const team of [pcView, mobileView]) {
-                    const valueElement = team.querySelector("td.team-value");
-                    // prettier-ignore
-                    valueElement.innerHTML =
-                        `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
-                        `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
-                        `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
-                        `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
-                    valueElement.style.textAlign = "right";
-
-                    const ageElement = team.querySelector("td.age-value");
-                    // prettier-ignore
-                    ageElement.innerHTML =
-                        `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
-                        `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
-                        `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
-                        `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
-
-                    tableDisplayAgeInfo(team, ageLimit);
-                }
-            },
-        });
     }
 
     function tableDisplayNextAgeInfo() {
