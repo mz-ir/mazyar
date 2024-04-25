@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.5
+// @version      2.6
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -375,9 +375,7 @@
         return { values, avgAge };
     }
 
-    async function getNationalPlayersAndCurrency(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
+    async function getNationalPlayersAndCurrency(tid, sport) {
         const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
         let players = [];
         let currency = '';
@@ -395,9 +393,7 @@
         return { players, currency };
     }
 
-    async function getClubPlayersAndCurrency(team) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
+    async function getClubPlayersAndCurrency(tid) {
         const url = getSquadSummaryLink(tid);
         let players = [];
         let currency = '';
@@ -415,14 +411,11 @@
         return { players, currency };
     }
 
-    async function getPlayersAndCurrency(team, sport) {
-        const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
+    async function getPlayersAndCurrency(tid, sport) {
         const url = getSquadSummaryLink(tid);
         const isNational = await fetch(url, { method: "HEAD" })
             .then((resp) => (resp.url.search("p=national_teams") > -1));
-        const { players, currency } = isNational ? await getNationalPlayersAndCurrency(team, sport) : await getClubPlayersAndCurrency(team);
-        return { players, currency };
+        return isNational ? await getNationalPlayersAndCurrency(tid, sport) : await getClubPlayersAndCurrency(tid);
     }
 
     function getClubTopPlyers(doc) {
@@ -1562,12 +1555,16 @@
     }
 
     async function matchAddTopPlayersValue(team, sport) {
-        const { players, currency } = await getPlayersAndCurrency(team, sport);
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const { players, currency } = await getPlayersAndCurrency(tid, sport);
         matchInjectTopPlayersValues(players, team, currency, sport);
     }
 
     async function matchAddLineupValues(team, sport) {
-        const { players, currency } = await getPlayersAndCurrency(team, sport);
+        const teamLink = team.querySelector("a").href;
+        const tid = extractTeamId(teamLink);
+        const { players, currency } = await getPlayersAndCurrency(tid, sport);
         matchInjectLineupValues(players, team, currency, sport);
     }
 
@@ -1844,15 +1841,16 @@
     async function tableAddTeamTopPlayersInfo(team, ageLimit, sport) {
         const url = tableGetSquadSummaryUrl(team);
 
+        // for mobile
+        const mobileView = tableAddTeamToBodyForMobileView(team, url);
+
         // for pc
         team.classList.add("responsive-hide");
         tableModifyTeamInBodyForPcView(team, url);
         const pcView = team;
 
-        // for mobile
-        const mobileView = tableAddTeamToBodyForMobileView(team, url);
-
-        const { players, currency } = await getPlayersAndCurrency(team, sport);
+        const tid = extractTeamId(url);
+        const { players, currency } = await getPlayersAndCurrency(tid, sport);
 
         const playersOfSport = sport === "soccer" ? 11 : 21;
         const all = filterPlayers(players, playersOfSport, 0, 99);
@@ -1860,8 +1858,8 @@
         const u21 = filterPlayers(players, playersOfSport, 0, 21);
         const u18 = filterPlayers(players, playersOfSport, 0, 18);
 
-        for (const team of [pcView, mobileView]) {
-            const valueElement = team.querySelector("td.team-value");
+        for (const view of [pcView, mobileView]) {
+            const valueElement = view.querySelector("td.team-value");
             // prettier-ignore
             valueElement.innerHTML =
                 `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
@@ -1870,7 +1868,7 @@
                 `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
             valueElement.style.textAlign = "right";
 
-            const ageElement = team.querySelector("td.age-value");
+            const ageElement = view.querySelector("td.age-value");
             // prettier-ignore
             ageElement.innerHTML =
                 `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
@@ -1878,7 +1876,7 @@
                 `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
                 `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
 
-            tableDisplayAgeInfo(team, ageLimit);
+            tableDisplayAgeInfo(view, ageLimit);
         }
 
     }
