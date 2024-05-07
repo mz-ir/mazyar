@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.7
+// @version      2.8
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -235,12 +235,8 @@
 
     function getNationalCurrency(doc) {
         // works for both domestic and foreign countries
-        const playerNode = doc.getElementById("thePlayers_0")?.querySelector("table tbody tr:nth-child(6)");
-        if (playerNode) {
-            const parts = playerNode.innerText.split(" ");
-            return parts[parts.length - 1];
-        }
-        return "";
+        const currency = doc.getElementById("thePlayers_0")?.querySelector("div.player-horizontal__information div.player-info span:nth-child(12) > span:nth-child(1)");
+        return currency?.innerText ?? "";
     }
 
     function extractTeamId(link) {
