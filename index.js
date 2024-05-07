@@ -335,14 +335,13 @@
 
     function getNationalPlayers(doc, currency) {
         const players = [];
-        const playerNodes = doc.querySelectorAll("div.playerContainer");
+        const playerNodes = doc.querySelectorAll("div.player-profiles div.playerContainer");
         if (playerNodes) {
             for (const playerNode of [...playerNodes]) {
                 const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
-                const infoTable = playerNode.querySelector("div.dg_playerview_info table");
-                const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-                const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span" : "tbody tr:nth-child(6) td span";
-                const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
+                const infoTable = playerNode.querySelector("div.player-horizontal__information div.player-info");
+                const age = infoTable.querySelector("span:nth-child(2)").innerText;
+                const value = infoTable.querySelector("span:nth-child(12)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
                 players.push({
                     age: parseInt(age, 10),
                     value: parseInt(value, 10),
