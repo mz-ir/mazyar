@@ -68,6 +68,12 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
 
 <img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png" alt="Fixtures" style="border: 2px solid black;">
 
+## About The Name
+
+Mazyar is acronym for **Ma**nager**Z**one**Yar**.  
+'-yar' is a Persian postfix that means companion, assistant or friend.  
+Also Mazyar is a Persian name for boys.
+
 ## Contributing
 
 Feel free to contribute to the [Mazyar](https://github.com/mz-ir/mazyar) project by creating an account on GitHub.  
