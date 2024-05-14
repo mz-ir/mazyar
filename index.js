@@ -228,7 +228,7 @@
         const players = doc.getElementById("playerAltViewTable")?.querySelectorAll("tbody tr");
         if (players && players.length > 0) {
             const parts = players[0].querySelector("td:nth-child(3)")?.innerText.split(" ");
-            return parts[parts.length - 1];
+            return parts[parts.length - 1].trim();
         }
         return "";
     }
@@ -238,7 +238,7 @@
         const playerNode = doc.getElementById("thePlayers_0")?.querySelector("table tbody tr:nth-child(6)");
         if (playerNode) {
             const parts = playerNode.innerText.split(" ");
-            return parts[parts.length - 1];
+            return parts[parts.length - 1].trim();
         }
         return "";
     }
@@ -2293,6 +2293,99 @@
         }
     }
 
+    /* *********************** Transfer Agent ********************************** */
+
+    async function getNationalRankings() {
+        const rankings = [];
+        const url = 'https://www.managerzone.com/?p=rank&sub=countryrank';
+        const resp = await fetch(url).catch((error) => {
+            console.log(error);
+        });
+        if (resp) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(await resp.text(), "text/html");
+            const teams = doc.querySelectorAll("table#countryRankTable tbody tr");
+            for (const team of teams) {
+                const columns = team.querySelectorAll("td");
+                let name = columns[2].innerText;
+                if (name === 'United States') {
+                    name = 'USA';
+                }
+                rankings.push({
+                    name,
+                    rank: Number(columns[0].innerText),
+                })
+            }
+        }
+        return rankings;
+    }
+
+    function predictorAttachInfo(match, teams, rankings) {
+        teams[0].rank = rankings.find((t) => t.name.trim() === teams[0].name.trim())?.rank;
+        teams[1].rank = rankings.find((t) => t.name.trim() === teams[1].name.trim())?.rank;
+        teams[0].valueColor = (teams[0].value > teams[1].value) ? "blue" : "unset";
+        teams[1].valueColor = (teams[1].value > teams[0].value) ? "blue" : "unset";
+        teams[0].rankColor = (teams[0].rank < teams[1].rank) ? "blue" : "unset";
+        teams[1].rankColor = (teams[1].rank < teams[0].rank) ? "blue" : "unset";
+
+        const tbody = document.createElement("tbody");
+        for (const team of teams) {
+            tbody.innerHTML += `
+            <td style="text-align:left;padding: 0; width: 100px;"><b>${team.name}</b></td>
+            <td style="text-align:left;padding: 0;">[Rank: <b style="display:inline-block; width: 1.1rem; text-align:right; color: ${team.rankColor};">${team.rank.toString()}</b>]</td>
+            <td style="text-align:right;padding: 0 4px;">[Value: <b style="color: ${team.valueColor};">${formatBigNumber(team.value)}</b> ${team.currency}]</td>
+            `;
+        }
+
+        const table = document.createElement("table");
+        table.appendChild(tbody);
+        table.classList.add("mazyar-table");
+        const div = document.createElement("div");
+        div.appendChild(table);
+        const target = match.querySelector("td");
+        target.appendChild(div);
+    }
+
+    async function predictorInjectRecommendation(match, rankings) {
+        const href = match.querySelector("td > a")?.href;
+        const url = href.replace("&play=2d", "").replace("&type=2d", "");
+
+        const sport = getSportType();
+        const resp = await fetch(url).catch((error) => {
+            console.log(error);
+        });
+        if (resp) {
+            const results = [];
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(await resp.text(), "text/html");
+            const teams = doc.querySelectorAll("div.team-table");
+            for (const team of teams) {
+                const link = team.querySelector("a");
+                const name = link.innerText;
+                const tid = extractTeamId(link.href);
+                const { players, currency } = await getPlayersAndCurrency(tid, sport);
+                const playersOfSport = sport === "soccer" ? 11 : 21;
+                const all = filterPlayers(players, playersOfSport, 0, 99);
+                results.push({
+                    name,
+                    value: all?.values,
+                    currency: currency,
+                })
+            }
+            predictorAttachInfo(match, results, rankings);
+        }
+    }
+
+    async function predictorInject() {
+        const rankings = await getNationalRankings();
+        const matches = document.querySelectorAll("#match-predictor-container table.match-list tbody tr");
+        const jobs = [];
+        for (const match of matches) {
+            jobs.push(predictorInjectRecommendation(match, rankings));
+        }
+        Promise.all(jobs);
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -2303,6 +2396,7 @@
             top_players_in_tables: true,
             transfer: false,
             transfer_maxed: false,
+            mz_predictor: false,
         };
         #transferOptions = {
             hide: true,
@@ -2555,6 +2649,10 @@
             return this.#settings.transfer_maxed;
         }
 
+        mustHelpWithPredictor() {
+            return this.#settings.mz_predictor;
+        }
+
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
         }
@@ -2701,6 +2799,7 @@
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
             this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
+            this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
         }
 
         #saveSettings() {
@@ -2708,6 +2807,7 @@
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
             GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
+            GM_setValue("mz_predictor", this.#settings.mz_predictor);
         }
 
         updateSettings(settings) {
@@ -2991,6 +3091,7 @@
                 top_players_in_tables: false,
                 transfer: false,
                 transfer_maxed: false,
+                mz_predictor: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3044,6 +3145,7 @@
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
+            const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3063,6 +3165,7 @@
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
+                    mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3078,6 +3181,7 @@
             div.appendChild(tableInjection);
             div.appendChild(transfer);
             div.appendChild(transferMaxed);
+            div.appendChild(mzPredictor);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -3397,6 +3501,7 @@
     /* *********************** Inject ********************************** */
 
     async function inject() {
+        console.log("test");
         GM_addStyle(styles);
 
         mazyar = new Mazyar();
@@ -3436,6 +3541,10 @@
             if (mazyar.isTransferFiltersEnabled()) {
                 transferInject();
                 mazyar.executeTransferTasks();
+            }
+        } else if (uri.search("/?p=clubhouse") > -1) {
+            if (mazyar.mustHelpWithPredictor()) {
+                predictorInject();
             }
         }
     }
