@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.10
+// @version      2.11
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -2332,7 +2332,7 @@
         for (const team of teams) {
             tbody.innerHTML += `
             <td style="text-align:left;padding: 0; width: 100px;"><b>${team.name}</b></td>
-            <td style="text-align:left;padding: 0;">[Rank: <b style="display:inline-block; width: 1.1rem; text-align:right; color: ${team.rankColor};">${team.rank.toString()}</b>]</td>
+            <td style="text-align:left;padding: 0;">[Rank: <b style="display:inline-block; width: 1.1rem; text-align:right; color: ${team.rankColor};">${team.rank ?? 'xx'}</b>]</td>
             <td style="text-align:right;padding: 0 4px;">[Value: <b style="color: ${team.valueColor};">${formatBigNumber(team.value)}</b> ${team.currency}]</td>
             `;
         }
