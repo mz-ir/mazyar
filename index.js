@@ -3647,4 +3647,5 @@
         // `DOMContentLoaded` has already fired
         inject();
     }
+
 })();
