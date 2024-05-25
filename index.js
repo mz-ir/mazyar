@@ -2469,7 +2469,7 @@
 
         async #fetchPlayerCommentFromIndexedDb(pid) {
             const player = await this.#db.comment.get({ pid, sport: this.#sport });
-            return player.comment;
+            return player?.comment ?? "";
         }
 
         async #setPlayerCommentFromIndexedDb(pid, comment) {
