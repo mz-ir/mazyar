@@ -154,23 +154,37 @@
 
     .mazyar-scout-h {
         font-weight: bold;
-      }
+    }
 
     .mazyar-scout-1 {
         color: red;
-      }
+    }
 
     .mazyar-scout-2 {
         color: darkgoldenrod;
-      }
+    }
 
     .mazyar-scout-3 {
         color: blue;
-      }
+    }
 
     .mazyar-scout-4 {
         color: fuchsia;
-      }
+    }
+
+    .mazyar-player-comment-icon {
+        position: relative;
+        top: -0.2rem;
+        margin-left: 0.3rem;
+        font-size: 1.4rem;
+        color: blue;
+    }
+
+    .mazyar-player-comment-textarea {
+        margin: 0.5rem;
+        min-width: 220px;
+        min-height: 100px;
+    }
     `;
 
     /* ********************** Constants ******************************** */
@@ -259,6 +273,11 @@
         const regex = /mid=(\d+)/;
         const match = regex.exec(link);
         return match ? match[1] : null;
+    }
+
+
+    function getPlayerIdFromContainer(player) {
+        return player?.querySelector("h2 span.player_id_span")?.innerText;
     }
 
     function isMatchInProgress(resultText) {
@@ -715,9 +734,9 @@
         return table;
     }
 
-    function createIconFromFontAwesomeClass(iconClass, title = "") {
+    function createIconFromFontAwesomeClass(classes = [], title = "") {
         const icon = document.createElement("i");
-        icon.classList.add("fa", iconClass);
+        icon.classList.add(...classes);
         icon.setAttribute("aria-hidden", "true");
         icon.style.cursor = "pointer";
         if (title) {
@@ -727,19 +746,23 @@
     }
 
     function createCogIcon(title = "") {
-        return createIconFromFontAwesomeClass("fa-cog", title);
+        return createIconFromFontAwesomeClass(["fa", "fa-cog"], title);
+    }
+
+    function createCommentIcon(title = "") {
+        return createIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
     }
 
     function createSearchIcon(title = "") {
-        return createIconFromFontAwesomeClass("fa-search", title);
+        return createIconFromFontAwesomeClass(["fa", "fa-search"], title);
     }
 
     function createRefreshIcon(title = "") {
-        return createIconFromFontAwesomeClass("fa-refresh", title);
+        return createIconFromFontAwesomeClass(["fa", "fa-refresh"], title);
     }
 
     function createLoadingIcon(title = "") {
-        const icon = createIconFromFontAwesomeClass("fa-spinner", title);
+        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner"], title);
         icon.classList.add("fa-spin");
         icon.style.curser = "unset";
         return icon;
@@ -2397,6 +2420,7 @@
             transfer: false,
             transfer_maxed: false,
             mz_predictor: false,
+            player_comment: false,
         };
         #transferOptions = {
             hide: true,
@@ -2424,6 +2448,7 @@
         async #initializeIndexedDb(name = "db") {
             this.#db = new Dexie(name);
             this.#db.version(1).stores({
+                comment: "[sport+pid]",
                 scout: "[sport+pid]",
                 hit: "[fid+pid],deadline",
                 filter: "&fid,totalHits,scoutHits,lastCheck",
@@ -2436,9 +2461,21 @@
         }
 
         async #clearIndexedDb() {
+            // TODO: clear comments?
             await this.#db.scout.clear();
             await this.#db.hit.clear();
             await this.#db.filter.clear();
+        }
+
+        async #fetchPlayerCommentFromIndexedDb(pid) {
+            const player = await this.#db.comment.get({ pid, sport: this.#sport });
+            return player.comment;
+        }
+
+        async #setPlayerCommentFromIndexedDb(pid, comment) {
+            if (pid) {
+                await this.#db.comment.put({ pid, sport: this.#sport, comment: comment ?? "" });
+            }
         }
 
         async #fetchScoutReportFromIndexedDb(pid) {
@@ -2653,6 +2690,10 @@
             return this.#settings.mz_predictor;
         }
 
+        mustAddPlayerComment() {
+            return this.#settings.player_comment;
+        }
+
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
         }
@@ -2800,6 +2841,7 @@
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
             this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
+            this.#settings.player_comment = GM_getValue("player_comment", false);
         }
 
         #saveSettings() {
@@ -2808,6 +2850,7 @@
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
             GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
+            GM_setValue("player_comment", this.#settings.player_comment);
         }
 
         updateSettings(settings) {
@@ -2830,6 +2873,21 @@
 
         isTransferFiltersEnabled() {
             return this.#settings.transfer;
+        }
+
+        // -------------------------------- Player Options -------------------------------------
+
+        addPlayerComment() {
+            const players = document.querySelectorAll(".playerContainer");
+            for (const player of players) {
+                const playerId = getPlayerIdFromContainer(player);
+                const commentIcon = createCommentIcon("MZY Comment");
+                commentIcon.classList.add("mazyar-player-comment-icon");
+                player.querySelector(".p_links").appendChild(commentIcon);
+                commentIcon.addEventListener("click", async () => {
+                    this.#displayPlayerComment(playerId);
+                });
+            }
         }
 
         // -------------------------------- Transfer Options -------------------------------------
@@ -2963,10 +3021,6 @@
             return true;
         }
 
-        getPlayerIdsFromTransferSearchResults(players) {
-            return [...players.querySelectorAll("h2 span.player_id_span")].map((player) => player.innerText);
-        }
-
         async #getFilterHitsByOffset(filter, offset = 0) {
             let totalHits = -1;
             let scoutHits = -1;
@@ -3092,6 +3146,7 @@
                 transfer: false,
                 transfer_maxed: false,
                 mz_predictor: false,
+                player_comment: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3146,6 +3201,7 @@
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
             const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
+            const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3166,6 +3222,7 @@
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
                     mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
+                    player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3182,6 +3239,7 @@
             div.appendChild(transfer);
             div.appendChild(transferMaxed);
             div.appendChild(mzPredictor);
+            div.appendChild(playerComment);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -3492,6 +3550,34 @@
             this.#replaceModalContent([div]);
         }
 
+        async #displayPlayerComment(playerId) {
+            this.#displayLoading("MZY Player Note");
+            const header = createMzStyledTitle("MZY Player Note");
+            const text = document.createElement("textarea");
+            const cancel = createMzStyledButton("Cancel", "red");
+            const save = createMzStyledButton("Save", "green");
+            const buttons = document.createElement("div");
+
+            buttons.classList.add("mazyar-flex-container-row");
+
+            text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
+            text.classList.add("mazyar-player-comment-textarea");
+
+            cancel.addEventListener("click", async () => {
+                this.hideModal();
+            });
+
+            save.addEventListener("click", async () => {
+                await this.#setPlayerCommentFromIndexedDb(playerId, text.value);
+                this.hideModal();
+            });
+
+            buttons.appendChild(cancel);
+            buttons.appendChild(save);
+
+            this.#replaceModalContent([header, text, buttons]);
+        }
+
         hideModal() {
             this.#modal.style.display = "none";
             this.#clearModalContent();
@@ -3521,6 +3607,9 @@
                 window.location.href = url.replace("#", "&");
             }
         } else if (uri.search("/?p=players") > -1) {
+            if (mazyar.mustAddPlayerComment()) {
+                mazyar.addPlayerComment();
+            }
             if (uri.search("/?p=players&sub=alt") > -1) {
                 squadSummaryInjectInfo();
             } else {
