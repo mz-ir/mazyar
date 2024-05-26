@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.14
+// @version      2.15
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -835,9 +835,11 @@
         target.parentNode.insertBefore(th, target);
     }
 
-    function addTotalSkillBallsToBody(player) {
+    function addTotalSkillBallsToBody(player, sport) {
         let sum = 0;
-        for (const skill of [...player.children].slice(6, 17)) {
+        const start = sport === "soccer" ? 6 : 7;
+        const end = 17;
+        for (const skill of [...player.children].slice(start, end)) {
             sum += Number(skill.innerText);
         }
         const td = document.createElement("td");
@@ -848,12 +850,13 @@
     }
 
     function addTotalSkillBalls() {
+        const sport = getSportType();
         const table = document.getElementById("playerAltViewTable");
         const players = table?.querySelectorAll("tbody tr");
         if (players?.[0]?.children?.length > 6) {
             addTotalSkillBallsToHeader(table)
             for (const player of players) {
-                addTotalSkillBallsToBody(player);
+                addTotalSkillBallsToBody(player, sport);
             }
         }
     }
