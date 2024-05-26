@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.15
+// @version      2.16
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -826,13 +826,41 @@
 
     /* *********************** Total Balls ********************************** */
 
+    function sortPlayerBySkillBalls(th) {
+        const table = document.getElementById("playerAltViewTable");
+        const players = table?.querySelectorAll("tbody tr");
+        if (table.ascending) {
+            table.ascending = false;
+            const icon = th.querySelector("i");
+            icon.classList.value = '';
+            icon.classList.add("fa-solid", "fa-sort-down");
+            icon.style.color = "#000";
+            const rows = [...players].sort((a, b) => a.skillBalls - b.skillBalls);
+            table.querySelector("tbody").replaceChildren(...rows);
+
+        } else {
+            table.ascending = true;
+            const icon = th.querySelector("i");
+            icon.classList.value = '';
+            icon.classList.add("fa-solid", "fa-sort-up");
+            icon.style.color = "#000";
+            const rows = [...players].sort((a, b) => b.skillBalls - a.skillBalls);
+            table.querySelector("tbody").replaceChildren(...rows);
+        }
+    }
+
     function addTotalSkillBallsToHeader(table) {
         const th = document.createElement("th");
         th.title = "Total Skill Balls";
-        th.innerText = "TB";
+        th.innerHTML = `<i aria-hidden="true" style="display: inline; font-size: 11px; color: #555;" class="fa-solid fa-sort"></i><span style="font-size: 11px;">T</span>`;
         th.style.textDecoration = "none";
+        th.style.textAlign = "right";
         const target = table.querySelector("thead tr th:last-child");
         target.parentNode.insertBefore(th, target);
+
+        th.addEventListener("click", () => {
+            sortPlayerBySkillBalls(th);
+        });
     }
 
     function addTotalSkillBallsToBody(player, sport) {
@@ -844,9 +872,11 @@
         }
         const td = document.createElement("td");
         td.innerText = sum.toString();
-        td.style.fontWeight = `${Math.ceil(900 * sum / 110)}`;
+        td.style.fontWeight = `${Math.ceil(900 * sum / 110)}`
+        td.style.textAlign = "right";
         const target = player.querySelector("td:last-child");
         target.parentNode.insertBefore(td, target);
+        player.skillBalls = sum;
     }
 
     function addTotalSkillBalls() {
@@ -854,7 +884,7 @@
         const table = document.getElementById("playerAltViewTable");
         const players = table?.querySelectorAll("tbody tr");
         if (players?.[0]?.children?.length > 6) {
-            addTotalSkillBallsToHeader(table)
+            addTotalSkillBallsToHeader(table);
             for (const player of players) {
                 addTotalSkillBallsToBody(player, sport);
             }
@@ -3627,7 +3657,6 @@
     /* *********************** Inject ********************************** */
 
     async function inject() {
-        console.log("test");
         GM_addStyle(styles);
 
         mazyar = new Mazyar();
