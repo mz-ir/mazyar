@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.13
+// @version      2.14
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -823,6 +823,41 @@
         return { toolbar, menu, transfer };
     }
 
+
+    /* *********************** Total Balls ********************************** */
+
+    function addTotalSkillBallsToHeader(table) {
+        const th = document.createElement("th");
+        th.title = "Total Skill Balls";
+        th.innerText = "TB";
+        th.style.textDecoration = "none";
+        const target = table.querySelector("thead tr th:last-child");
+        target.parentNode.insertBefore(th, target);
+    }
+
+    function addTotalSkillBallsToBody(player) {
+        let sum = 0;
+        for (const skill of [...player.children].slice(6, 17)) {
+            sum += Number(skill.innerText);
+        }
+        const td = document.createElement("td");
+        td.innerText = sum.toString();
+        td.style.fontWeight = `${Math.ceil(900 * sum / 110)}`;
+        const target = player.querySelector("td:last-child");
+        target.parentNode.insertBefore(td, target);
+    }
+
+    function addTotalSkillBalls() {
+        const table = document.getElementById("playerAltViewTable");
+        const players = table?.querySelectorAll("tbody tr");
+        if (players?.[0]?.children?.length > 6) {
+            addTotalSkillBallsToHeader(table)
+            for (const player of players) {
+                addTotalSkillBallsToBody(player);
+            }
+        }
+    }
+
     /* *********************** Squad Summary ********************************** */
 
     function squadSummaryGetInfo(players, sport = "soccer") {
@@ -1076,6 +1111,8 @@
     function squadSummaryInjectInfo() {
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
+            addTotalSkillBalls();
+
             const sport = getSportType(document);
             const currency = getClubCurrency(document);
             const players = getClubPlayers(document, currency);
