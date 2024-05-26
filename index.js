@@ -3627,7 +3627,6 @@
     /* *********************** Inject ********************************** */
 
     async function inject() {
-        console.log("test");
         GM_addStyle(styles);
 
         mazyar = new Mazyar();
