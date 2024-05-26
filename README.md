@@ -17,25 +17,29 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
 
 * Adds a table to the "Squad Summary" page, displaying player values in groups such as "Top 11 - U23."
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/SquadSummary.png" alt="Squad Summary" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/SquadSummary.png" alt="Squad Summary" style="border: 2px solid black;">
+
+* Also adds a column to the table for 'Total Skill Balls'. You can click on the header to sort your players based on their total skill balls.
+
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/TotalSkillBalls.png" alt="Total Skill Balls" style="border: 2px solid black;">
 
 ## Leagues & Cups Pages
 
 * Enhances the table by including top players' values and average age.
 * Click on the header to explore other age limits.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePageToggle.gif" alt="League" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/LeaguePageToggle.gif" alt="League" style="border: 2px solid black;">
 
 * Click on team value to see squad summary.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/LeaguePage.png" alt="League" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/LeaguePage.png" alt="League" style="border: 2px solid black;">
 
 ## Federation Front Page
 
 * Displays values of the top 11 players from each team member.
 * Sorts teams based on their total value.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/FrontPage.png" alt="Front Page" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/FrontPage.png" alt="Front Page" style="border: 2px solid black;">
 
 ## Clash Page
 
@@ -43,14 +47,14 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
 * Also adds top players value for each team.
 * Click the rank button to view the "squad summary" in place.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Clash.png" alt="Clash" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/Clash.png" alt="Clash" style="border: 2px solid black;">
 
 ## Match Page
 
 * Provides the starting lineup value and average age.
 * Adds a new column to display individual player values and ages.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/MatchPage.png" alt="Match" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/MatchPage.png" alt="Match" style="border: 2px solid black;">
 
 ## Official Leagues' Schedule
 
@@ -60,13 +64,13 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
   * Draw: Yellow
   * Incoming: Cyan
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/ScheduleColoring.gif" alt="Schedule" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/ScheduleColoring.gif" alt="Schedule" style="border: 2px solid black;">
 
 ## Fixture Page
 
 * Displays the final result of in-progress matches.
 
-<img src="https://raw.githubusercontent.com/mz-ir/mz-player-values/main/img/Fixtures.png" alt="Fixtures" style="border: 2px solid black;">
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/Fixtures.png" alt="Fixtures" style="border: 2px solid black;">
 
 ## About The Name
 
