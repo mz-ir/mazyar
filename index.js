@@ -1,29 +1,15 @@
-// ==UserScript==
-// @name         Mazyar
-// @namespace    http://tampermonkey.net/
-// @version      2.17
-// @description  Swiss Army knife for managerzone.com
-// @copyright    z7z from managerzone.com
-// @author       z7z from managerzone.com
-// @license      MIT
-// @run-at       document-idle
-// @noframes
-// @grant        GM_getValue
-// @grant        GM_setValue
-// @grant        GM_deleteValue
-// @grant        GM_addStyle
-// @grant        GM_xmlhttpRequest
-// @connect      self
-// @require      https://unpkg.com/dexie/dist/dexie.js
-// @match        https://www.managerzone.com/*
-// @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
-// @supportURL   https://github.com/mz-ir/mazyar
-// @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
-// @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
-// ==/UserScript==
-
 (async function () {
     "use strict";
+
+
+    /* *********************** Changelogs ********************************** */
+    const currentVersion = GM_info.script.version;
+    const changelogs = {
+        "2.19": ["- change 1", "- change 2"],
+        "2.18": ["- change 1", "- change 2"],
+        "2.17": ["- fixed total skill balls", "- change 2"],
+        "2.16": ["- change 1"],
+    }
 
     let mazyar = null;
 
@@ -2531,6 +2517,8 @@
 
             this.#addToolbar();
             this.#createModal();
+
+            this.#showChangelog();
         }
 
         async #initializeIndexedDb(name = "db") {
@@ -3666,6 +3654,30 @@
             buttons.appendChild(save);
 
             this.#replaceModalContent([header, text, buttons]);
+        }
+
+        #showChangelog() {
+            
+            const previousVersion = GM_getValue("previous_version", "");
+            if (!previousVersion) {
+                GM_setValue("previous_version", currentVersion);
+                return;
+            }
+
+            this.#displayLoading("Mazyar Changelog");
+            const header = createMzStyledTitle("Mazyar Changelog");
+            const text = document.createElement("div");
+
+            text.innerHTML = `<h3>${currentVersion}</h3>` + changelogs[currentVersion].join("<br>");
+            text.style.margin = "10px";
+            text.style.padding = "5px";
+            const close = createMzStyledButton("close", "green");
+
+            close.addEventListener("click", async () => {
+                this.hideModal();
+            });
+
+            this.#replaceModalContent([header, text, close]);
         }
 
         hideModal() {
