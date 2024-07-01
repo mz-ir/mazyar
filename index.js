@@ -3656,19 +3656,49 @@
             this.#replaceModalContent([header, text, buttons]);
         }
 
+        #getVersionNumbers(v) {
+            return v.split('.').map((i) => Number(i));
+        }
+
+        #getVersionsOfChangelog(changelogs) {
+            return Object.keys(changelogs).map((v) => this.#getVersionNumbers(v));
+        }
+
+        #isBetweenVersions(v = [0, 0], low = [0, 0], high = [0, 0]) {
+            return !((v[0] < low[0] || v[0] > high[0])
+                || (v[0] == low[0] && v[1] < low[1])
+                || (v[0] == high[0] && v[1] > high[1]));
+        }
+
         #showChangelog() {
-            
             const previousVersion = GM_getValue("previous_version", "");
             if (!previousVersion) {
                 GM_setValue("previous_version", currentVersion);
                 return;
+            }
+            if (previousVersion === currentVersion) {
+                return;
+            }
+            const previousNumbers = this.#getVersionNumbers(previousVersion);
+            const currentNumbers = this.#getVersionNumbers(currentVersion);
+            if (!this.#isBetweenVersions(previousNumbers, [0, 0], currentNumbers)) {
+                return;
+            }
+
+            let newChanges = '';
+            const versions = this.#getVersionsOfChangelog(changelogs);
+            for (const version of versions) {
+                if (this.#isBetweenVersions(version, previousNumbers, currentNumbers)) {
+                    const v = version.join('.');
+                    newChanges += `<h3>${v}</h3>` + changelogs[v]?.join("<br>");
+                }
             }
 
             this.#displayLoading("Mazyar Changelog");
             const header = createMzStyledTitle("Mazyar Changelog");
             const text = document.createElement("div");
 
-            text.innerHTML = `<h3>${currentVersion}</h3>` + changelogs[currentVersion].join("<br>");
+            text.innerHTML = newChanges;
             text.style.margin = "10px";
             text.style.padding = "5px";
             const close = createMzStyledButton("close", "green");
@@ -3678,6 +3708,7 @@
             });
 
             this.#replaceModalContent([header, text, close]);
+            GM_setValue("previous_version", currentVersion);
         }
 
         hideModal() {
