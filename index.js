@@ -2775,7 +2775,8 @@
         }
 
         mustHelpWithPredictor() {
-            return this.#settings.mz_predictor;
+            // return this.#settings.mz_predictor;
+            return false;
         }
 
         mustAddPlayerComment() {
@@ -3288,7 +3289,7 @@
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
-            const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
+            // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
@@ -3309,7 +3310,8 @@
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
-                    mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
+                    // mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
+                    mz_predictor: false,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
@@ -3326,7 +3328,7 @@
             div.appendChild(tableInjection);
             div.appendChild(transfer);
             div.appendChild(transferMaxed);
-            div.appendChild(mzPredictor);
+            // div.appendChild(mzPredictor);
             div.appendChild(playerComment);
             div.appendChild(clean);
             buttons.appendChild(cancel);
