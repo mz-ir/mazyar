@@ -1162,6 +1162,24 @@
         }
     }
 
+    function squadSummaryInjectInfoAfterChange() {
+        squadSummaryInjectInfo();
+
+        // Callback function to execute when mutations are observed
+        const callback = function (mutationsList) {
+            for (const mutation of mutationsList) {
+                if (mutation.type == "childList") {
+                    squadSummaryInjectInfo();
+                }
+            }
+        };
+        const observer = new MutationObserver(callback);
+        const players = document.getElementById("squad_summary");
+        observer.observe(players, {
+            childList: true,
+        });
+    }
+
     function squadSummaryWaitAndInjectInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
@@ -1170,7 +1188,7 @@
                 clearInterval(interval);
                 if (!table.SummaryInfoInjected) {
                     table.SummaryInfoInjected = true;
-                    squadSummaryInjectInfo();
+                    squadSummaryInjectInfoAfterChange();
                 }
             } else {
                 timeout -= step;
@@ -3680,7 +3698,7 @@
                 mazyar.addPlayerComment();
             }
             if (uri.search("/?p=players&sub=alt") > -1) {
-                squadSummaryInjectInfo();
+                squadSummaryInjectInfoAfterChange();
             } else {
                 squadSummaryAddClickCallbackForTab();
             }
