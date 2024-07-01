@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.16
+// @version      2.17
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -1162,6 +1162,24 @@
         }
     }
 
+    function squadSummaryInjectInfoAfterChange() {
+        squadSummaryInjectInfo();
+
+        // Callback function to execute when mutations are observed
+        const callback = function (mutationsList) {
+            for (const mutation of mutationsList) {
+                if (mutation.type == "childList") {
+                    squadSummaryInjectInfo();
+                }
+            }
+        };
+        const observer = new MutationObserver(callback);
+        const players = document.getElementById("squad_summary");
+        observer.observe(players, {
+            childList: true,
+        });
+    }
+
     function squadSummaryWaitAndInjectInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
@@ -1170,7 +1188,7 @@
                 clearInterval(interval);
                 if (!table.SummaryInfoInjected) {
                     table.SummaryInfoInjected = true;
-                    squadSummaryInjectInfo();
+                    squadSummaryInjectInfoAfterChange();
                 }
             } else {
                 timeout -= step;
@@ -2757,7 +2775,8 @@
         }
 
         mustHelpWithPredictor() {
-            return this.#settings.mz_predictor;
+            // return this.#settings.mz_predictor;
+            return false;
         }
 
         mustAddPlayerComment() {
@@ -3270,7 +3289,7 @@
             const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
             const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
-            const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
+            // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
@@ -3291,7 +3310,8 @@
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transfer.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
-                    mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
+                    // mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
+                    mz_predictor: false,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
@@ -3308,7 +3328,7 @@
             div.appendChild(tableInjection);
             div.appendChild(transfer);
             div.appendChild(transferMaxed);
-            div.appendChild(mzPredictor);
+            // div.appendChild(mzPredictor);
             div.appendChild(playerComment);
             div.appendChild(clean);
             buttons.appendChild(cancel);
@@ -3680,7 +3700,7 @@
                 mazyar.addPlayerComment();
             }
             if (uri.search("/?p=players&sub=alt") > -1) {
-                squadSummaryInjectInfo();
+                squadSummaryInjectInfoAfterChange();
             } else {
                 squadSummaryAddClickCallbackForTab();
             }
