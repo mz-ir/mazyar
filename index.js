@@ -5,10 +5,15 @@
     /* *********************** Changelogs ********************************** */
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.19": ["- change 1", "- change 2"],
-        "2.18": ["- change 1", "- change 2"],
-        "2.17": ["- fixed total skill balls", "- change 2"],
-        "2.16": ["- change 1"],
+        "2.18": ["<b>[new]</b> show changelog after script update",
+            "<b>[improve]</b> change style of comment icon"],
+        "2.17": ["<b>[fix]</b> fixed total skill balls fixed total skill balls fixed total skill balls fixed total skill balls fixed total skill balls"],
+        "2.16": ["<b>[fix]</b> fixed total skill balls"],
+        "2.15": ["<b>[fix]</b> fixed total skill balls"],
+        "2.14": ["<b>[fix]</b> fixed total skill balls"],
+        "2.13": ["<b>[fix]</b> fixed total skill balls"],
+        "2.12": ["<b>[fix]</b> fixed total skill balls"],
+        "2.11": ["<b>[fix]</b> fixed total skill balls"],
     }
 
     let mazyar = null;
@@ -3664,43 +3669,77 @@
             return Object.keys(changelogs).map((v) => this.#getVersionNumbers(v));
         }
 
+        // greater than low, lesser than high (boundaries excluded) 
         #isBetweenVersions(v = [0, 0], low = [0, 0], high = [0, 0]) {
             return !((v[0] < low[0] || v[0] > high[0])
-                || (v[0] == low[0] && v[1] < low[1])
-                || (v[0] == high[0] && v[1] > high[1]));
+                || (v[0] == low[0] && v[1] <= low[1])
+                || (v[0] == high[0] && v[1] >= high[1]));
+        }
+
+        #isVersionLesserThan(version = [0, 0], base = [0, 0]) {
+            return version[0] < base[0] ||
+                (version[0] === base[0] && version[1] < base[1]);
+        }
+
+        #isVersionGreaterThan(version = [0, 0], base = [0, 0]) {
+            return version[0] > base[0] ||
+                (version[0] === base[0] && version[1] > base[1]);
         }
 
         #showChangelog() {
+            GM_setValue("previous_version", "2.0");
             const previousVersion = GM_getValue("previous_version", "");
             if (!previousVersion) {
                 GM_setValue("previous_version", currentVersion);
                 return;
             }
-            if (previousVersion === currentVersion) {
-                return;
-            }
-            const previousNumbers = this.#getVersionNumbers(previousVersion);
-            const currentNumbers = this.#getVersionNumbers(currentVersion);
-            if (!this.#isBetweenVersions(previousNumbers, [0, 0], currentNumbers)) {
+            const previous = this.#getVersionNumbers(previousVersion);
+            const current = this.#getVersionNumbers(currentVersion);
+            if (!this.#isVersionLesserThan(previous, current)) {
                 return;
             }
 
-            let newChanges = '';
+            const headHTML = `<b>Mazyar</b> is updated<br>` +
+                `from <b style="color: red;">v${previousVersion}</b><span> to </span><b style="color: blue;">v${currentVersion}</b>`;
+            const head = document.createElement("div");
+            head.innerHTML = headHTML;
+            head.style.textAlign = "center";
+
+            const changesTitle = document.createElement("div");
+            changesTitle.innerHTML = `<b>Changelog</b>`;
+            changesTitle.style.justifySelf = "left";
+            changesTitle.style.marginTop = "1rem;";
+
+            let changesHTML = '';
             const versions = this.#getVersionsOfChangelog(changelogs);
             for (const version of versions) {
-                if (this.#isBetweenVersions(version, previousNumbers, currentNumbers)) {
+                if (this.#isVersionGreaterThan(version, current)) {
+                    continue;
+                }
+                if (this.#isVersionGreaterThan(version, previous)) {
                     const v = version.join('.');
-                    newChanges += `<h3>${v}</h3>` + changelogs[v]?.join("<br>");
+                    changesHTML += `<div style="margin-top: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>` + changelogs[v]?.join("</li><li>") + "</li></ul></div>";
                 }
             }
+            const changes = document.createElement("div");
+            changes.innerHTML = changesHTML;
+            changes.style.maxHeight = "320px";
+            changes.style.maxWidth = "320px";
+            changes.style.paddingRight = "30px";
+            changes.style.backgroundColor = "khaki";
+            changes.style.padding = "5px";
+            changes.style.flex = "1";
+            changes.style.overflowY = "scroll"; // make it scrollable
 
-            this.#displayLoading("Mazyar Changelog");
-            const header = createMzStyledTitle("Mazyar Changelog");
             const text = document.createElement("div");
-
-            text.innerHTML = newChanges;
+            text.classList.add("mazyar-flex-container");
             text.style.margin = "10px";
             text.style.padding = "5px";
+            text.appendChild(head);
+            text.appendChild(changesTitle);
+            text.appendChild(changes);
+
+            const header = createMzStyledTitle("Mazyar Changelog");
             const close = createMzStyledButton("close", "green");
 
             close.addEventListener("click", async () => {
