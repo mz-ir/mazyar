@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.18
+// @version      2.19
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,8 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
+            "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
         "2.18": ["<b>[new]</b> show changelog after script update.",
             "<b>[improve]</b> change icon style of player's comment."],
         "2.17": ["<b>[fix]</b> fixed total skill balls"],
@@ -760,6 +762,14 @@
         return icon;
     }
 
+    function createSharedIcon(title) {
+        return createIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
+    }
+
+    function createMarketIcon(title) {
+        return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+    }
+
     function createCogIcon(title = "") {
         return createIconFromFontAwesomeClass(["fa", "fa-cog"], title);
     }
@@ -838,6 +848,93 @@
         return { toolbar, menu, transfer };
     }
 
+
+
+    /* *********************** Shared Skills ********************************** */
+
+    async function fetchPlayerFullInfo(teamId) {
+        const url = `https://www.managerzone.com/?p=players&tid=${teamId}`;
+        const resp = await fetch(url).catch((error) => {
+            console.log(error);
+        });
+
+        if (resp) {
+            const info = {};
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(await resp.text(), "text/html");
+            const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
+            for (const player of players) {
+                const playerId = player.querySelector("span.player_id_span")?.innerText;
+                const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
+                info[playerId] = {
+                    detail: player,
+                    shared: !!player.querySelector("i.special_player.fa-share-alt"),
+                    market: !!inMarket,
+                    marketLink: inMarket?.href,
+                }
+            }
+            return info;
+        }
+        return null;
+    }
+
+    function addSharedToHeaderOfSquadSummary(table) {
+        const th = document.createElement("th");
+        th.style.width = "0px";
+        const target = table.querySelector("thead tr th:nth-child(2)");
+        target.parentNode.insertBefore(th, target);
+    }
+
+    function addSharedToBodyOfSquadSummary(player, info) {
+        const td = document.createElement("td");
+        if (info.shared) {
+            const icon = createSharedIcon("Click to see player profile.");
+            icon.style.fontSize = "13px";
+            icon.classList.add("special_player");
+            icon.addEventListener("click", () => {
+                mazyar.showPlayerInModal(info.detail);
+            })
+            td.appendChild(icon);
+        }
+        if (info.market) {
+            const icon = createMarketIcon("Player is in Transfer Market.");
+            icon.style.fontSize = "13px";
+            icon.classList.add("special_player");
+            const link = document.createElement("a");
+            link.href = info.marketLink;
+            link.target = "_blank";
+            link.appendChild(icon);
+            td.appendChild(link);
+        }
+        const target = player.querySelector("td:nth-child(2)");
+        target.parentNode.insertBefore(td, target);
+    }
+
+    async function injectSharedSkills() {
+        const table = document.getElementById("playerAltViewTable");
+        const players = table?.querySelectorAll("tbody tr");
+        const ownView = players?.[0]?.children?.length > 6;
+        if (ownView) {
+            return;
+        }
+        const text = document.createElement("div");
+        text.innerHTML = `<b>MZY:</b> fetching players' info ...`;
+        table.parentNode.insertBefore(text, table);
+
+        const teamId = extractTeamId(document.baseURI);
+        const playersInfo = await fetchPlayerFullInfo(teamId);
+        if (!playersInfo) {
+            text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: red;"> failed</span>.`;
+            return;
+        }
+        text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: green;"> done</span>.`;
+        addSharedToHeaderOfSquadSummary(table);
+        for (const player of players) {
+            const name = player.querySelector("a");
+            const playerId = extractPlayerID(name?.href);
+            addSharedToBodyOfSquadSummary(player, playersInfo[playerId]);
+        }
+    }
 
     /* *********************** Total Balls ********************************** */
 
@@ -1160,7 +1257,7 @@
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
             addTotalSkillBalls();
-
+            injectSharedSkills();
             const sport = getSportType(document);
             const currency = getClubCurrency(document);
             const players = getClubPlayers(document, currency);
@@ -3778,6 +3875,23 @@
             });
 
             this.#replaceModalContent([header, text, close]);
+        }
+
+        showPlayerInModal(playerView) {
+            const player = document.createElement("div");
+            player.style.margin = "5px";
+            player.style.padding = "0px";
+            player.style.backgroundColor = "wheat";
+            player.appendChild(playerView);
+
+            const header = createMzStyledTitle("MZY Player View");
+            const close = createMzStyledButton("close", "green");
+
+            close.addEventListener("click", async () => {
+                this.hideModal();
+            });
+
+            this.#replaceModalContent([header, player, close]);
         }
 
         hideModal() {
