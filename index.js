@@ -3669,13 +3669,6 @@
             return Object.keys(changelogs).map((v) => this.#getVersionNumbers(v));
         }
 
-        // greater than low, lesser than high (boundaries excluded) 
-        #isBetweenVersions(v = [0, 0], low = [0, 0], high = [0, 0]) {
-            return !((v[0] < low[0] || v[0] > high[0])
-                || (v[0] == low[0] && v[1] <= low[1])
-                || (v[0] == high[0] && v[1] >= high[1]));
-        }
-
         #isVersionLesserThan(version = [0, 0], base = [0, 0]) {
             return version[0] < base[0] ||
                 (version[0] === base[0] && version[1] < base[1]);
@@ -3687,7 +3680,6 @@
         }
 
         #showChangelog() {
-            GM_setValue("previous_version", "2.0");
             const previousVersion = GM_getValue("previous_version", "");
             if (!previousVersion) {
                 GM_setValue("previous_version", currentVersion);
@@ -3706,9 +3698,11 @@
             head.style.textAlign = "center";
 
             const changesTitle = document.createElement("div");
-            changesTitle.innerHTML = `<b>Changelog</b>`;
-            changesTitle.style.justifySelf = "left";
-            changesTitle.style.marginTop = "1rem;";
+            changesTitle.innerHTML = `<b>Changelog:</b>`;
+            changesTitle.style.margin = "5px";
+            changesTitle.style.width = "100%";
+            changesTitle.style.width = "100%";
+            changesTitle.style.textAlign = "left";
 
             let changesHTML = '';
             const versions = this.#getVersionsOfChangelog(changelogs);
@@ -3718,7 +3712,8 @@
                 }
                 if (this.#isVersionGreaterThan(version, previous)) {
                     const v = version.join('.');
-                    changesHTML += `<div style="margin-top: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>` + changelogs[v]?.join("</li><li>") + "</li></ul></div>";
+                    changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
+                        + changelogs[v]?.join("</li><li>") + "</li></ul></div>";
                 }
             }
             const changes = document.createElement("div");
@@ -3739,15 +3734,15 @@
             text.appendChild(changesTitle);
             text.appendChild(changes);
 
-            const header = createMzStyledTitle("Mazyar Changelog");
+            const header = createMzStyledTitle("MZY Notice");
             const close = createMzStyledButton("close", "green");
 
             close.addEventListener("click", async () => {
+                GM_setValue("previous_version", currentVersion);
                 this.hideModal();
             });
 
             this.#replaceModalContent([header, text, close]);
-            GM_setValue("previous_version", currentVersion);
         }
 
         hideModal() {
