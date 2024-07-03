@@ -1,19 +1,35 @@
+// ==UserScript==
+// @name         Mazyar
+// @namespace    http://tampermonkey.net/
+// @version      2.18
+// @description  Swiss Army knife for managerzone.com
+// @copyright    z7z from managerzone.com
+// @author       z7z from managerzone.com
+// @license      MIT
+// @run-at       document-idle
+// @noframes
+// @grant        GM_getValue
+// @grant        GM_setValue
+// @grant        GM_deleteValue
+// @grant        GM_addStyle
+// @grant        GM_xmlhttpRequest
+// @connect      self
+// @require      https://unpkg.com/dexie/dist/dexie.js
+// @match        https://www.managerzone.com/*
+// @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
+// @supportURL   https://github.com/mz-ir/mazyar
+// ==/UserScript==
+
 (async function () {
     "use strict";
 
-
     /* *********************** Changelogs ********************************** */
+
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.18": ["<b>[new]</b> show changelog after script update",
-            "<b>[improve]</b> change style of comment icon"],
-        "2.17": ["<b>[fix]</b> fixed total skill balls fixed total skill balls fixed total skill balls fixed total skill balls fixed total skill balls"],
-        "2.16": ["<b>[fix]</b> fixed total skill balls"],
-        "2.15": ["<b>[fix]</b> fixed total skill balls"],
-        "2.14": ["<b>[fix]</b> fixed total skill balls"],
-        "2.13": ["<b>[fix]</b> fixed total skill balls"],
-        "2.12": ["<b>[fix]</b> fixed total skill balls"],
-        "2.11": ["<b>[fix]</b> fixed total skill balls"],
+        "2.18": ["<b>[new]</b> show changelog after script update.",
+            "<b>[improve]</b> change icon style of player's comment."],
+        "2.17": ["<b>[fix]</b> fixed total skill balls"],
     }
 
     let mazyar = null;
@@ -163,7 +179,15 @@
         color: fuchsia;
     }
 
-    .mazyar-player-comment-icon {
+    .mazyar-player-comment-icon-inactive {
+        position: relative;
+        top: -0.2rem;
+        margin-left: 0.3rem;
+        font-size: 1.4rem;
+        color: lightblue;
+    }
+
+    .mazyar-player-comment-icon-active {
         position: relative;
         top: -0.2rem;
         margin-left: 0.3rem;
@@ -2553,7 +2577,7 @@
             return player?.comment ?? "";
         }
 
-        async #setPlayerCommentFromIndexedDb(pid, comment) {
+        async #setPlayerCommentInIndexedDb(pid, comment) {
             if (pid) {
                 await this.#db.comment.put({ pid, sport: this.#sport, comment: comment ?? "" });
             }
@@ -2959,15 +2983,19 @@
 
         // -------------------------------- Player Options -------------------------------------
 
-        addPlayerComment() {
+        async addPlayerComment() {
             const players = document.querySelectorAll(".playerContainer");
             for (const player of players) {
                 const playerId = getPlayerIdFromContainer(player);
                 const commentIcon = createCommentIcon("MZY Comment");
-                commentIcon.classList.add("mazyar-player-comment-icon");
+                if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
+                    commentIcon.classList.add("mazyar-player-comment-icon-active");
+                } else {
+                    commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+                }
                 player.querySelector(".p_links").appendChild(commentIcon);
-                commentIcon.addEventListener("click", async () => {
-                    this.#displayPlayerComment(playerId);
+                commentIcon.addEventListener("click", async (event) => {
+                    this.#displayPlayerComment(event?.target, playerId);
                 });
             }
         }
@@ -3633,7 +3661,7 @@
             this.#replaceModalContent([div]);
         }
 
-        async #displayPlayerComment(playerId) {
+        async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
             const header = createMzStyledTitle("MZY Player Note");
             const text = document.createElement("textarea");
@@ -3651,7 +3679,14 @@
             });
 
             save.addEventListener("click", async () => {
-                await this.#setPlayerCommentFromIndexedDb(playerId, text.value);
+                await this.#setPlayerCommentInIndexedDb(playerId, text.value);
+                if (text.value) {
+                    target?.classList.remove("mazyar-player-comment-icon-inactive");
+                    target?.classList.add("mazyar-player-comment-icon-active");
+                } else {
+                    target?.classList.add("mazyar-player-comment-icon-inactive");
+                    target?.classList.remove("mazyar-player-comment-icon-active");
+                }
                 this.hideModal();
             });
 
