@@ -869,6 +869,31 @@
         return null;
     }
 
+    function addSharedToHeaderOfSquadSummary(table) {
+        const th = document.createElement("th");
+        th.style.width = "0px";
+        const target = table.querySelector("thead tr th:nth-child(2)");
+        target.parentNode.insertBefore(th, target);
+    }
+
+    function addSharedToBodyOfSquadSummary(player, info) {
+        const td = document.createElement("td");
+        if (info.shared) {
+            const icon = createSharedIcon("Click to see player profile.");
+            icon.style.fontSize = "13px";
+            icon.classList.add("special_player");
+            icon.addEventListener("click", () => {
+                mazyar.showPlayerInModal(info.detail);
+            })
+            td.appendChild(icon);
+        } else {
+            const span = document.createElement("span");
+            td.appendChild(span);
+        }
+        const target = player.querySelector("td:nth-child(2)");
+        target.parentNode.insertBefore(td, target);
+    }
+
     async function injectSharedSkills() {
         const table = document.getElementById("playerAltViewTable");
         const players = table?.querySelectorAll("tbody tr");
@@ -876,25 +901,22 @@
         if (ownView) {
             return;
         }
+        const text = document.createElement("div");
+        text.innerHTML = `<b>MZY:</b> fetching players' info ...`;
+        table.parentNode.insertBefore(text, table);
 
         const teamId = extractTeamId(document.baseURI);
         const playersInfo = await fetchPlayerFullInfo(teamId);
         if (!playersInfo) {
+            text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: red;"> failed</span>.`;
             return;
         }
-
+        text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: green;"> done</span>.`;
+        addSharedToHeaderOfSquadSummary(table);
         for (const player of players) {
-            const playerId = extractPlayerID(player.querySelector("a")?.href);
-            if (playersInfo[playerId]?.shared) {
-                const icon = createSharedIcon("Click to see player profile.");
-                icon.style.marginLeft = "10px";
-                icon.style.fontSize = "13px";
-                icon.classList.add("special_player");
-                player.childNodes[1].appendChild(icon);
-                icon.addEventListener("click", () => {
-                    mazyar.showPlayerInModal(playersInfo[playerId].detail);
-                })
-            }
+            const name = player.querySelector("a");
+            const playerId = extractPlayerID(name?.href);
+            addSharedToBodyOfSquadSummary(player, playersInfo[playerId]);
         }
     }
 
