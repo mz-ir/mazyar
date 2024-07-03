@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.18
+// @version      2.19
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,8 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
+            "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
         "2.18": ["<b>[new]</b> show changelog after script update.",
             "<b>[improve]</b> change icon style of player's comment."],
         "2.17": ["<b>[fix]</b> fixed total skill balls"],
