@@ -764,6 +764,10 @@
         return createIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
     }
 
+    function createMarketIcon(title) {
+        return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+    }
+
     function createCogIcon(title = "") {
         return createIconFromFontAwesomeClass(["fa", "fa-cog"], title);
     }
@@ -859,9 +863,12 @@
             const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
             for (const player of players) {
                 const playerId = player.querySelector("span.player_id_span")?.innerText;
+                const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
                 info[playerId] = {
                     detail: player,
                     shared: !!player.querySelector("i.special_player.fa-share-alt"),
+                    market: !!inMarket,
+                    marketLink: inMarket?.href,
                 }
             }
             return info;
@@ -886,9 +893,16 @@
                 mazyar.showPlayerInModal(info.detail);
             })
             td.appendChild(icon);
-        } else {
-            const span = document.createElement("span");
-            td.appendChild(span);
+        }
+        if (info.market) {
+            const icon = createMarketIcon("Player is in Transfer Market.");
+            icon.style.fontSize = "13px";
+            icon.classList.add("special_player");
+            const link = document.createElement("a");
+            link.href = info.marketLink;
+            link.target = "_blank";
+            link.appendChild(icon);
+            td.appendChild(link);
         }
         const target = player.querySelector("td:nth-child(2)");
         target.parentNode.insertBefore(td, target);
