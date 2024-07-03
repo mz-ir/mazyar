@@ -760,6 +760,10 @@
         return icon;
     }
 
+    function createSharedIcon(title) {
+        return createIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
+    }
+
     function createCogIcon(title = "") {
         return createIconFromFontAwesomeClass(["fa", "fa-cog"], title);
     }
@@ -838,6 +842,61 @@
         return { toolbar, menu, transfer };
     }
 
+
+
+    /* *********************** Shared Skills ********************************** */
+
+    async function fetchPlayerFullInfo(teamId) {
+        const url = `https://www.managerzone.com/?p=players&tid=${teamId}`;
+        const resp = await fetch(url).catch((error) => {
+            console.log(error);
+        });
+
+        if (resp) {
+            const info = {};
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(await resp.text(), "text/html");
+            const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
+            for (const player of players) {
+                const playerId = player.querySelector("span.player_id_span")?.innerText;
+                info[playerId] = {
+                    detail: player,
+                    shared: !!player.querySelector("i.special_player.fa-share-alt"),
+                }
+            }
+            return info;
+        }
+        return null;
+    }
+
+    async function injectSharedSkills() {
+        const table = document.getElementById("playerAltViewTable");
+        const players = table?.querySelectorAll("tbody tr");
+        const ownView = players?.[0]?.children?.length > 6;
+        if (ownView) {
+            return;
+        }
+
+        const teamId = extractTeamId(document.baseURI);
+        const playersInfo = await fetchPlayerFullInfo(teamId);
+        if (!playersInfo) {
+            return;
+        }
+
+        for (const player of players) {
+            const playerId = extractPlayerID(player.querySelector("a")?.href);
+            if (playersInfo[playerId]?.shared) {
+                const icon = createSharedIcon("Click to see player profile.");
+                icon.style.marginLeft = "10px";
+                icon.style.fontSize = "13px";
+                icon.classList.add("special_player");
+                player.childNodes[1].appendChild(icon);
+                icon.addEventListener("click", () => {
+                    mazyar.showPlayerInModal(playersInfo[playerId].detail);
+                })
+            }
+        }
+    }
 
     /* *********************** Total Balls ********************************** */
 
@@ -1160,7 +1219,7 @@
         const place = document.querySelector("table#playerAltViewTable");
         if (place) {
             addTotalSkillBalls();
-
+            injectSharedSkills();
             const sport = getSportType(document);
             const currency = getClubCurrency(document);
             const players = getClubPlayers(document, currency);
@@ -3778,6 +3837,23 @@
             });
 
             this.#replaceModalContent([header, text, close]);
+        }
+
+        showPlayerInModal(playerView) {
+            const player = document.createElement("div");
+            player.style.margin = "5px";
+            player.style.padding = "0px";
+            player.style.backgroundColor = "wheat";
+            player.appendChild(playerView);
+
+            const header = createMzStyledTitle("MZY Player View");
+            const close = createMzStyledButton("close", "green");
+
+            close.addEventListener("click", async () => {
+                this.hideModal();
+            });
+
+            this.#replaceModalContent([header, player, close]);
         }
 
         hideModal() {
