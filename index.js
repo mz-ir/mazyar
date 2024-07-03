@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.17
+// @version      2.18
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -18,12 +18,19 @@
 // @match        https://www.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
-// @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
-// @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
 // ==/UserScript==
 
 (async function () {
     "use strict";
+
+    /* *********************** Changelogs ********************************** */
+
+    const currentVersion = GM_info.script.version;
+    const changelogs = {
+        "2.18": ["<b>[new]</b> show changelog after script update.",
+            "<b>[improve]</b> change icon style of player's comment."],
+        "2.17": ["<b>[fix]</b> fixed total skill balls"],
+    }
 
     let mazyar = null;
 
@@ -172,7 +179,15 @@
         color: fuchsia;
     }
 
-    .mazyar-player-comment-icon {
+    .mazyar-player-comment-icon-inactive {
+        position: relative;
+        top: -0.2rem;
+        margin-left: 0.3rem;
+        font-size: 1.4rem;
+        color: lightblue;
+    }
+
+    .mazyar-player-comment-icon-active {
         position: relative;
         top: -0.2rem;
         margin-left: 0.3rem;
@@ -2531,6 +2546,8 @@
 
             this.#addToolbar();
             this.#createModal();
+
+            this.#showChangelog();
         }
 
         async #initializeIndexedDb(name = "db") {
@@ -2560,7 +2577,7 @@
             return player?.comment ?? "";
         }
 
-        async #setPlayerCommentFromIndexedDb(pid, comment) {
+        async #setPlayerCommentInIndexedDb(pid, comment) {
             if (pid) {
                 await this.#db.comment.put({ pid, sport: this.#sport, comment: comment ?? "" });
             }
@@ -2966,15 +2983,19 @@
 
         // -------------------------------- Player Options -------------------------------------
 
-        addPlayerComment() {
+        async addPlayerComment() {
             const players = document.querySelectorAll(".playerContainer");
             for (const player of players) {
                 const playerId = getPlayerIdFromContainer(player);
                 const commentIcon = createCommentIcon("MZY Comment");
-                commentIcon.classList.add("mazyar-player-comment-icon");
+                if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
+                    commentIcon.classList.add("mazyar-player-comment-icon-active");
+                } else {
+                    commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+                }
                 player.querySelector(".p_links").appendChild(commentIcon);
-                commentIcon.addEventListener("click", async () => {
-                    this.#displayPlayerComment(playerId);
+                commentIcon.addEventListener("click", async (event) => {
+                    this.#displayPlayerComment(event?.target, playerId);
                 });
             }
         }
@@ -3640,7 +3661,7 @@
             this.#replaceModalContent([div]);
         }
 
-        async #displayPlayerComment(playerId) {
+        async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
             const header = createMzStyledTitle("MZY Player Note");
             const text = document.createElement("textarea");
@@ -3658,7 +3679,14 @@
             });
 
             save.addEventListener("click", async () => {
-                await this.#setPlayerCommentFromIndexedDb(playerId, text.value);
+                await this.#setPlayerCommentInIndexedDb(playerId, text.value);
+                if (text.value) {
+                    target?.classList.remove("mazyar-player-comment-icon-inactive");
+                    target?.classList.add("mazyar-player-comment-icon-active");
+                } else {
+                    target?.classList.add("mazyar-player-comment-icon-inactive");
+                    target?.classList.remove("mazyar-player-comment-icon-active");
+                }
                 this.hideModal();
             });
 
@@ -3666,6 +3694,90 @@
             buttons.appendChild(save);
 
             this.#replaceModalContent([header, text, buttons]);
+        }
+
+        #getVersionNumbers(v) {
+            return v.split('.').map((i) => Number(i));
+        }
+
+        #getVersionsOfChangelog(changelogs) {
+            return Object.keys(changelogs).map((v) => this.#getVersionNumbers(v));
+        }
+
+        #isVersionLesserThan(version = [0, 0], base = [0, 0]) {
+            return version[0] < base[0] ||
+                (version[0] === base[0] && version[1] < base[1]);
+        }
+
+        #isVersionGreaterThan(version = [0, 0], base = [0, 0]) {
+            return version[0] > base[0] ||
+                (version[0] === base[0] && version[1] > base[1]);
+        }
+
+        #showChangelog() {
+            const previousVersion = GM_getValue("previous_version", "");
+            if (!previousVersion) {
+                GM_setValue("previous_version", currentVersion);
+                return;
+            }
+            const previous = this.#getVersionNumbers(previousVersion);
+            const current = this.#getVersionNumbers(currentVersion);
+            if (!this.#isVersionLesserThan(previous, current)) {
+                return;
+            }
+
+            const headHTML = `<b>Mazyar</b> is updated<br>` +
+                `from <b style="color: red;">v${previousVersion}</b><span> to </span><b style="color: blue;">v${currentVersion}</b>`;
+            const head = document.createElement("div");
+            head.innerHTML = headHTML;
+            head.style.textAlign = "center";
+
+            const changesTitle = document.createElement("div");
+            changesTitle.innerHTML = `<b>Changelog:</b>`;
+            changesTitle.style.margin = "5px";
+            changesTitle.style.width = "100%";
+            changesTitle.style.width = "100%";
+            changesTitle.style.textAlign = "left";
+
+            let changesHTML = '';
+            const versions = this.#getVersionsOfChangelog(changelogs);
+            for (const version of versions) {
+                if (this.#isVersionGreaterThan(version, current)) {
+                    continue;
+                }
+                if (this.#isVersionGreaterThan(version, previous)) {
+                    const v = version.join('.');
+                    changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
+                        + changelogs[v]?.join("</li><li>") + "</li></ul></div>";
+                }
+            }
+            const changes = document.createElement("div");
+            changes.innerHTML = changesHTML;
+            changes.style.maxHeight = "320px";
+            changes.style.maxWidth = "320px";
+            changes.style.paddingRight = "30px";
+            changes.style.backgroundColor = "khaki";
+            changes.style.padding = "5px";
+            changes.style.flex = "1";
+            changes.style.overflowY = "scroll"; // make it scrollable
+
+            const text = document.createElement("div");
+            text.classList.add("mazyar-flex-container");
+            text.style.margin = "10px";
+            text.style.padding = "5px";
+            text.appendChild(head);
+            text.appendChild(changesTitle);
+            text.appendChild(changes);
+
+            const header = createMzStyledTitle("MZY Notice");
+            const close = createMzStyledButton("close", "green");
+
+            close.addEventListener("click", async () => {
+                GM_setValue("previous_version", currentVersion);
+                this.hideModal();
+            });
+
+            this.#replaceModalContent([header, text, close]);
         }
 
         hideModal() {
