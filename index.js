@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.21
+// @version      2.22
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,8 +27,9 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.21": ["<b>[new]</b> add total trophies count in club page."],
-        "2.20": ["<b>[new]</b> add 'Days at this club' counter to player profile."],
+        "2.22": ["<b>[new]</b> Hire Coaches: adds requested salary of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
+        "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
+        "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
         "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
             "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
         "2.18": ["<b>[new]</b> show changelog after script update.",
@@ -2675,6 +2676,84 @@
         }
     }
 
+    /* *********************** Trainers ********************************** */
+
+    function trainersAddColumns(table) {
+        const headerRow = table.querySelector('thead tr');
+        const thSalary = document.createElement('th');
+        thSalary.textContent = 'SalaryRange';
+        headerRow?.appendChild(thSalary);
+
+        const thWeeks = document.createElement('th');
+        thWeeks.textContent = 'Weeks';
+        headerRow?.appendChild(thWeeks);
+
+        const rows = table.querySelectorAll('tbody tr:not(.minified-view)');
+        rows.forEach(row => {
+            const salaryCell = row.insertCell(-1);
+            salaryCell.textContent = 'Loading...';
+            salaryCell.style.fontStyle = 'italic';
+
+            const weeksCell = row.insertCell(-1);
+            weeksCell.textContent = 'Loading...';
+            weeksCell.style.fontStyle = 'italic';
+        });
+    }
+
+    function trainersFetchSalaryAndWeeks(coachId, salaryCell, weeksCell) {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: `https://www.managerzone.com/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
+            onload: function (response) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(response.responseText, "text/html");
+                const salaryElement = doc.querySelector('td#salary_range nobr');
+                const weeksElement = doc.querySelector('td#weeks_range nobr');
+
+                const salaryText = salaryElement ? salaryElement.textContent.trim() : 'N/A';
+                salaryCell.textContent = salaryText;
+                salaryCell.style.fontStyle = 'normal';
+
+                const weeksText = weeksElement ? weeksElement.textContent.trim() : 'N/A';
+                weeksCell.textContent = weeksText;
+                weeksCell.style.fontStyle = 'normal';
+            }
+        });
+    }
+
+    function trainersUpdateSalariesAndWeeks(table) {
+        trainersAddColumns(table);
+        const rows = table?.querySelectorAll('tbody tr:not(.minified-view)');
+        rows.forEach(row => {
+            const linkElement = row.querySelector('td a[href*="cid="]');
+            if (linkElement) {
+                const urlParams = new URLSearchParams(linkElement.search);
+                const coachId = urlParams.get('cid');
+                const salaryCell = row.cells[row.cells.length - 2];
+                const weeksCell = row.cells[row.cells.length - 1];
+                trainersFetchSalaryAndWeeks(coachId, salaryCell, weeksCell);
+            }
+        });
+    }
+
+    function trainersAddRequestedSalaries() {
+        const callback = () => {
+            const table = document.getElementById("coaches_list");
+            if (table && !table.injecting) {
+                table.injecting = true;
+                trainersUpdateSalariesAndWeeks(table);
+            }
+        };
+
+        // Create an observer instance linked to the callback function
+        const observer = new MutationObserver(callback);
+
+        // Start observing the target node for configured mutations
+        const config = { childList: true, subtree: true };
+        const target = document.querySelector('div.in_page_navigation_top');
+        observer.observe(target, config);
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -4026,6 +4105,8 @@
             }
         } else if (isVisitingTeamPage()) {
             addTrophyCountToClubPage();
+        } else if (uri.search("/?p=trainers") > -1) {
+            trainersAddRequestedSalaries();
         }
     }
 
