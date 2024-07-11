@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.20
+// @version      2.21
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.21": ["<b>[new]</b> add total trophies count in club page."],
         "2.20": ["<b>[new]</b> add 'Days at this club' counter to player profile."],
         "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
             "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
@@ -2630,6 +2631,50 @@
         Promise.all(jobs);
     }
 
+    /* *********************** Club Page ********************************** */
+
+    function countTrophies(doc) {
+        const trophies = doc.querySelectorAll("div.trophy-wrapper:not(.icon)");
+        return [...trophies].map((el) => {
+            const text = el.innerText.trim();
+            return text ? Number(text) : 1;
+        }).reduce((a, b) => a + b, 0);
+    }
+
+    async function getTrophiesCount(url) {
+        const resp = await fetch(url).catch((error) => {
+            console.log(error);
+            return 'N/A';
+        });
+        if (resp?.status === 200) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(await resp.text(), "text/html");
+            return countTrophies(doc);
+        }
+        return 'N/A'
+    }
+
+    function getTrophiesSection() {
+        const items = document.querySelectorAll("dl#trophies-achievements-lists dd");
+        for (const item of items) {
+            const link = item.querySelector("a");
+            if (link?.href.search("awards") > -1) {
+                return { trophies: item, url: link.href };
+            }
+        }
+        return { trophies: null, url: null };
+    }
+
+    async function addTrophyCountToClubPage() {
+        const { trophies, url } = getTrophiesSection();
+        if (trophies) {
+            const el = document.createTextNode(` (Total: ?)`);
+            trophies.querySelector("span")?.appendChild(el);
+            const count = await getTrophiesCount(url);
+            el.nodeValue = ` (Total: ${count})`;
+        }
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -3923,6 +3968,11 @@
 
     /* *********************** Inject ********************************** */
 
+    function isVisitingTeamPage() {
+        const regex = /^\?((p=team)|(p=team&tid=\d+))$/g;
+        return regex.test(document.location.search);
+    }
+
     async function inject() {
         GM_addStyle(styles);
 
@@ -3974,6 +4024,8 @@
             if (mazyar.mustHelpWithPredictor()) {
                 predictorInject();
             }
+        } else if (isVisitingTeamPage()) {
+            addTrophyCountToClubPage();
         }
     }
 
