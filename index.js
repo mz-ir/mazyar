@@ -795,9 +795,14 @@
     }
 
     function createLoadingIcon(title = "") {
-        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner"], title);
-        icon.classList.add("fa-spin");
-        icon.style.curser = "unset";
+        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
+        icon.style.cursor = "unset";
+        return icon;
+    }
+
+    function createLoadingIcon2(title = "") {
+        const icon = createIconFromFontAwesomeClass(["fa-solid", "fa-loader", "fa-pulse", "fa-fw"], title);
+        icon.style.cursor = "unset";
         return icon;
     }
 
@@ -2686,6 +2691,12 @@
         thSalary.style.textDecoration = 'none';
         headerRow?.appendChild(thSalary);
 
+        const thBonus = document.createElement('th');
+        thBonus.textContent = 'Bonus';
+        thBonus.style.textAlign = 'center';
+        thBonus.style.textDecoration = 'none';
+        headerRow?.appendChild(thBonus);
+
         const thWeeks = document.createElement('th');
         thWeeks.textContent = 'Weeks';
         thWeeks.style.textAlign = 'center';
@@ -2695,18 +2706,20 @@
         const rows = table.querySelectorAll('tbody tr:not(.minified-view)');
         rows.forEach(row => {
             const salaryCell = row.insertCell(-1);
-            salaryCell.textContent = 'Loading...';
-            salaryCell.style.fontStyle = 'italic';
             salaryCell.style.textAlign = 'center';
+            salaryCell.replaceChildren(createLoadingIcon2());
+
+            const bonusCell = row.insertCell(-1);
+            bonusCell.style.textAlign = 'center';
+            bonusCell.replaceChildren(createLoadingIcon2());
 
             const weeksCell = row.insertCell(-1);
-            weeksCell.textContent = 'Loading...';
-            weeksCell.style.fontStyle = 'italic';
             weeksCell.style.textAlign = 'center';
+            weeksCell.replaceChildren(createLoadingIcon2());
         });
     }
 
-    function trainersFetchSalaryAndWeeks(coachId, salaryCell, weeksCell) {
+    function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
         GM_xmlhttpRequest({
             method: "GET",
             url: `https://www.managerzone.com/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
@@ -2715,6 +2728,7 @@
                 const doc = parser.parseFromString(response.responseText, "text/html");
                 const salaryElement = doc.querySelector('td#salary_range nobr');
                 const weeksElement = doc.querySelector('td#weeks_range nobr');
+                const bonusElement = doc.querySelector("div#paper-content-wrapper > table  td.contract_paper:nth-child(2)");
 
                 const salaryText = salaryElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
                 salaryCell.textContent = salaryText ?? 'N/A';
@@ -2723,6 +2737,10 @@
                 const weeksText = weeksElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
                 weeksCell.textContent = weeksText ?? 'N/A';
                 weeksCell.style.fontStyle = 'normal';
+
+                const bonusText = bonusElement?.innerText?.trim()?.match(/\d+(.*?\d+)*/g)?.[0];
+                bonusCell.textContent = bonusText ?? 'N/A';
+                bonusCell.style.fontStyle = 'normal';
             }
         });
     }
@@ -2735,9 +2753,10 @@
             if (linkElement) {
                 const urlParams = new URLSearchParams(linkElement.search);
                 const coachId = urlParams.get('cid');
-                const salaryCell = row.cells[row.cells.length - 2];
+                const salaryCell = row.cells[row.cells.length - 3];
+                const bonusCell = row.cells[row.cells.length - 2];
                 const weeksCell = row.cells[row.cells.length - 1];
-                trainersFetchSalaryAndWeeks(coachId, salaryCell, weeksCell);
+                trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell);
             }
         });
     }
