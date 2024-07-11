@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.21
+// @version      2.22
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,8 +27,9 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.21": ["<b>[new]</b> add total trophies count in club page."],
-        "2.20": ["<b>[new]</b> add 'Days at this club' counter to player profile."],
+        "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
+        "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
+        "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
         "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
             "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
         "2.18": ["<b>[new]</b> show changelog after script update.",
@@ -794,9 +795,14 @@
     }
 
     function createLoadingIcon(title = "") {
-        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner"], title);
-        icon.classList.add("fa-spin");
-        icon.style.curser = "unset";
+        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
+        icon.style.cursor = "unset";
+        return icon;
+    }
+
+    function createLoadingIcon2(title = "") {
+        const icon = createIconFromFontAwesomeClass(["fa-solid", "fa-loader", "fa-pulse", "fa-fw"], title);
+        icon.style.cursor = "unset";
         return icon;
     }
 
@@ -2675,6 +2681,106 @@
         }
     }
 
+    /* *********************** Trainers ********************************** */
+
+    function trainersAddColumns(table) {
+        const headerRow = table.querySelector('thead tr');
+        const thSalary = document.createElement('th');
+        thSalary.textContent = 'Salary Range';
+        thSalary.style.textAlign = 'center';
+        thSalary.style.textDecoration = 'none';
+        headerRow?.appendChild(thSalary);
+
+        const thBonus = document.createElement('th');
+        thBonus.textContent = 'Bonus';
+        thBonus.style.textAlign = 'center';
+        thBonus.style.textDecoration = 'none';
+        headerRow?.appendChild(thBonus);
+
+        const thWeeks = document.createElement('th');
+        thWeeks.textContent = 'Weeks';
+        thWeeks.style.textAlign = 'center';
+        thWeeks.style.textDecoration = 'none';
+        headerRow?.appendChild(thWeeks);
+
+        const rows = table.querySelectorAll('tbody tr:not(.minified-view)');
+        rows.forEach(row => {
+            const salaryCell = row.insertCell(-1);
+            salaryCell.style.textAlign = 'center';
+            salaryCell.replaceChildren(createLoadingIcon2());
+
+            const bonusCell = row.insertCell(-1);
+            bonusCell.style.textAlign = 'center';
+            bonusCell.replaceChildren(createLoadingIcon2());
+
+            const weeksCell = row.insertCell(-1);
+            weeksCell.style.textAlign = 'center';
+            weeksCell.replaceChildren(createLoadingIcon2());
+        });
+    }
+
+    function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
+        GM_xmlhttpRequest({
+            method: "GET",
+            url: `https://www.managerzone.com/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
+            onload: function (response) {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(response.responseText, "text/html");
+                const salaryElement = doc.querySelector('td#salary_range nobr');
+                const weeksElement = doc.querySelector('td#weeks_range nobr');
+                const bonusElement = doc.querySelector("div#paper-content-wrapper > table  td.contract_paper:nth-child(2)");
+
+                const salaryText = salaryElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+                salaryCell.textContent = salaryText ?? 'N/A';
+                salaryCell.style.fontStyle = 'normal';
+
+                const weeksText = weeksElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+                weeksCell.textContent = weeksText ?? 'N/A';
+                weeksCell.style.fontStyle = 'normal';
+
+                const bonusText = bonusElement?.innerText?.trim()?.match(/\d+(.*?\d+)*/g)?.[0];
+                bonusCell.textContent = bonusText ?? 'N/A';
+                bonusCell.style.fontStyle = 'normal';
+            }
+        });
+    }
+
+    function trainersUpdateSalariesAndWeeks(table) {
+        trainersAddColumns(table);
+        const rows = table?.querySelectorAll('tbody tr:not(.minified-view)');
+        rows.forEach(row => {
+            const linkElement = row.querySelector('td a[href*="cid="]');
+            if (linkElement) {
+                const urlParams = new URLSearchParams(linkElement.search);
+                const coachId = urlParams.get('cid');
+                const salaryCell = row.cells[row.cells.length - 3];
+                const bonusCell = row.cells[row.cells.length - 2];
+                const weeksCell = row.cells[row.cells.length - 1];
+                trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell);
+            }
+        });
+    }
+
+    function trainersAddRequestedSalaries() {
+        const target = document.querySelector('div.in_page_navigation_top');
+        if (target) {
+            const callback = () => {
+                const table = document.getElementById("coaches_list");
+                if (table && !table.injecting) {
+                    table.injecting = true;
+                    trainersUpdateSalariesAndWeeks(table);
+                }
+            };
+
+            // Create an observer instance linked to the callback function
+            const observer = new MutationObserver(callback);
+
+            // Start observing the target node for configured mutations
+            const config = { childList: true, subtree: true };
+            observer.observe(target, config);
+        }
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -2687,6 +2793,7 @@
             transfer_maxed: false,
             mz_predictor: false,
             player_comment: false,
+            coach_salary: false,
         };
         #transferOptions = {
             hide: true,
@@ -2963,6 +3070,10 @@
             return this.#settings.player_comment;
         }
 
+        mustAddCoachSalaries() {
+            return this.#settings.coach_salary;
+        }
+
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
         }
@@ -3111,6 +3222,7 @@
             this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
+            this.#settings.coach_salary = GM_getValue("coach_salary", true);
         }
 
         #saveSettings() {
@@ -3120,6 +3232,7 @@
             GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
+            GM_setValue("coach_salary", this.#settings.coach_salary);
         }
 
         updateSettings(settings) {
@@ -3420,6 +3533,7 @@
                 transfer_maxed: false,
                 mz_predictor: false,
                 player_comment: false,
+                coach_salary: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3475,6 +3589,7 @@
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
             // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
+            const coachSalaries = createMenuCheckBox("Display Salary Range in 'Hire Coaches'", this.#settings.coach_salary);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3497,6 +3612,7 @@
                     // mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     mz_predictor: false,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
+                    coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3514,6 +3630,7 @@
             div.appendChild(transferMaxed);
             // div.appendChild(mzPredictor);
             div.appendChild(playerComment);
+            div.appendChild(coachSalaries);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -4026,6 +4143,10 @@
             }
         } else if (isVisitingTeamPage()) {
             addTrophyCountToClubPage();
+        } else if (uri.search("/?p=trainers") > -1) {
+            if (mazyar.mustAddCoachSalaries()) {
+                trainersAddRequestedSalaries();
+            }
         }
     }
 
