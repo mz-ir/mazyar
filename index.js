@@ -2681,11 +2681,15 @@
     function trainersAddColumns(table) {
         const headerRow = table.querySelector('thead tr');
         const thSalary = document.createElement('th');
-        thSalary.textContent = 'SalaryRange';
+        thSalary.textContent = 'Salary Range';
+        thSalary.style.textAlign = 'center';
+        thSalary.style.textDecoration = 'none';
         headerRow?.appendChild(thSalary);
 
         const thWeeks = document.createElement('th');
         thWeeks.textContent = 'Weeks';
+        thWeeks.style.textAlign = 'center';
+        thWeeks.style.textDecoration = 'none';
         headerRow?.appendChild(thWeeks);
 
         const rows = table.querySelectorAll('tbody tr:not(.minified-view)');
@@ -2693,10 +2697,12 @@
             const salaryCell = row.insertCell(-1);
             salaryCell.textContent = 'Loading...';
             salaryCell.style.fontStyle = 'italic';
+            salaryCell.style.textAlign = 'center';
 
             const weeksCell = row.insertCell(-1);
             weeksCell.textContent = 'Loading...';
             weeksCell.style.fontStyle = 'italic';
+            weeksCell.style.textAlign = 'center';
         });
     }
 
@@ -2710,12 +2716,12 @@
                 const salaryElement = doc.querySelector('td#salary_range nobr');
                 const weeksElement = doc.querySelector('td#weeks_range nobr');
 
-                const salaryText = salaryElement ? salaryElement.textContent.trim() : 'N/A';
-                salaryCell.textContent = salaryText;
+                const salaryText = salaryElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+                salaryCell.textContent = salaryText ?? 'N/A';
                 salaryCell.style.fontStyle = 'normal';
 
-                const weeksText = weeksElement ? weeksElement.textContent.trim() : 'N/A';
-                weeksCell.textContent = weeksText;
+                const weeksText = weeksElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+                weeksCell.textContent = weeksText ?? 'N/A';
                 weeksCell.style.fontStyle = 'normal';
             }
         });
@@ -2737,21 +2743,23 @@
     }
 
     function trainersAddRequestedSalaries() {
-        const callback = () => {
-            const table = document.getElementById("coaches_list");
-            if (table && !table.injecting) {
-                table.injecting = true;
-                trainersUpdateSalariesAndWeeks(table);
-            }
-        };
-
-        // Create an observer instance linked to the callback function
-        const observer = new MutationObserver(callback);
-
-        // Start observing the target node for configured mutations
-        const config = { childList: true, subtree: true };
         const target = document.querySelector('div.in_page_navigation_top');
-        observer.observe(target, config);
+        if (target) {
+            const callback = () => {
+                const table = document.getElementById("coaches_list");
+                if (table && !table.injecting) {
+                    table.injecting = true;
+                    trainersUpdateSalariesAndWeeks(table);
+                }
+            };
+
+            // Create an observer instance linked to the callback function
+            const observer = new MutationObserver(callback);
+
+            // Start observing the target node for configured mutations
+            const config = { childList: true, subtree: true };
+            observer.observe(target, config);
+        }
     }
 
     /* *********************** Class ********************************** */
