@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.19
+// @version      2.20
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.20": ["<b>[new]</b> add 'Days at this club' counter to player profile."],
         "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
             "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
         "2.18": ["<b>[new]</b> show changelog after script update.",
@@ -230,6 +231,11 @@
     };
 
     /* *********************** Utils ********************************** */
+
+    function parseMzDate(dateString) {
+        const [day, month, year] = dateString.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
 
     function generateUuidV4() {
         return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
@@ -933,6 +939,21 @@
             const name = player.querySelector("a");
             const playerId = extractPlayerID(name?.href);
             addSharedToBodyOfSquadSummary(player, playersInfo[playerId]);
+        }
+    }
+
+    /* *********************** Residency ********************************** */
+
+    function addDaysAtThisClub() {
+        const transfers = document.querySelector("div.baz div.win_back table.hitlist tbody");
+        if (transfers?.children.length > 1) {
+            const arrived = transfers.lastChild.querySelector("td")?.innerText;
+            const days = Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+            const daysDiv = document.createElement("div");
+            daysDiv.innerHTML = `Days at this club: <strong>≤ ${days}</strong>`;
+            daysDiv.style.marginLeft = "5px";
+            const profile = document.querySelector("div.playerContainer");
+            profile?.appendChild(daysDiv);
         }
     }
 
@@ -3924,6 +3945,9 @@
         } else if (uri.search("/?p=players") > -1) {
             if (mazyar.mustAddPlayerComment()) {
                 mazyar.addPlayerComment();
+            }
+            if (uri.search("/?players&pid=") > -1) {
+                addDaysAtThisClub();
             }
             if (uri.search("/?p=players&sub=alt") > -1) {
                 squadSummaryInjectInfoAfterChange();
