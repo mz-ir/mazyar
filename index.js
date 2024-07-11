@@ -27,7 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.22": ["<b>[new]</b> Hire Coaches: adds requested salary of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
+        "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
         "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
         "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
         "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
@@ -2793,6 +2793,7 @@
             transfer_maxed: false,
             mz_predictor: false,
             player_comment: false,
+            coach_salary: false,
         };
         #transferOptions = {
             hide: true,
@@ -3069,6 +3070,10 @@
             return this.#settings.player_comment;
         }
 
+        mustAddCoachSalaries() {
+            return this.#settings.coach_salary;
+        }
+
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
         }
@@ -3217,6 +3222,7 @@
             this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
+            this.#settings.coach_salary = GM_getValue("coach_salary", true);
         }
 
         #saveSettings() {
@@ -3226,6 +3232,7 @@
             GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
+            GM_setValue("coach_salary", this.#settings.coach_salary);
         }
 
         updateSettings(settings) {
@@ -3526,6 +3533,7 @@
                 transfer_maxed: false,
                 mz_predictor: false,
                 player_comment: false,
+                coach_salary: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3581,6 +3589,7 @@
             const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
             // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
+            const coachSalaries = createMenuCheckBox("Display Salary Range in 'Hire Coaches'", this.#settings.coach_salary);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3603,6 +3612,7 @@
                     // mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     mz_predictor: false,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
+                    coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3620,6 +3630,7 @@
             div.appendChild(transferMaxed);
             // div.appendChild(mzPredictor);
             div.appendChild(playerComment);
+            div.appendChild(coachSalaries);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -4133,7 +4144,9 @@
         } else if (isVisitingTeamPage()) {
             addTrophyCountToClubPage();
         } else if (uri.search("/?p=trainers") > -1) {
-            trainersAddRequestedSalaries();
+            if (mazyar.mustAddCoachSalaries()) {
+                trainersAddRequestedSalaries();
+            }
         }
     }
 
