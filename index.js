@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.22
+// @version      2.23
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,11 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.23": [
+            "<b>[improve]</b> Player Profile: change color of comment icon to lightskyblue when player has no comment.",
+            "<b>[improve]</b> Squad Summary: observe tab changes instead of interval check.",
+            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile (next to player ID)",
+        ],
         "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
         "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
         "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
@@ -189,7 +194,7 @@
         top: -0.2rem;
         margin-left: 0.3rem;
         font-size: 1.4rem;
-        color: lightblue;
+        color: lightskyblue;
     }
 
     .mazyar-player-comment-icon-active {
@@ -204,6 +209,15 @@
         margin: 0.5rem;
         min-width: 220px;
         min-height: 100px;
+    }
+
+    .mazyar-days-at-this-club {
+        margin: 5px;
+        padding: 3px;
+        background-color: azure;
+        border-radius: 5px;
+        border: 1px solid black;
+        text-align: center;
     }
     `;
 
@@ -608,6 +622,20 @@
             }
         }
         return rows;
+    }
+
+    async function fetchPlayerProfileDocument(playerId) {
+        const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+        return await fetch(url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                return parser.parseFromString(content, "text/html");
+            })
+            .catch((error) => {
+                console.log(error);
+                return null;
+            });
     }
 
     /* *********************** DOM Utils ********************************** */
@@ -1063,6 +1091,9 @@
     /* *********************** Squad - Residency ********************************** */
 
     function squadExtractResidencyDays(doc = document) {
+        if (!doc) {
+            return 0;
+        }
         const transfers = doc?.querySelector("div.baz div.win_back table.hitlist tbody");
         if (transfers?.children.length > 1) {
             const arrived = transfers.lastChild.querySelector("td")?.innerText;
@@ -1073,13 +1104,36 @@
 
     function squadAddDaysAtThisClubToPlayerProfile() {
         const days = squadExtractResidencyDays(document);
-        if (days > 0) {
+        if (days >= 0) {
+            const text = days === 0 ? 'N/A' : `≤ ${days}`;
             const daysDiv = document.createElement("div");
-            daysDiv.innerHTML = `Days at this club: <strong>≤ ${days}</strong>`;
-            daysDiv.style.marginLeft = "5px";
+            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+            daysDiv.classList.add("mazyar-days-at-this-club");
             const profile = document.querySelector("div.playerContainer");
             profile?.appendChild(daysDiv);
         }
+    }
+
+    async function squadAddDaysAtThisClubForSinglePlayer(player) {
+        const playerId = getPlayerIdFromContainer(player);
+        const doc = await fetchPlayerProfileDocument(playerId);
+        const days = squadExtractResidencyDays(doc);
+        if (days >= 0) {
+            const text = days === 0 ? 'N/A' : `≤ ${days}`;
+            const daysDiv = document.createElement("div");
+            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+            daysDiv.classList.add("mazyar-days-at-this-club");
+            player.querySelector("div.mainContent")?.appendChild(daysDiv);
+        }
+    }
+
+    async function squadAddDaysAtThisClubToAllPlayers(container) {
+        const jobs = [];
+        const players = container.querySelectorAll("div.playerContainer");
+        for (const player of players) {
+            jobs.push(squadAddDaysAtThisClubForSinglePlayer(player));
+        }
+        Promise.all(jobs);
     }
 
     /* *********************** Squad - Total Balls ********************************** */
@@ -1326,6 +1380,41 @@
             // Start observing the target node for configured mutations
             const config = { childList: true, subtree: true };
             observer.observe(target, config);
+        }
+    }
+
+    function squadInjectInformationToProfiles() {
+        if (document.baseURI.search("/?players&pid=") > -1) {
+            squadAddDaysAtThisClubToPlayerProfile();
+            mazyar.addPlayerComment();
+        } else {
+            const target = document.getElementById('squad_profiles');
+            if (target) {
+                if (target.style.display !== 'none') {
+                    // visiting profiles directly
+                    const container = document.getElementById('players_container');
+                    if (container && !container.injecting) {
+                        container.injecting = true;
+                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addPlayerComment();
+                    }
+                }
+
+                // add observer if user changes from other tabs to squad profiles tab
+                const callback = () => {
+                    const container = document.getElementById('players_container');
+                    if (container && !container.injecting) {
+                        container.injecting = true;
+                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addPlayerComment();
+                    }
+                };
+                // Create an observer instance linked to the callback function
+                const observer = new MutationObserver(callback);
+                // Start observing the target node for configured mutations
+                const config = { childList: true, subtree: true };
+                observer.observe(target, config);
+            }
         }
     }
 
@@ -3049,7 +3138,7 @@
             return false;
         }
 
-        mustAddPlayerComment() {
+        #mustAddPlayerComment() {
             return this.#settings.player_comment;
         }
 
@@ -3242,20 +3331,28 @@
 
         // -------------------------------- Player Options -------------------------------------
 
+        async #addPlayerCommentIcon(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            const commentIcon = createCommentIcon("MZY Comment");
+            if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
+                commentIcon.classList.add("mazyar-player-comment-icon-active");
+            } else {
+                commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+            }
+            player.querySelector(".p_links")?.appendChild(commentIcon);
+            commentIcon.addEventListener("click", async (event) => {
+                this.#displayPlayerComment(event?.target, playerId);
+            })
+        }
+
         async addPlayerComment() {
-            const players = document.querySelectorAll(".playerContainer");
-            for (const player of players) {
-                const playerId = getPlayerIdFromContainer(player);
-                const commentIcon = createCommentIcon("MZY Comment");
-                if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
-                    commentIcon.classList.add("mazyar-player-comment-icon-active");
-                } else {
-                    commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+            if (this.#mustAddPlayerComment()) {
+                const jobs = [];
+                const players = document.querySelectorAll(".playerContainer");
+                for (const player of players) {
+                    jobs.push(this.#addPlayerCommentIcon(player));
                 }
-                player.querySelector(".p_links").appendChild(commentIcon);
-                commentIcon.addEventListener("click", async (event) => {
-                    this.#displayPlayerComment(event?.target, playerId);
-                });
+                Promise.all(jobs);
             }
         }
 
@@ -4094,12 +4191,7 @@
             }
         } else if (uri.search("/?p=players") > -1) {
             squadInjectInformationToSummary();
-            if (mazyar.mustAddPlayerComment()) {
-                mazyar.addPlayerComment();
-            }
-            if (uri.search("/?players&pid=") > -1) {
-                squadAddDaysAtThisClubToPlayerProfile();
-            }
+            squadInjectInformationToProfiles();
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
         } else if (uri.search("/?p=match") > -1 && !uri.search("&sub=result") > -1) {
