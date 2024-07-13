@@ -1060,13 +1060,20 @@
         }
     }
 
-    /* *********************** Residency ********************************** */
+    /* *********************** Squad - Residency ********************************** */
 
-    function addDaysAtThisClub() {
-        const transfers = document.querySelector("div.baz div.win_back table.hitlist tbody");
+    function squadExtractResidencyDays(doc = document) {
+        const transfers = doc?.querySelector("div.baz div.win_back table.hitlist tbody");
         if (transfers?.children.length > 1) {
             const arrived = transfers.lastChild.querySelector("td")?.innerText;
-            const days = Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+            return Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+        }
+        return -1;
+    }
+
+    function squadAddDaysAtThisClubToPlayerProfile() {
+        const days = squadExtractResidencyDays(document);
+        if (days > 0) {
             const daysDiv = document.createElement("div");
             daysDiv.innerHTML = `Days at this club: <strong>≤ ${days}</strong>`;
             daysDiv.style.marginLeft = "5px";
@@ -4091,7 +4098,7 @@
                 mazyar.addPlayerComment();
             }
             if (uri.search("/?players&pid=") > -1) {
-                addDaysAtThisClub();
+                squadAddDaysAtThisClubToPlayerProfile();
             }
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
