@@ -28,9 +28,9 @@
     const currentVersion = GM_info.script.version;
     const changelogs = {
         "2.23": [
-            "<b>[improve]</b> Player Profile: change color of comment icon to lightskyblue when player has no comment.",
-            "<b>[improve]</b> Squad Summary: observe tab changes instead of interval check.",
-            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile (next to player ID)",
+            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
+            "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
+            "<b>[fix]</b> Player Comment: change color of comment icon to lightskyblue when player has no comment. (previous color was the same as loyal players background)",
         ],
         "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
         "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
