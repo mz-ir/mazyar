@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.22
+// @version      2.23
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,11 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.23": [
+            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
+            "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
+            "<b>[fix]</b> Player Comment: change color of comment icon to lightskyblue when player has no comment. (previous color was the same as loyal players background)",
+        ],
         "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
         "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
         "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
@@ -189,7 +194,7 @@
         top: -0.2rem;
         margin-left: 0.3rem;
         font-size: 1.4rem;
-        color: lightblue;
+        color: lightskyblue;
     }
 
     .mazyar-player-comment-icon-active {
@@ -204,6 +209,15 @@
         margin: 0.5rem;
         min-width: 220px;
         min-height: 100px;
+    }
+
+    .mazyar-days-at-this-club {
+        margin: 5px;
+        padding: 3px;
+        background-color: azure;
+        border-radius: 5px;
+        border: 1px solid black;
+        text-align: center;
     }
     `;
 
@@ -345,13 +359,9 @@
     }
 
     function getClubPlayers(doc, currency) {
-        const playerNodes = doc.getElementById("playerAltViewTable")?.querySelectorAll("tr");
-        if (!playerNodes) {
-            return [];
-        }
-
         const players = [];
-        for (const playerNode of [...playerNodes]) {
+        const playerNodes = doc.querySelectorAll("table#playerAltViewTable tr");
+        for (const playerNode of playerNodes) {
             const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
             if (age) {
                 const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
@@ -380,19 +390,17 @@
     function getNationalPlayers(doc, currency) {
         const players = [];
         const playerNodes = doc.querySelectorAll("div.playerContainer");
-        if (playerNodes) {
-            for (const playerNode of [...playerNodes]) {
-                const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
-                const infoTable = playerNode.querySelector("div.dg_playerview_info table");
-                const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-                const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span" : "tbody tr:nth-child(6) td span";
-                const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
-                players.push({
-                    age: parseInt(age, 10),
-                    value: parseInt(value, 10),
-                    id,
-                });
-            }
+        for (const playerNode of playerNodes) {
+            const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
+            const infoTable = playerNode.querySelector("div.dg_playerview_info table");
+            const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
+            const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span" : "tbody tr:nth-child(6) td span";
+            const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
+            players.push({
+                age: parseInt(age, 10),
+                value: parseInt(value, 10),
+                id,
+            });
         }
         return players;
     }
@@ -468,6 +476,166 @@
         const sport = getSportType(doc);
         const count = sport === "soccer" ? 11 : 21;
         return players ? filterPlayers(players, count).values : 0;
+    }
+
+    async function fetchPlayersProfileSummary(teamId) {
+        const url = `https://www.managerzone.com/?p=players&tid=${teamId}`;
+        return await fetch(url)
+            .then((resp) => {
+                return resp.text();
+            }).then((content) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(content, "text/html");
+                const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
+                const info = {};
+                for (const player of players) {
+                    const playerId = player.querySelector("span.player_id_span")?.innerText;
+                    const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
+                    info[playerId] = {
+                        detail: player,
+                        shared: !!player.querySelector("i.special_player.fa-share-alt"),
+                        market: !!inMarket,
+                        marketLink: inMarket?.href,
+                    }
+                }
+                return info;
+            }).catch((error) => {
+                console.log(error);
+                return null;
+            });
+    }
+
+    function squadGetPlayersInfo(players, sport = "soccer") {
+        if (!players) {
+            return [];
+        }
+        const rows = [];
+        if (sport === "hockey") {
+            {
+                const all = filterPlayers(players);
+                const top21 = filterPlayers(players, 21);
+                rows.push({
+                    title: "All",
+                    count: players.length,
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top21: top21.values,
+                    top21Age: top21.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 23);
+                const top21 = filterPlayers(players, 21, 0, 23);
+                rows.push({
+                    title: "U23",
+                    count: getNumberOfPlayers(players, 0, 23),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top21: top21.values,
+                    top21Age: top21.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 21);
+                const top21 = filterPlayers(players, 21, 0, 21);
+                rows.push({
+                    title: "U21",
+                    count: getNumberOfPlayers(players, 0, 21),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top21: top21.values,
+                    top21Age: top21.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 18);
+                const top21 = filterPlayers(players, 21, 0, 18);
+                rows.push({
+                    title: "U18",
+                    count: getNumberOfPlayers(players, 0, 18),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top21: top21.values,
+                    top21Age: top21.avgAge,
+                });
+            }
+        } else {
+            {
+                const all = filterPlayers(players);
+                const top16 = filterPlayers(players, 16);
+                const top11 = filterPlayers(players, 11);
+                rows.push({
+                    title: "All",
+                    count: players.length,
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top16: top16.values,
+                    top16Age: top16.avgAge,
+                    top11: top11.values,
+                    top11Age: top11.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 23);
+                const top16 = filterPlayers(players, 16, 0, 23);
+                const top11 = filterPlayers(players, 11, 0, 23);
+                rows.push({
+                    title: "U23",
+                    count: getNumberOfPlayers(players, 0, 23),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top16: top16.values,
+                    top16Age: top16.avgAge,
+                    top11: top11.values,
+                    top11Age: top11.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 21);
+                const top16 = filterPlayers(players, 16, 0, 21);
+                const top11 = filterPlayers(players, 11, 0, 21);
+                rows.push({
+                    title: "U21",
+                    count: getNumberOfPlayers(players, 0, 21),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top16: top16.values,
+                    top16Age: top16.avgAge,
+                    top11: top11.values,
+                    top11Age: top11.avgAge,
+                });
+            }
+            {
+                const all = filterPlayers(players, 0, 0, 18);
+                const top16 = filterPlayers(players, 16, 0, 18);
+                const top11 = filterPlayers(players, 11, 0, 18);
+                rows.push({
+                    title: "U18",
+                    count: getNumberOfPlayers(players, 0, 18),
+                    all: all.values,
+                    allAge: all.avgAge,
+                    top16: top16.values,
+                    top16Age: top16.avgAge,
+                    top11: top11.values,
+                    top11Age: top11.avgAge,
+                });
+            }
+        }
+        return rows;
+    }
+
+    async function fetchPlayerProfileDocument(playerId) {
+        const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+        return await fetch(url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                return parser.parseFromString(content, "text/html");
+            })
+            .catch((error) => {
+                console.log(error);
+                return null;
+            });
     }
 
     /* *********************** DOM Utils ********************************** */
@@ -861,44 +1029,16 @@
         return { toolbar, menu, transfer };
     }
 
+    /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
 
-
-    /* *********************** Shared Skills ********************************** */
-
-    async function fetchPlayerFullInfo(teamId) {
-        const url = `https://www.managerzone.com/?p=players&tid=${teamId}`;
-        const resp = await fetch(url).catch((error) => {
-            console.log(error);
-        });
-
-        if (resp) {
-            const info = {};
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(await resp.text(), "text/html");
-            const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
-            for (const player of players) {
-                const playerId = player.querySelector("span.player_id_span")?.innerText;
-                const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
-                info[playerId] = {
-                    detail: player,
-                    shared: !!player.querySelector("i.special_player.fa-share-alt"),
-                    market: !!inMarket,
-                    marketLink: inMarket?.href,
-                }
-            }
-            return info;
-        }
-        return null;
-    }
-
-    function addSharedToHeaderOfSquadSummary(table) {
+    function squadAddIconsHeaderToSummaryTable(table) {
         const th = document.createElement("th");
         th.style.width = "0px";
         const target = table.querySelector("thead tr th:nth-child(2)");
         target.parentNode.insertBefore(th, target);
     }
 
-    function addSharedToBodyOfSquadSummary(player, info) {
+    function squadAddIconsBodyToSummaryTable(player, info) {
         const td = document.createElement("td");
         if (info.shared) {
             const icon = createSharedIcon("Click to see player profile.");
@@ -923,8 +1063,7 @@
         target.parentNode.insertBefore(td, target);
     }
 
-    async function injectSharedSkills() {
-        const table = document.getElementById("playerAltViewTable");
+    async function squadInjectIconsToSummaryTable(table) {
         const players = table?.querySelectorAll("tbody tr");
         const ownView = players?.[0]?.children?.length > 6;
         if (ownView) {
@@ -935,38 +1074,71 @@
         table.parentNode.insertBefore(text, table);
 
         const teamId = extractTeamId(document.baseURI);
-        const playersInfo = await fetchPlayerFullInfo(teamId);
+        const playersInfo = await fetchPlayersProfileSummary(teamId);
         if (!playersInfo) {
             text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: red;"> failed</span>.`;
             return;
         }
         text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: green;"> done</span>.`;
-        addSharedToHeaderOfSquadSummary(table);
+        squadAddIconsHeaderToSummaryTable(table);
         for (const player of players) {
             const name = player.querySelector("a");
             const playerId = extractPlayerID(name?.href);
-            addSharedToBodyOfSquadSummary(player, playersInfo[playerId]);
+            squadAddIconsBodyToSummaryTable(player, playersInfo[playerId]);
         }
     }
 
-    /* *********************** Residency ********************************** */
+    /* *********************** Squad - Residency ********************************** */
 
-    function addDaysAtThisClub() {
-        const transfers = document.querySelector("div.baz div.win_back table.hitlist tbody");
+    function squadExtractResidencyDays(doc = document) {
+        if (!doc) {
+            return 0;
+        }
+        const transfers = doc?.querySelector("div.baz div.win_back table.hitlist tbody");
         if (transfers?.children.length > 1) {
             const arrived = transfers.lastChild.querySelector("td")?.innerText;
-            const days = Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+            return Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+        }
+        return -1;
+    }
+
+    function squadAddDaysAtThisClubToPlayerProfile() {
+        const days = squadExtractResidencyDays(document);
+        if (days >= 0) {
+            const text = days === 0 ? 'N/A' : `≤ ${days}`;
             const daysDiv = document.createElement("div");
-            daysDiv.innerHTML = `Days at this club: <strong>≤ ${days}</strong>`;
-            daysDiv.style.marginLeft = "5px";
+            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+            daysDiv.classList.add("mazyar-days-at-this-club");
             const profile = document.querySelector("div.playerContainer");
             profile?.appendChild(daysDiv);
         }
     }
 
-    /* *********************** Total Balls ********************************** */
+    async function squadAddDaysAtThisClubForSinglePlayer(player) {
+        const playerId = getPlayerIdFromContainer(player);
+        const doc = await fetchPlayerProfileDocument(playerId);
+        const days = squadExtractResidencyDays(doc);
+        if (days >= 0) {
+            const text = days === 0 ? 'N/A' : `≤ ${days}`;
+            const daysDiv = document.createElement("div");
+            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+            daysDiv.classList.add("mazyar-days-at-this-club");
+            player.querySelector("div.mainContent")?.appendChild(daysDiv);
+        }
+    }
 
-    function sortPlayerBySkillBalls(th) {
+    async function squadAddDaysAtThisClubToAllPlayers(container) {
+        const jobs = [];
+        const players = container.querySelectorAll("div.playerContainer");
+        for (const player of players) {
+            jobs.push(squadAddDaysAtThisClubForSinglePlayer(player));
+        }
+        Promise.all(jobs);
+    }
+
+    /* *********************** Squad - Total Balls ********************************** */
+
+    function squadSortPlayersByTotalSkillBalls(th) {
         const table = document.getElementById("playerAltViewTable");
         const players = table?.querySelectorAll("tbody tr");
         if (table.ascending) {
@@ -989,7 +1161,7 @@
         }
     }
 
-    function addTotalSkillBallsToHeader(table) {
+    function squadAddTotalSkillBallsHeaderToSummaryTable(table) {
         const th = document.createElement("th");
         th.title = "Total Skill Balls";
         th.innerHTML = `<i aria-hidden="true" style="display: inline; font-size: 11px; color: #555;" class="fa-solid fa-sort"></i><span style="font-size: 11px;">T</span>`;
@@ -999,11 +1171,11 @@
         target.parentNode.insertBefore(th, target);
 
         th.addEventListener("click", () => {
-            sortPlayerBySkillBalls(th);
+            squadSortPlayersByTotalSkillBalls(th);
         });
     }
 
-    function addTotalSkillBallsToBody(player, sport) {
+    function squadAddPlayerTotalSkillBallsToSummaryTable(player, sport) {
         let sum = 0;
         const start = sport === "soccer" ? 6 : 7;
         const end = 17;
@@ -1019,139 +1191,20 @@
         player.skillBalls = sum;
     }
 
-    function addTotalSkillBalls() {
+    function squadAddTotalSkillBallsToSummaryTable(table) {
         const sport = getSportType();
-        const table = document.getElementById("playerAltViewTable");
         const players = table?.querySelectorAll("tbody tr");
         if (players?.[0]?.children?.length > 6) {
-            addTotalSkillBallsToHeader(table);
+            squadAddTotalSkillBallsHeaderToSummaryTable(table);
             for (const player of players) {
-                addTotalSkillBallsToBody(player, sport);
+                squadAddPlayerTotalSkillBallsToSummaryTable(player, sport);
             }
         }
     }
 
-    /* *********************** Squad Summary ********************************** */
+    /* *********************** Squad - Top Players ********************************** */
 
-    function squadSummaryGetInfo(players, sport = "soccer") {
-        const rows = [];
-        if (players) {
-            if (sport === "hockey") {
-                {
-                    const all = filterPlayers(players);
-                    const top21 = filterPlayers(players, 21);
-                    rows.push({
-                        title: "All",
-                        count: players.length,
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top21: top21.values,
-                        top21Age: top21.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 23);
-                    const top21 = filterPlayers(players, 21, 0, 23);
-                    rows.push({
-                        title: "U23",
-                        count: getNumberOfPlayers(players, 0, 23),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top21: top21.values,
-                        top21Age: top21.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 21);
-                    const top21 = filterPlayers(players, 21, 0, 21);
-                    rows.push({
-                        title: "U21",
-                        count: getNumberOfPlayers(players, 0, 21),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top21: top21.values,
-                        top21Age: top21.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 18);
-                    const top21 = filterPlayers(players, 21, 0, 18);
-                    rows.push({
-                        title: "U18",
-                        count: getNumberOfPlayers(players, 0, 18),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top21: top21.values,
-                        top21Age: top21.avgAge,
-                    });
-                }
-            } else {
-                {
-                    const all = filterPlayers(players);
-                    const top16 = filterPlayers(players, 16);
-                    const top11 = filterPlayers(players, 11);
-                    rows.push({
-                        title: "All",
-                        count: players.length,
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top16: top16.values,
-                        top16Age: top16.avgAge,
-                        top11: top11.values,
-                        top11Age: top11.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 23);
-                    const top16 = filterPlayers(players, 16, 0, 23);
-                    const top11 = filterPlayers(players, 11, 0, 23);
-                    rows.push({
-                        title: "U23",
-                        count: getNumberOfPlayers(players, 0, 23),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top16: top16.values,
-                        top16Age: top16.avgAge,
-                        top11: top11.values,
-                        top11Age: top11.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 21);
-                    const top16 = filterPlayers(players, 16, 0, 21);
-                    const top11 = filterPlayers(players, 11, 0, 21);
-                    rows.push({
-                        title: "U21",
-                        count: getNumberOfPlayers(players, 0, 21),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top16: top16.values,
-                        top16Age: top16.avgAge,
-                        top11: top11.values,
-                        top11Age: top11.avgAge,
-                    });
-                }
-                {
-                    const all = filterPlayers(players, 0, 0, 18);
-                    const top16 = filterPlayers(players, 16, 0, 18);
-                    const top11 = filterPlayers(players, 11, 0, 18);
-                    rows.push({
-                        title: "U18",
-                        count: getNumberOfPlayers(players, 0, 18),
-                        all: all.values,
-                        allAge: all.avgAge,
-                        top16: top16.values,
-                        top16Age: top16.avgAge,
-                        top11: top11.values,
-                        top11Age: top11.avgAge,
-                    });
-                }
-            }
-        }
-        return rows;
-    }
-
-    function squadSummaryCreateCompactElement(title, value) {
+    function squadCreateCompactElement(title, value) {
         const dd = document.createElement("dd");
         dd.innerHTML = `<span class="listHeadColor">${title}</span><span class="clippable">${value}</span>`;
         return dd;
@@ -1161,18 +1214,18 @@
         const dl = document.createElement("dl");
         dl.classList.add("hitlist-compact-list", "columns");
 
-        dl.appendChild(squadSummaryCreateCompactElement("Count", row.count));
-        dl.appendChild(squadSummaryCreateCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
+        dl.appendChild(squadCreateCompactElement("Count", row.count));
+        dl.appendChild(squadCreateCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
         if (sport == "soccer") {
-            dl.appendChild(squadSummaryCreateCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
-            dl.appendChild(squadSummaryCreateCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
         } else {
-            dl.appendChild(squadSummaryCreateCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
         }
         return dl;
     }
 
-    function squadSummaryCreateInfoTable(rows, currency = "USD", sport = "soccer") {
+    function squadCreateTopPlayersTable(rows, currency = "USD", sport = "soccer") {
         const thead = document.createElement("thead");
         const tr = document.createElement("tr");
 
@@ -1281,68 +1334,87 @@
         return table;
     }
 
-    function squadSummaryInjectInfo() {
-        const place = document.querySelector("table#playerAltViewTable");
-        if (place) {
-            addTotalSkillBalls();
-            injectSharedSkills();
-            const sport = getSportType(document);
-            const currency = getClubCurrency(document);
-            const players = getClubPlayers(document, currency);
-            const summary = squadSummaryGetInfo(players, sport);
-            const table = squadSummaryCreateInfoTable(summary, currency, sport);
-            const div = document.createElement("div");
+    function squadInjectTopPlayersTable(table) {
+        const sport = getSportType(document);
+        const currency = getClubCurrency(document);
+        const players = getClubPlayers(document, currency);
+        const summary = squadGetPlayersInfo(players, sport);
+        const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
+        topPlayers.style.marginBottom = "10px";
 
-            table.style.marginBottom = "10px";
+        const div = document.createElement("div");
+        div.classList.add("mazyar-flex-container");
+        div.appendChild(topPlayers);
 
-            div.classList.add("mazyar-flex-container");
+        table.parentNode.insertBefore(div, table);
+    }
 
-            div.appendChild(table);
-            place.parentNode.insertBefore(div, place);
+    function squadInjectInformation(table) {
+        squadAddTotalSkillBallsToSummaryTable(table);
+        squadInjectIconsToSummaryTable(table);
+        squadInjectTopPlayersTable(table);
+    }
+
+    function squadInjectInformationToSummary() {
+        const target = document.getElementById('squad_summary');
+        if (target) {
+            if (target.style.display !== 'none') {
+                // visiting squad summary directly
+                const table = document.querySelector("table#playerAltViewTable");
+                if (table && !table.injecting) {
+                    table.injecting = true;
+                    squadInjectInformation(table);
+                }
+            }
+
+            // add observer if user changes from other tabs to squad summary tab
+            const callback = (mutationsList) => {
+                const table = document.querySelector("table#playerAltViewTable");
+                if (table && !table.injecting) {
+                    table.injecting = true;
+                    squadInjectInformation(table);
+                }
+            };
+            // Create an observer instance linked to the callback function
+            const observer = new MutationObserver(callback);
+            // Start observing the target node for configured mutations
+            const config = { childList: true, subtree: true };
+            observer.observe(target, config);
         }
     }
 
-    function squadSummaryInjectInfoAfterChange() {
-        squadSummaryInjectInfo();
-
-        // Callback function to execute when mutations are observed
-        const callback = function (mutationsList) {
-            for (const mutation of mutationsList) {
-                if (mutation.type == "childList") {
-                    squadSummaryInjectInfo();
+    function squadInjectInformationToProfiles() {
+        if (document.baseURI.search("/?players&pid=") > -1) {
+            squadAddDaysAtThisClubToPlayerProfile();
+            mazyar.addPlayerComment();
+        } else {
+            const target = document.getElementById('squad_profiles');
+            if (target) {
+                if (target.style.display !== 'none') {
+                    // visiting profiles directly
+                    const container = document.getElementById('players_container');
+                    if (container && !container.injecting) {
+                        container.injecting = true;
+                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addPlayerComment();
+                    }
                 }
+
+                // add observer if user changes from other tabs to squad profiles tab
+                const callback = () => {
+                    const container = document.getElementById('players_container');
+                    if (container && !container.injecting) {
+                        container.injecting = true;
+                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addPlayerComment();
+                    }
+                };
+                // Create an observer instance linked to the callback function
+                const observer = new MutationObserver(callback);
+                // Start observing the target node for configured mutations
+                const config = { childList: true, subtree: true };
+                observer.observe(target, config);
             }
-        };
-        const observer = new MutationObserver(callback);
-        const players = document.getElementById("squad_summary");
-        observer.observe(players, {
-            childList: true,
-        });
-    }
-
-    function squadSummaryWaitAndInjectInfo(timeout = 16000) {
-        const step = 500;
-        const interval = setInterval(() => {
-            const table = document.querySelector("table#playerAltViewTable");
-            if (table) {
-                clearInterval(interval);
-                if (!table.SummaryInfoInjected) {
-                    table.SummaryInfoInjected = true;
-                    squadSummaryInjectInfoAfterChange();
-                }
-            } else {
-                timeout -= step;
-                if (timeout < 0) {
-                    clearInterval(interval);
-                }
-            }
-        }, step);
-    }
-
-    function squadSummaryAddClickCallbackForTab() {
-        const summaryTab = document.querySelector(`a[href="#squad_summary"]`);
-        if (summaryTab) {
-            summaryTab.parentNode.onclick = squadSummaryWaitAndInjectInfo;
         }
     }
 
@@ -1715,7 +1787,7 @@
     }
 
     function matchInjectTopPlayersValues(players, team, currency, sport) {
-        const summary = squadSummaryGetInfo(players, sport);
+        const summary = squadGetPlayersInfo(players, sport);
         const table = matchCreateSummaryTable(summary, currency, sport);
 
         const div = document.createElement("div");
@@ -3066,7 +3138,7 @@
             return false;
         }
 
-        mustAddPlayerComment() {
+        #mustAddPlayerComment() {
             return this.#settings.player_comment;
         }
 
@@ -3259,20 +3331,28 @@
 
         // -------------------------------- Player Options -------------------------------------
 
+        async #addPlayerCommentIcon(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            const commentIcon = createCommentIcon("MZY Comment");
+            if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
+                commentIcon.classList.add("mazyar-player-comment-icon-active");
+            } else {
+                commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+            }
+            player.querySelector(".p_links")?.appendChild(commentIcon);
+            commentIcon.addEventListener("click", async (event) => {
+                this.#displayPlayerComment(event?.target, playerId);
+            })
+        }
+
         async addPlayerComment() {
-            const players = document.querySelectorAll(".playerContainer");
-            for (const player of players) {
-                const playerId = getPlayerIdFromContainer(player);
-                const commentIcon = createCommentIcon("MZY Comment");
-                if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
-                    commentIcon.classList.add("mazyar-player-comment-icon-active");
-                } else {
-                    commentIcon.classList.add("mazyar-player-comment-icon-inactive");
+            if (this.#mustAddPlayerComment()) {
+                const jobs = [];
+                const players = document.querySelectorAll(".playerContainer");
+                for (const player of players) {
+                    jobs.push(this.#addPlayerCommentIcon(player));
                 }
-                player.querySelector(".p_links").appendChild(commentIcon);
-                commentIcon.addEventListener("click", async (event) => {
-                    this.#displayPlayerComment(event?.target, playerId);
-                });
+                Promise.all(jobs);
             }
         }
 
@@ -3825,17 +3905,17 @@
                     const sport = getSportType(doc);
                     const currency = getClubCurrency(doc);
                     const players = getClubPlayers(doc, currency);
-                    const summary = squadSummaryGetInfo(players, sport);
-                    const table = squadSummaryCreateInfoTable(summary, currency, sport);
-                    table.style.margin = "2px 5px";
-                    table.style.padding = "0";
+                    const summary = squadGetPlayersInfo(players, sport);
+                    const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
+                    topPlayers.style.margin = "2px 5px";
+                    topPlayers.style.padding = "0";
 
                     const header = createMzStyledTitle("MZY Squad Summary");
                     const button = createMzStyledButton("Close", "red");
                     button.onclick = () => {
                         mazyar.hideModal();
                     };
-                    this.#replaceModalContent([header, table, button]);
+                    this.#replaceModalContent([header, topPlayers, button]);
                 })
                 .catch((error) => {
                     console.log(error);
@@ -4110,17 +4190,8 @@
                 window.location.href = url.replace("#", "&");
             }
         } else if (uri.search("/?p=players") > -1) {
-            if (mazyar.mustAddPlayerComment()) {
-                mazyar.addPlayerComment();
-            }
-            if (uri.search("/?players&pid=") > -1) {
-                addDaysAtThisClub();
-            }
-            if (uri.search("/?p=players&sub=alt") > -1) {
-                squadSummaryInjectInfoAfterChange();
-            } else {
-                squadSummaryAddClickCallbackForTab();
-            }
+            squadInjectInformationToSummary();
+            squadInjectInformationToProfiles();
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
         } else if (uri.search("/?p=match") > -1 && !uri.search("&sub=result") > -1) {
