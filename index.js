@@ -1094,7 +1094,7 @@
         if (!doc) {
             return 0;
         }
-        const transfers = doc?.querySelector("div.baz div.win_back table.hitlist tbody");
+        const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist > tbody");
         if (transfers?.children.length > 1) {
             const arrived = transfers.lastChild.querySelector("td")?.innerText;
             return Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
