@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.23
+// @version      2.24
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
         "2.23": [
             "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
             "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
@@ -1094,7 +1095,7 @@
         if (!doc) {
             return 0;
         }
-        const transfers = doc?.querySelector("div.baz div.win_back table.hitlist tbody");
+        const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist > tbody");
         if (transfers?.children.length > 1) {
             const arrived = transfers.lastChild.querySelector("td")?.innerText;
             return Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
