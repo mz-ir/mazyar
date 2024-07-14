@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.23
+// @version      2.24
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
         "2.23": [
             "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
             "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
