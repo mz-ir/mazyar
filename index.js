@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.24
+// @version      2.25
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.25": ["<b>[new]</b> Training Report: click on player's camp package icon to open its camp report."],
         "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
         "2.23": [
             "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
@@ -1369,16 +1370,14 @@
             }
 
             // add observer if user changes from other tabs to squad summary tab
-            const callback = (mutationsList) => {
+            const callback = () => {
                 const table = document.querySelector("table#playerAltViewTable");
                 if (table && !table.injecting) {
                     table.injecting = true;
                     squadInjectInformation(table);
                 }
             };
-            // Create an observer instance linked to the callback function
             const observer = new MutationObserver(callback);
-            // Start observing the target node for configured mutations
             const config = { childList: true, subtree: true };
             observer.observe(target, config);
         }
@@ -1410,9 +1409,7 @@
                         mazyar.addPlayerComment();
                     }
                 };
-                // Create an observer instance linked to the callback function
                 const observer = new MutationObserver(callback);
-                // Start observing the target node for configured mutations
                 const config = { childList: true, subtree: true };
                 observer.observe(target, config);
             }
@@ -2835,20 +2832,60 @@
     }
 
     function trainersAddRequestedSalaries() {
+        const callback = () => {
+            const table = document.getElementById("coaches_list");
+            if (table && !table.injecting) {
+                table.injecting = true;
+                trainersUpdateSalariesAndWeeks(table);
+            }
+        };
         const target = document.querySelector('div.in_page_navigation_top');
         if (target) {
-            const callback = () => {
-                const table = document.getElementById("coaches_list");
-                if (table && !table.injecting) {
-                    table.injecting = true;
-                    trainersUpdateSalariesAndWeeks(table);
-                }
-            };
-
-            // Create an observer instance linked to the callback function
             const observer = new MutationObserver(callback);
+            const config = { childList: true, subtree: true };
+            observer.observe(target, config);
+        }
+    }
 
-            // Start observing the target node for configured mutations
+    /* *********************** Training Report ********************************** */
+
+    function trainingOpenPlayerTrainingCamp(player) {
+        player.querySelector('td.playerColumn a')?.click();
+        const interval = setInterval(() => {
+            const modal = document.querySelector("#lightbox_player_profile #players_container div.playerContainer");
+            if (modal) {
+                clearInterval(interval);
+                modal.querySelector('div.box_dark.player_tc_package_information a')?.click();
+            }
+        }, 300);
+    }
+
+    function trainingInjectCampOpener(table) {
+        const players = table.querySelectorAll("tbody tr");
+        for (const player of players) {
+            const campIcon = player.querySelector("td.dailyReportRightColumn img.content_middle");
+            if (campIcon) {
+                campIcon.style.cursor = "pointer";
+                campIcon.addEventListener("click", () => {
+                    trainingOpenPlayerTrainingCamp(player);
+                });
+            }
+        }
+    }
+
+    function trainingAddCampOpenerToReport() {
+        const callback = () => {
+            const tables = document.querySelectorAll('#training_report > table');
+            for (const table of tables) {
+                if (!table.injecting) {
+                    table.injecting = true;
+                    trainingInjectCampOpener(table);
+                }
+            }
+        };
+        const target = document.getElementById('training_report');
+        if (target) {
+            const observer = new MutationObserver(callback);
             const config = { childList: true, subtree: true };
             observer.observe(target, config);
         }
@@ -3236,7 +3273,6 @@
             this.applyFiltersAndStylesToTransferResult();
 
             const that = this;
-            // Callback function to execute when mutations are observed
             const callback = function (mutationsList) {
                 for (const mutation of mutationsList) {
                     if (mutation.type == "childList") {
@@ -3244,11 +3280,12 @@
                     }
                 }
             };
-            const observer = new MutationObserver(callback);
-            const players = document.getElementById("players_container");
-            observer.observe(players, {
-                childList: true,
-            });
+            const target = document.getElementById("players_container");
+            if (target) {
+                const observer = new MutationObserver(callback);
+                const config = { childList: true };
+                observer.observe(target, config);
+            }
         }
 
         #getSelectedScoutsOptionText() {
@@ -4219,6 +4256,9 @@
             if (mazyar.mustAddCoachSalaries()) {
                 trainersAddRequestedSalaries();
             }
+        } else if (uri.search("/?p=training_report") > -1) {
+            console.log("found");
+            trainingAddCampOpenerToReport();
         }
     }
 
