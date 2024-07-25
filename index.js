@@ -27,6 +27,11 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.26": [
+            "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
+            "<b>[improve]</b> Local Database: it deletes outdated local data to reduce the size of database.",
+            "<b>[improve]</b> Transfer: it uses less ajax requests now."
+        ],
         "2.25": ["<b>[new]</b> Training Report: click on player's camp package icon to open its camp report."],
         "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
         "2.23": [
