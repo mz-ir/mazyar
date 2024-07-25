@@ -3473,6 +3473,10 @@
         }
 
         async #squadAddDaysAtThisClubForSinglePlayer(player) {
+            if (player.daysInjected) {
+                return;
+            }
+            player.daysInjected = true;
             const playerId = getPlayerIdFromContainer(player);
             const profile = await this.#fetchOrExtractPlayerProfile(playerId);
             const daysDiv = document.createElement("div");
