@@ -28,7 +28,7 @@
     const currentVersion = GM_info.script.version;
     const changelogs = {
         "2.26": [
-            "<b>[new]</b> Transfer: it adds 'Days at this club' to player profiles. It is disabled by default. You can enable it from MZY Settings.",
+            "<b>[improve]</b> Days at this club: it is optional. It is disabled by default. You can enable it from MZY Settings.",
             "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
             "<b>[improve]</b> Local Database: it deletes outdated local data to reduce the size of database.",
             "<b>[improve]</b> Transfer: it uses less ajax requests now.",
@@ -750,6 +750,19 @@
         return div;
     }
 
+    function createMenuGroup(title = "") {
+        const group = document.createElement("div");
+        group.classList.add("mazyar-flex-container");
+        group.style.alignSelf = "flex-start";
+        group.style.alignItems = "flex-start";
+        group.style.margin = "0.2rem 0.6rem";
+        const header = document.createElement("h4");
+        header.innerText = title;
+        header.style.margin = "0.3rem 0rem";
+        group.appendChild(header);
+        return group;
+    }
+
     function appendOptionList(parent, options, selected) {
         // options = a object full of 'key: {value, label}'
         for (const key in options) {
@@ -1120,19 +1133,21 @@
     }
 
     function squadAddDaysAtThisClubToPlayerProfile() {
-        const days = squadExtractResidencyDays(document);
-        const daysDiv = document.createElement("div");
-        if (days >= 0) {
-            const text = days === 0 ? 'N/A' : `≤ ${days}`;
-            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-            daysDiv.classList.add("mazyar-days-at-this-club");
-        } else if (mazyar.isDaysAtThisClubEnabledForOneClubPlayers()) {
-            const text = 'Entire Career';
-            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-            daysDiv.classList.add("mazyar-days-at-this-club-entire");
+        if (mazyar.isDaysAtThisClubEnabledForPlayerProfiles()) {
+            const days = squadExtractResidencyDays(document);
+            const daysDiv = document.createElement("div");
+            if (days >= 0) {
+                const text = days === 0 ? 'N/A' : `≤ ${days}`;
+                daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+                daysDiv.classList.add("mazyar-days-at-this-club");
+            } else if (mazyar.isDaysAtThisClubEnabledForOneClubPlayers()) {
+                const text = 'Entire Career';
+                daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+                daysDiv.classList.add("mazyar-days-at-this-club-entire");
+            }
+            const profile = document.querySelector("div.playerContainer");
+            profile?.appendChild(daysDiv);
         }
-        const profile = document.querySelector("div.playerContainer");
-        profile?.appendChild(daysDiv);
     }
 
     /* *********************** Squad - Total Balls ********************************** */
@@ -2901,6 +2916,11 @@
             mz_predictor: false,
             player_comment: false,
             coach_salary: false,
+            days: {
+                display_in_profiles: false,
+                display_in_transfer: false,
+                display_for_one_clubs: false,
+            }
         };
         #transferOptions = {
             hide: true,
@@ -2926,6 +2946,90 @@
 
             this.#showChangelog();
         }
+
+        // -------------------------------- Settings -------------------------------------
+
+        #fetchSettings() {
+            this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
+            this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
+            this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
+            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
+            this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
+            this.#settings.player_comment = GM_getValue("player_comment", false);
+            this.#settings.coach_salary = GM_getValue("coach_salary", true);
+            this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", false);
+            this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
+            this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", false);
+        }
+
+        #saveSettings() {
+            GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
+            GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
+            GM_setValue("enable_transfer_filters", this.#settings.transfer);
+            GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
+            GM_setValue("mz_predictor", this.#settings.mz_predictor);
+            GM_setValue("player_comment", this.#settings.player_comment);
+            GM_setValue("coach_salary", this.#settings.coach_salary);
+            GM_setValue("display_days_in_profiles", this.#settings.days.display_in_profiles);
+            GM_setValue("display_days_in_transfer", this.#settings.days.display_in_transfer);
+            GM_setValue("display_days_for_one_clubs", this.#settings.days.display_for_one_clubs);
+        }
+
+        updateSettings(settings) {
+            this.#settings = settings;
+            this.#saveSettings();
+            if (this.isTransferFiltersEnabled()) {
+                this.#checkAllFilters(true);
+            } else {
+                this.#setFilterHitsInToolbar(0);
+            }
+        }
+
+        mustDisplayInProgressResults() {
+            return this.#settings.in_progress_results;
+        }
+
+        mustDisplayTopPlayersInTables() {
+            return this.#settings.top_players_in_tables;
+        }
+
+        isTransferFiltersEnabled() {
+            return this.#settings.transfer;
+        }
+
+        #isTransferMaxedSkillsEnabled() {
+            return this.#settings.transfer_maxed;
+        }
+
+        isDaysAtThisClubEnabledForPlayerProfiles() {
+            return this.#settings.days.display_in_profiles;
+        }
+
+        #isDaysAtThisClubEnabledForTransferMarket() {
+            return this.#settings.days.display_in_transfer;
+        }
+
+        isDaysAtThisClubEnabledForOneClubPlayers() {
+            return this.#settings.days.display_for_one_clubs;
+        }
+
+        mustHelpWithPredictor() {
+            return this.#settings.mz_predictor;
+        }
+
+        #mustAddPlayerComment() {
+            return this.#settings.player_comment;
+        }
+
+        mustAddCoachSalaries() {
+            return this.#settings.coach_salary;
+        }
+
+        #mustMarkMaxedSkills() {
+            return this.#settings.transfer_maxed;
+        }
+
+        // -------------------------------- Database -------------------------------------
 
         async #initializeIndexedDb(name = "db") {
             this.#db = new Dexie(name);
@@ -3113,7 +3217,6 @@
             return profile;
         }
 
-
         async #extractPlayerScoutReport(pid, skills) {
             const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
             const resp = await fetch(url).catch((error) => {
@@ -3185,56 +3288,28 @@
             return reports.filter((report) => report != null);
         }
 
-        #isTransferHighOptionsEnabled() {
-            return this.#transferOptions.H4 || this.#transferOptions.H3;
-        }
-
-        #isTransferLowOptionsEnabled() {
-            return this.#transferOptions.L2 || this.#transferOptions.L1;
-        }
-
-        #areTransferScoutOptionsEnabled() {
-            return this.#isTransferHighOptionsEnabled() || this.#isTransferLowOptionsEnabled();
-        }
-
-        #isTransferMaxedSkillsEnabled() {
-            return this.#settings.transfer_maxed;
-        }
-
-        #isDaysAtThisClubEnabledForTransferMarket() {
-            return this.#settings.display_days_in_transfer;
-        }
-
-        isDaysAtThisClubEnabledForOneClubPlayers() {
-            return this.#settings.display_days_for_one_clubs;
-        }
-
-        mustHelpWithPredictor() {
-            // return this.#settings.mz_predictor;
-            return false;
-        }
-
-        #mustAddPlayerComment() {
-            return this.#settings.player_comment;
-        }
-
-        mustAddCoachSalaries() {
-            return this.#settings.coach_salary;
-        }
-
-        #mustMarkMaxedSkills() {
-            return this.#settings.transfer_maxed;
-        }
 
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
+        }
+
+        #areTransferLowOptionsSelected() {
+            return this.#transferOptions.L2 || this.#transferOptions.L1;
+        }
+
+        #areTransferHighOptionsSelected() {
+            return this.#transferOptions.H4 || this.#transferOptions.H3;
+        }
+
+        #areTransferScoutOptionsSelected() {
+            return this.#areTransferLowOptionsSelected() || this.#areTransferHighOptionsSelected();
         }
 
         #getAcceptableHighsAndLows() {
             let lows = [];
             let highs = [];
 
-            if (this.#isTransferLowOptionsEnabled()) {
+            if (this.#areTransferLowOptionsSelected()) {
                 if (this.#transferOptions.L2) {
                     lows.push(2);
                 }
@@ -3245,7 +3320,7 @@
                 lows = [1, 2, 3];
             }
 
-            if (this.#isTransferHighOptionsEnabled()) {
+            if (this.#areTransferHighOptionsSelected()) {
                 if (this.#transferOptions.H4) {
                     highs.push(4);
                 }
@@ -3305,7 +3380,7 @@
                 if (this.#isMaxedOrDaysEnabledForTransfer()) {
                     jobs.push(this.#updateMaxedAndDaysInTransfer(player));
                 }
-                if (this.#areTransferScoutOptionsEnabled()) {
+                if (this.#areTransferScoutOptionsSelected()) {
                     if (player.querySelector("span.scout_report > a")) {
                         jobs.push(this.#fetchOrExtractPlayerScoutReport(player).then((report) => {
                             this.#colorizeSkills(player, report);
@@ -3321,7 +3396,7 @@
         }
 
         #mustUpdateDisplayForTransferSearchResults() {
-            return this.#areTransferScoutOptionsEnabled()
+            return this.#areTransferScoutOptionsSelected()
                 || this.#isTransferMaxedSkillsEnabled()
                 || this.#isDaysAtThisClubEnabledForTransferMarket();
         }
@@ -3387,54 +3462,6 @@
             return texts.join(", ");
         }
 
-        // -------------------------------- Settings -------------------------------------
-
-        #fetchSettings() {
-            this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
-            this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
-            this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
-            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
-            this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
-            this.#settings.player_comment = GM_getValue("player_comment", false);
-            this.#settings.coach_salary = GM_getValue("coach_salary", true);
-            this.#settings.display_days_in_transfer = GM_getValue("display_days_in_transfer", false);
-            this.#settings.display_days_for_one_clubs = GM_getValue("display_days_for_one_clubs", false);
-        }
-
-        #saveSettings() {
-            GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
-            GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
-            GM_setValue("enable_transfer_filters", this.#settings.transfer);
-            GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
-            GM_setValue("mz_predictor", this.#settings.mz_predictor);
-            GM_setValue("player_comment", this.#settings.player_comment);
-            GM_setValue("coach_salary", this.#settings.coach_salary);
-            GM_setValue("display_days_in_transfer", this.#settings.display_days_in_transfer);
-            GM_setValue("display_days_for_one_clubs", this.#settings.display_days_for_one_clubs);
-        }
-
-        updateSettings(settings) {
-            this.#settings = settings;
-            this.#saveSettings();
-            if (this.isTransferFiltersEnabled()) {
-                this.#checkAllFilters(true);
-            } else {
-                this.#setFilterHitsInToolbar(0);
-            }
-        }
-
-        mustDisplayInProgressResults() {
-            return this.#settings.in_progress_results;
-        }
-
-        mustDisplayTopPlayersInTables() {
-            return this.#settings.top_players_in_tables;
-        }
-
-        isTransferFiltersEnabled() {
-            return this.#settings.transfer;
-        }
-
         // -------------------------------- Player Options -------------------------------------
 
         async #addPlayerCommentIcon(player) {
@@ -3481,17 +3508,19 @@
         }
 
         async squadAddDaysAtThisClubToAllPlayers(container) {
-            const jobs = [];
-            const players = container.querySelectorAll("div.playerContainer");
-            for (const player of players) {
-                jobs.push((async (player) => {
-                    const playerId = getPlayerIdFromContainer(player);
-                    await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
-                        this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
-                    });
-                })(player));
+            if (this.isDaysAtThisClubEnabledForPlayerProfiles()) {
+                const jobs = [];
+                const players = container.querySelectorAll("div.playerContainer");
+                for (const player of players) {
+                    jobs.push((async (player) => {
+                        const playerId = getPlayerIdFromContainer(player);
+                        await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
+                            this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                        });
+                    })(player));
+                }
+                Promise.all(jobs);
             }
-            Promise.all(jobs);
         }
 
         // -------------------------------- Transfer Options -------------------------------------
@@ -3758,8 +3787,11 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
-                display_days_in_transfer: false,
-                display_days_for_one_clubs: false,
+                days: {
+                    display_in_profiles: false,
+                    display_in_transfer: false,
+                    display_for_one_clubs: false,
+                }
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3805,19 +3837,40 @@
         }
 
         displaySettingsMenu() {
-            const that = this; // used in onclick event listener
+            const submenuStyle = { margin: "0.1rem 1.2rem" };
 
             const div = document.createElement("div");
             const title = createMzStyledTitle("MZY Settings");
-            const inProgress = createMenuCheckBox("Display In Progress Results", this.#settings.in_progress_results);
-            const tableInjection = createMenuCheckBox("Display Teams' Top Players in Tables", this.#settings.top_players_in_tables);
-            const transfer = createMenuCheckBox("Enable Transfer Filters", this.#settings.transfer);
-            const transferMaxed = createMenuCheckBox("Display Maxed Skills in Transfer (If Available)", this.#settings.transfer_maxed);
-            // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
-            const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
-            const coachSalaries = createMenuCheckBox("Display Salary Range in 'Hire Coaches'", this.#settings.coach_salary);
-            const daysInTransfer = createMenuCheckBox("Display 'Days At this club' in transfer market", this.#settings.display_days_in_transfer);
-            const daysForOneClubs = createMenuCheckBox("Display 'Days At this club' for One-Club players", this.#settings.display_days_for_one_clubs);
+
+            const miscellaneousGroup = createMenuGroup("Miscellaneous:");
+            const playerComment = createMenuCheckBox("Enable player comment", this.#settings.player_comment, submenuStyle);
+            const inProgress = createMenuCheckBox("Display in progress results", this.#settings.in_progress_results, submenuStyle);
+            const tableInjection = createMenuCheckBox("Display teams' top players in tables", this.#settings.top_players_in_tables, submenuStyle);
+            const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor, submenuStyle);
+            mzPredictor.style.display = 'none';
+            miscellaneousGroup.appendChild(playerComment);
+            miscellaneousGroup.appendChild(inProgress);
+            miscellaneousGroup.appendChild(tableInjection);
+            miscellaneousGroup.appendChild(mzPredictor);
+
+            const coachesGroup = createMenuGroup("Coaches:");
+            const coachSalaries = createMenuCheckBox("Display salaries in search results", this.#settings.coach_salary, submenuStyle);
+            coachesGroup.appendChild(coachSalaries);
+
+            const transferGroup = createMenuGroup("Transfer Market:");
+            const transferFilters = createMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
+            const transferMaxed = createMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
+            transferGroup.appendChild(transferFilters);
+            transferGroup.appendChild(transferMaxed);
+
+            const daysGroup = createMenuGroup("Days at this club:");
+            const daysInProfiles = createMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
+            const daysInTransfer = createMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, submenuStyle);
+            const daysForOneClubs = createMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, submenuStyle);
+            daysGroup.appendChild(daysInProfiles);
+            daysGroup.appendChild(daysInTransfer);
+            daysGroup.appendChild(daysForOneClubs);
+
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3828,41 +3881,38 @@
             buttons.classList.add("mazyar-flex-container-row");
 
             cancel.onclick = () => {
-                that.hideModal();
+                this.hideModal();
             };
 
             save.onclick = () => {
-                that.updateSettings({
+                this.updateSettings({
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
-                    transfer: transfer.querySelector("input[type=checkbox]").checked,
+                    transfer: transferFilters.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
-                    // mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
-                    mz_predictor: false,
+                    mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
-                    display_days_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
-                    display_days_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
+                    days: {
+                        display_in_profiles: daysInProfiles.querySelector("input[type=checkbox]").checked,
+                        display_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
+                        display_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
+                    }
                 });
-                that.hideModal();
+                this.hideModal();
             };
 
             clean.style.marginBottom = "0";
             clean.onclick = () => {
-                that.hideModal();
-                that.displayCleanMenu();
+                this.hideModal();
+                this.displayCleanMenu();
             };
 
             div.appendChild(title);
-            div.appendChild(inProgress);
-            div.appendChild(tableInjection);
-            div.appendChild(transfer);
-            div.appendChild(transferMaxed);
-            // div.appendChild(mzPredictor);
-            div.appendChild(playerComment);
-            div.appendChild(coachSalaries);
-            div.appendChild(daysInTransfer);
-            div.appendChild(daysForOneClubs);
+            div.appendChild(transferGroup);
+            div.appendChild(daysGroup);
+            div.appendChild(coachesGroup);
+            div.appendChild(miscellaneousGroup);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
