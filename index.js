@@ -28,9 +28,10 @@
     const currentVersion = GM_info.script.version;
     const changelogs = {
         "2.26": [
+            "<b>[new]</b> Transfer: it adds 'Days at this club' to player profiles. It is disabled by default. You can enable it from MZY Settings.",
             "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
             "<b>[improve]</b> Local Database: it deletes outdated local data to reduce the size of database.",
-            "<b>[improve]</b> Transfer: it uses less ajax requests now."
+            "<b>[improve]</b> Transfer: it uses less ajax requests now.",
         ],
         "2.25": ["<b>[new]</b> Training Report: click on player's camp package icon to open its camp report."],
         "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
@@ -3175,8 +3176,12 @@
                 const skills = this.#extractSkillNamesFromPlayerInfo(firstPlayer);
                 const scoutJobs = [];
                 const maxedJobs = [];
+                const daysJobs = [];
                 for (const player of [...players.children]) {
                     if (player.classList.contains("playerContainer")) {
+                        if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
+                            daysJobs.push(this.#squadAddDaysAtThisClubForSinglePlayer(player));
+                        }
                         if (this.#isTransferMaxedSkillsEnabled()) {
                             maxedJobs.push(this.#markMaxedSkills(player));
                         }
@@ -3192,13 +3197,14 @@
                         }
                     }
                 }
-                await Promise.all(maxedJobs);
                 const scoutReports = await Promise.all(scoutJobs);
                 for (const scoutReport of scoutReports) {
                     if (scoutReport) {
                         reports.push(scoutReport);
                     }
                 }
+                await Promise.all(maxedJobs);
+                await Promise.all(daysJobs);
             }
             return reports;
         }
@@ -3217,6 +3223,10 @@
 
         #isTransferMaxedSkillsEnabled() {
             return this.#settings.transfer_maxed;
+        }
+
+        #isDaysAtThisClubEnabledForTransferMarket() {
+            return this.#settings.display_days_in_transfer;
         }
 
         mustHelpWithPredictor() {
@@ -3382,6 +3392,7 @@
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
+            this.#settings.display_days_in_transfer = GM_getValue("display_days_in_transfer", false);
         }
 
         #saveSettings() {
@@ -3392,6 +3403,7 @@
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
             GM_setValue("coach_salary", this.#settings.coach_salary);
+            GM_setValue("display_days_in_transfer", this.#settings.display_days_in_transfer);
         }
 
         updateSettings(settings) {
@@ -3722,6 +3734,7 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
+                display_days_in_transfer: false,
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
@@ -3778,6 +3791,8 @@
             // const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor);
             const playerComment = createMenuCheckBox("Enable Player Comment", this.#settings.player_comment);
             const coachSalaries = createMenuCheckBox("Display Salary Range in 'Hire Coaches'", this.#settings.coach_salary);
+
+            const daysInTransfer = createMenuCheckBox("Display 'Days At this club' in transfer market", this.#settings.display_days_in_transfer);
             const buttons = document.createElement("div");
             const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = createMzStyledButton("Cancel", "red");
@@ -3801,6 +3816,7 @@
                     mz_predictor: false,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
+                    display_days_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
                 });
                 that.hideModal();
             };
@@ -3819,6 +3835,7 @@
             // div.appendChild(mzPredictor);
             div.appendChild(playerComment);
             div.appendChild(coachSalaries);
+            div.appendChild(daysInTransfer);
             div.appendChild(clean);
             buttons.appendChild(cancel);
             buttons.appendChild(save);
