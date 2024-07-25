@@ -227,6 +227,15 @@
         border: 1px solid black;
         text-align: center;
     }
+
+    .mazyar-days-at-this-club-entire {
+        margin: 5px;
+        padding: 3px;
+        background-color: greenyellow;
+        border-radius: 5px;
+        border: 1px solid black;
+        text-align: center;
+    }
     `;
 
     /* ********************** Constants ******************************** */
@@ -1112,17 +1121,16 @@
 
     function squadAddDaysAtThisClubToPlayerProfile() {
         const days = squadExtractResidencyDays(document);
+        let text = 'Entire Career';
         if (days >= 0) {
-            const text = days === 0 ? 'N/A' : `≤ ${days}`;
-            const daysDiv = document.createElement("div");
-            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-            daysDiv.classList.add("mazyar-days-at-this-club");
-            const profile = document.querySelector("div.playerContainer");
-            profile?.appendChild(daysDiv);
+            text = days === 0 ? 'N/A' : `≤ ${days}`;
         }
+        const daysDiv = document.createElement("div");
+        daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+        daysDiv.classList.add(days >= 0 ? "mazyar-days-at-this-club" : "mazyar-days-at-this-club-entire");
+        const profile = document.querySelector("div.playerContainer");
+        profile?.appendChild(daysDiv);
     }
-
-
 
     /* *********************** Squad - Total Balls ********************************** */
 
@@ -3458,13 +3466,14 @@
         async #squadAddDaysAtThisClubForSinglePlayer(player) {
             const playerId = getPlayerIdFromContainer(player);
             const profile = await this.#fetchOrExtractPlayerProfile(playerId);
+            let text = 'Entire Career';
             if (profile?.days >= 0) {
-                const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
-                const daysDiv = document.createElement("div");
-                daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-                daysDiv.classList.add("mazyar-days-at-this-club");
-                player.querySelector("div.mainContent")?.appendChild(daysDiv);
+                text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
             }
+            const daysDiv = document.createElement("div");
+            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+            daysDiv.classList.add(profile?.days >= 0 ? "mazyar-days-at-this-club" : "mazyar-days-at-this-club-entire");
+            player.querySelector("div.mainContent")?.appendChild(daysDiv);
         }
 
         async squadAddDaysAtThisClubToAllPlayers(container) {
