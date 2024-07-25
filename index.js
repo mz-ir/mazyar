@@ -442,7 +442,7 @@
                 players = getNationalPlayers(doc, currency);
             })
             .catch((error) => {
-                console.log(error);
+                console.warn(error);
             });
         return { players, currency };
     }
@@ -460,7 +460,7 @@
                 players = getClubPlayers(doc, currency);
             })
             .catch((error) => {
-                console.log(error);
+                console.warn(error);
             });
         return { players, currency };
     }
@@ -502,7 +502,7 @@
                 }
                 return info;
             }).catch((error) => {
-                console.log(error);
+                console.warn(error);
                 return null;
             });
     }
@@ -635,7 +635,7 @@
                 return parser.parseFromString(content, "text/html");
             })
             .catch((error) => {
-                console.log(error);
+                console.warn(error);
                 return null;
             });
     }
@@ -2620,7 +2620,7 @@
         const rankings = [];
         const url = 'https://www.managerzone.com/?p=rank&sub=countryrank';
         const resp = await fetch(url).catch((error) => {
-            console.log(error);
+            console.warn(error);
         });
         if (resp) {
             const parser = new DOMParser();
@@ -2673,7 +2673,7 @@
 
         const sport = getSportType();
         const resp = await fetch(url).catch((error) => {
-            console.log(error);
+            console.warn(error);
         });
         if (resp) {
             const results = [];
@@ -2719,7 +2719,7 @@
 
     async function getTrophiesCount(url) {
         const resp = await fetch(url).catch((error) => {
-            console.log(error);
+            console.warn(error);
             return 'N/A';
         });
         if (resp?.status === 200) {
@@ -2940,6 +2940,7 @@
             });
             this.#db.version(2).stores({
                 scout: "[sport+pid],ts",
+                player: "[sport+pid],ts,maxed",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -2958,7 +2959,14 @@
             await this.#db.scout.where("ts").below(scoutOutdate).delete().then(function (deleteCount) {
                 console.log("Deleted " + deleteCount + " outdated scout reports");
             }).catch((error) => {
-                console.log(error);
+                console.warn(error);
+            });
+
+            const startOfDay = Date.now() - Date.now() % (24 * 60 * 60 * 1000);
+            await this.#db.player.where("ts").below(startOfDay).delete().then(function (deleteCount) {
+                console.log("Deleted " + deleteCount + " outdated player profile.");
+            }).catch((error) => {
+                console.warn(error);
             });
         }
 
@@ -2967,6 +2975,7 @@
             await this.#db.scout.clear();
             await this.#db.hit.clear();
             await this.#db.filter.clear();
+            await this.#db.player.clear();
         }
 
         async #fetchPlayerCommentFromIndexedDb(pid) {
@@ -3063,11 +3072,23 @@
             return [...skills].map((el) => skillList.indexOf(el.innerText));
         }
 
-        async #markMaxedSkills(player) {
-            const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+
+        async #fetchPlayerProfileFromIndexedDb(pid) {
+            return await this.#db.player.get({ pid, sport: this.#sport });
+        }
+
+        async #setPlayerProfileInIndexedDb(profile) {
+            if (profile) {
+                profile.sport = this.#sport;
+                profile.ts = Date.now();
+                await this.#db.player.put(profile);
+            }
+        }
+
+        async #extractPlayerProfile(playerId) {
             const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
             const resp = await fetch(url).catch((error) => {
-                console.log(error);
+                console.warn(error);
             });
             if (resp) {
                 const parser = new DOMParser();
@@ -3081,16 +3102,33 @@
                     }
                     i++;
                 }
-                if (maxed) {
-                    this.#colorizeMaxedSkills(player, maxed);
-                }
+                return {
+                    pid: playerId,
+                    maxed,
+                };
             }
+            return null;
+        }
+
+        async #fetchOrExtractPlayerProfile(player) {
+            const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+            let profile = await this.#fetchPlayerProfileFromIndexedDb(playerId);
+            if (!profile) {
+                profile = await this.#extractPlayerProfile(playerId);
+                this.#setPlayerProfileInIndexedDb(profile);
+            }
+            return profile;
+        }
+
+        async #markMaxedSkills(player) {
+            const profile = await this.#fetchOrExtractPlayerProfile(player)
+            this.#colorizeMaxedSkills(player, profile?.maxed);
         }
 
         async #extractPlayerScoutReport(pid, skills) {
             const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
             const resp = await fetch(url).catch((error) => {
-                console.log(error);
+                console.warn(error);
             });
             if (resp) {
                 const parser = new DOMParser();
@@ -3115,10 +3153,12 @@
             return null;
         }
 
-        #colorizeMaxedSkills(player, maxed) {
-            const playerSkills = player.querySelectorAll("table.player_skills tr td.skillval span");
-            for (const skill of maxed) {
-                playerSkills[skill].classList.add("maxed");
+        #colorizeMaxedSkills(player, maxed = []) {
+            if (maxed) {
+                const playerSkills = player.querySelectorAll("table.player_skills tr td.skillval span");
+                for (const skill of maxed) {
+                    playerSkills[skill].classList.add("maxed");
+                }
             }
         }
 
@@ -3551,7 +3591,7 @@
             let scoutHits = -1;
             const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${filter.params}&o=${offset}`;
             const response = await fetch(url).catch((error) => {
-                console.log(error);
+                console.warn(error);
             });
             if (response) {
                 const data = await response.json();
@@ -3977,7 +4017,7 @@
                     this.#replaceModalContent([header, topPlayers, button]);
                 })
                 .catch((error) => {
-                    console.log(error);
+                    console.warn(error);
                 });
         }
 
@@ -4280,7 +4320,6 @@
                 trainersAddRequestedSalaries();
             }
         } else if (uri.search("/?p=training_report") > -1) {
-            console.log("found");
             trainingAddCampOpenerToReport();
         }
     }
