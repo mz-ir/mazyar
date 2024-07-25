@@ -2558,27 +2558,27 @@
 
         H4.onclick = () => {
             mazyar.updateTransferOptions("H4", H4.querySelector("input[type=checkbox]").checked);
-            mazyar.applyFiltersAndStylesToTransferResult(true);
+            mazyar.updateDisplayForTransferSearchResults(true);
         };
 
         H3.onclick = () => {
             mazyar.updateTransferOptions("H3", H3.querySelector("input[type=checkbox]").checked);
-            mazyar.applyFiltersAndStylesToTransferResult(true);
+            mazyar.updateDisplayForTransferSearchResults(true);
         };
 
         L2.onclick = () => {
             mazyar.updateTransferOptions("L2", L2.querySelector("input[type=checkbox]").checked);
-            mazyar.applyFiltersAndStylesToTransferResult(true);
+            mazyar.updateDisplayForTransferSearchResults(true);
         };
 
         L1.onclick = () => {
             mazyar.updateTransferOptions("L1", L1.querySelector("input[type=checkbox]").checked);
-            mazyar.applyFiltersAndStylesToTransferResult(true);
+            mazyar.updateDisplayForTransferSearchResults(true);
         };
 
         hide.onclick = () => {
             mazyar.updateTransferOptions("hide", hide.querySelector("input[type=checkbox]").checked);
-            mazyar.applyFiltersAndStylesToTransferResult(true);
+            mazyar.updateDisplayForTransferSearchResults(true);
         };
 
         highs.appendChild(H4);
@@ -3113,13 +3113,6 @@
             return profile;
         }
 
-        async #markMaxedSkills(player) {
-            if (this.#mustMarkMaxedSkills()) {
-                const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
-                const profile = await this.#fetchOrExtractPlayerProfile(playerId)
-                this.#colorizeMaxedSkills(player, profile?.maxed);
-            }
-        }
 
         async #extractPlayerScoutReport(pid, skills) {
             const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
@@ -3168,10 +3161,11 @@
             }
         }
 
-        async #fetchOrExtractPlayerScoutReport(player, skills) {
+        async #fetchOrExtractPlayerScoutReport(player) {
             const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
             let report = await this.#fetchScoutReportFromIndexedDb(playerId);
             if (!report) {
+                const skills = this.#extractSkillNamesFromPlayerInfo(player);
                 report = await this.#extractPlayerScoutReport(playerId, skills);
                 if (report) {
                     this.#setScoutReportInIndexedDb(report);
@@ -3180,44 +3174,15 @@
             return report;
         }
 
-        async #processTransferSearchResults(players, callback = null) {
-            const reports = [];
-            const firstPlayer = players.querySelector("#thePlayers_0");
-            if (firstPlayer) {
-                const skills = this.#extractSkillNamesFromPlayerInfo(firstPlayer);
-                const scoutJobs = [];
-                const maxedJobs = [];
-                const daysJobs = [];
-                for (const player of [...players.children]) {
-                    if (player.classList.contains("playerContainer")) {
-                        if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
-                            daysJobs.push(this.#squadAddDaysAtThisClubForSinglePlayer(player));
-                        }
-                        if (this.#isTransferMaxedSkillsEnabled()) {
-                            maxedJobs.push(this.#markMaxedSkills(player));
-                        }
-                        if (this.#isTransferOptionsEnabled()) {
-                            if (player.querySelector("span.scout_report > a")) {
-                                scoutJobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills).then((report) => {
-                                    this.#colorizeSkills(player, report);
-                                    return report;
-                                }));
-                            } else if (callback) {
-                                callback(player);
-                            }
-                        }
-                    }
+        async #getPlayerScoutReportForSearchResult(players) {
+            const jobs = [];
+            for (const player of [...players.children]) {
+                if (player.classList.contains("playerContainer") && player.querySelector("span.scout_report > a")) {
+                    jobs.push(this.#fetchOrExtractPlayerScoutReport(player));
                 }
-                const scoutReports = await Promise.all(scoutJobs);
-                for (const scoutReport of scoutReports) {
-                    if (scoutReport) {
-                        reports.push(scoutReport);
-                    }
-                }
-                await Promise.all(maxedJobs);
-                await Promise.all(daysJobs);
             }
-            return reports;
+            const reports = await Promise.all(jobs);
+            return reports.filter((report) => report != null);
         }
 
         #isTransferHighOptionsEnabled() {
@@ -3228,7 +3193,7 @@
             return this.#transferOptions.L2 || this.#transferOptions.L1;
         }
 
-        #isTransferOptionsEnabled() {
+        #areTransferScoutOptionsEnabled() {
             return this.#isTransferHighOptionsEnabled() || this.#isTransferLowOptionsEnabled();
         }
 
@@ -3294,24 +3259,15 @@
             return { lows, highs };
         }
 
-        #getAcceptableHighsAndLowsForFilter(scout) {
-            const lows = scout.low.length > 0 ? scout.low : [1, 2, 3];
-            const highs = scout.high.length > 0 ? scout.high : [1, 2, 3, 4];
-            return { lows, highs };
-        }
-
-        #applyTransferFilters(reports) {
-            const { lows, highs } = this.#getAcceptableHighsAndLows();
-            for (const report of reports) {
-                if (!this.#isQualifiedForTransferScoutFilter(report, lows, highs)) {
-                    const player = document.getElementById(`player_id_${report.pid}`);
-                    if (player) {
-                        const playerContainer = player.parentNode.parentNode.parentNode;
-                        if (this.#transferOptionsMustHide()) {
-                            playerContainer.classList.add("mazyar-hide");
-                        } else {
-                            playerContainer.classList.add("mazyar-dim-60");
-                        }
+        #applyTransferFilters(report, lows, highs) {
+            if (!this.#isQualifiedForTransferScoutFilter(report, lows, highs)) {
+                const player = document.getElementById(`player_id_${report.pid}`);
+                if (player) {
+                    const playerContainer = player.parentNode.parentNode.parentNode;
+                    if (this.#transferOptionsMustHide()) {
+                        playerContainer.classList.add("mazyar-hide");
+                    } else {
+                        playerContainer.classList.add("mazyar-dim-60");
                     }
                 }
             }
@@ -3325,33 +3281,67 @@
             document.querySelectorAll(".mazyar-dim-60")?.forEach((el) => el.classList.remove("mazyar-dim-60"));
         }
 
-        async applyFiltersAndStylesToTransferResult(clear = false) {
+        #isMaxedOrDaysEnabledForTransfer() {
+            return this.#isDaysAtThisClubEnabledForTransferMarket() || this.#isTransferMaxedSkillsEnabled()
+        }
+
+        async #updateMaxedAndDaysInTransfer(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
+                if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                }
+                if (this.#mustMarkMaxedSkills()) {
+                    this.#colorizeMaxedSkills(player, profile?.maxed);
+                }
+            });
+        };
+
+        async #processTransferSearchResults(results) {
+            const { lows, highs } = this.#getAcceptableHighsAndLows();
+            const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
+            const jobs = [];
+            for (const player of players) {
+                if (this.#isMaxedOrDaysEnabledForTransfer()) {
+                    jobs.push(this.#updateMaxedAndDaysInTransfer(player));
+                }
+                if (this.#areTransferScoutOptionsEnabled()) {
+                    if (player.querySelector("span.scout_report > a")) {
+                        jobs.push(this.#fetchOrExtractPlayerScoutReport(player).then((report) => {
+                            this.#colorizeSkills(player, report);
+                            this.#applyTransferFilters(report, lows, highs);
+                        }));
+                    } else {
+                        const className = this.#transferOptionsMustHide() ? "mazyar-hide" : "mazyar-dim-50";
+                        player.classList.add(className);
+                    }
+                }
+            }
+            await Promise.all(jobs);
+        }
+
+        #mustUpdateDisplayForTransferSearchResults() {
+            return this.#areTransferScoutOptionsEnabled()
+                || this.#isTransferMaxedSkillsEnabled()
+                || this.#isDaysAtThisClubEnabledForTransferMarket();
+        }
+
+        async updateDisplayForTransferSearchResults(clear = false) {
             if (clear) {
                 this.#clearTransferFilters();
             }
-            if (this.#isTransferOptionsEnabled() || this.#isTransferMaxedSkillsEnabled()) {
-                const players = document.getElementById("players_container");
-                const reports = await this.#processTransferSearchResults(players, (player) => {
-                    if (this.#isTransferOptionsEnabled()) {
-                        if (this.#transferOptionsMustHide()) {
-                            player.classList.add("mazyar-hide");
-                        } else {
-                            player.classList.add("mazyar-dim-50");
-                        }
-                    }
-                });
-                if (this.#isTransferOptionsEnabled()) {
-                    this.#applyTransferFilters(reports);
-                }
+            if (this.#mustUpdateDisplayForTransferSearchResults()) {
+                const results = document.getElementById("players_container");
+                await this.#processTransferSearchResults(results);
             }
         }
 
         async executeTransferTasks() {
-            this.applyFiltersAndStylesToTransferResult();
+            this.updateDisplayForTransferSearchResults();
 
             const callback = (mutationsList) => {
                 if (mutationsList.find(mutation => mutation.type == "childList")) {
-                    this.applyFiltersAndStylesToTransferResult();
+                    this.updateDisplayForTransferSearchResults();
                 }
             };
             const target = document.getElementById("players_container");
@@ -3472,13 +3462,11 @@
             }
         }
 
-        async #squadAddDaysAtThisClubForSinglePlayer(player) {
+        async #squadAddDaysAtThisClubForSinglePlayer(player, profile) {
             if (player.daysInjected) {
                 return;
             }
             player.daysInjected = true;
-            const playerId = getPlayerIdFromContainer(player);
-            const profile = await this.#fetchOrExtractPlayerProfile(playerId);
             const daysDiv = document.createElement("div");
             if (profile?.days >= 0) {
                 const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
@@ -3496,7 +3484,12 @@
             const jobs = [];
             const players = container.querySelectorAll("div.playerContainer");
             for (const player of players) {
-                jobs.push(this.#squadAddDaysAtThisClubForSinglePlayer(player));
+                jobs.push((async (player) => {
+                    const playerId = getPlayerIdFromContainer(player);
+                    await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
+                        this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                    });
+                })(player));
             }
             Promise.all(jobs);
         }
@@ -3632,6 +3625,12 @@
             return true;
         }
 
+        #getAcceptableHighsAndLowsForFilter(scout) {
+            const lows = scout.low.length > 0 ? scout.low : [1, 2, 3];
+            const highs = scout.high.length > 0 ? scout.high : [1, 2, 3, 4];
+            return { lows, highs };
+        }
+
         async #getFilterHitsByOffset(filter, offset = 0) {
             let totalHits = -1;
             let scoutHits = -1;
@@ -3645,7 +3644,7 @@
                 const searchResults = document.createElement("div");
                 searchResults.innerHTML = data.players;
                 if (filter.scout) {
-                    const playersReport = await this.#processTransferSearchResults(searchResults);
+                    const playersReport = await this.#getPlayerScoutReportForSearchResult(searchResults);
                     const { lows, highs } = this.#getAcceptableHighsAndLowsForFilter(filter.scout);
                     const scouted = playersReport.filter((report) => this.#isQualifiedForTransferScoutFilter(report, lows, highs));
                     scoutHits = scouted.length;
@@ -4095,6 +4094,33 @@
             return info;
         }
 
+        async #appendFilterResultToModal(middle, searchResults) {
+            for (const result of searchResults) {
+                const parser = new DOMParser();
+                const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
+                if (this.#isMaxedOrDaysEnabledForTransfer()) {
+                    this.#updateMaxedAndDaysInTransfer(player);
+                }
+                player.id = "";
+                this.#fetchOrExtractPlayerScoutReport(player).then(report => {
+                    this.#colorizeSkills(player, report);
+                });
+                const a = player.querySelector("h2>div>a.subheader");
+                if (a) {
+                    a.href = `https://www.managerzone.com/?p=transfer&u=${result.playerId}`;
+                    a.target = "_blank";
+                    const tools = player.querySelector("td span.player_icon_placeholder.bid_button")?.parentNode;
+                    if (tools) {
+                        tools.style.display = "none";
+                    }
+                    player.querySelector("div.floatRight.transfer-control-area")?.classList.add("mazyar-transfer-control-area");
+                    middle.appendChild(player);
+                } else {
+                    this.#removeHitFromIndexedDb(filterId, result.playerId);
+                }
+            }
+        }
+
         async displayFilterResults(filterId, filterInfo) {
             const div = document.createElement("div");
 
@@ -4129,32 +4155,8 @@
                 );
             }
             const searchResults = await Promise.all(jobs);
-            let skills = [];
-            const parser = new DOMParser();
-            for (const result of searchResults) {
-                const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
-                if (!skills) {
-                    skills = this.#extractSkillNamesFromPlayerInfo(player);
-                }
-                this.#markMaxedSkills(player);
-                player.id = "";
-                this.#fetchOrExtractPlayerScoutReport(player, skills).then(report => {
-                    this.#colorizeSkills(player, report);
-                });
-                const a = player.querySelector("h2>div>a.subheader");
-                if (a) {
-                    a.href = `https://www.managerzone.com/?p=transfer&u=${result.playerId}`;
-                    a.target = "_blank";
-                    const tools = player.querySelector("td span.player_icon_placeholder.bid_button")?.parentNode;
-                    if (tools) {
-                        tools.style.display = "none";
-                    }
-                    player.querySelector("div.floatRight.transfer-control-area")?.classList.add("mazyar-transfer-control-area");
-                    middle.appendChild(player);
-                } else {
-                    this.#removeHitFromIndexedDb(filterId, result.playerId);
-                }
-            }
+            this.#appendFilterResultToModal(middle, searchResults);
+
             const noResult = middle.childNodes.length === 0;
             if (noResult) {
                 middle.innerHTML = "<h3>No Players To Display</h3><span>Please refresh the filter to update hits.</span>";
