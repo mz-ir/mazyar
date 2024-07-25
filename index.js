@@ -3296,12 +3296,9 @@
         async executeTransferTasks() {
             this.applyFiltersAndStylesToTransferResult();
 
-            const that = this;
-            const callback = function (mutationsList) {
-                for (const mutation of mutationsList) {
-                    if (mutation.type == "childList") {
-                        that.applyFiltersAndStylesToTransferResult();
-                    }
+            const callback = (mutationsList) => {
+                if (mutationsList.find(mutation => mutation.type == "childList")) {
+                    this.applyFiltersAndStylesToTransferResult();
                 }
             };
             const target = document.getElementById("players_container");
