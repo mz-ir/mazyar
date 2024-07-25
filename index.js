@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.25
+// @version      2.26
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -14,7 +14,7 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
-// @require      https://unpkg.com/dexie/dist/dexie.js
+// @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
 // @match        https://www.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
@@ -2938,11 +2938,28 @@
                 hit: "[fid+pid],deadline",
                 filter: "&fid,totalHits,scoutHits,lastCheck",
             });
+            this.#db.version(2).stores({
+                scout: "[sport+pid],ts",
+            }).upgrade(trans => {
+                return trans.table("scout").toCollection().modify(report => {
+                    report.ts = 0;
+                });
+            });
             this.#db.open();
+            await this.#cleanOutdatedDataFromIndexedDb();
             const info = await navigator?.storage?.estimate();
             if (info) {
                 console.log("ManagerZone IndexedDB size: " + formatFileSize(info.usage));
             }
+        }
+
+        async #cleanOutdatedDataFromIndexedDb() {
+            const scoutOutdate = Date.now() - 7 * 24 * 60 * 60 * 1000;
+            await this.#db.scout.where("ts").below(scoutOutdate).delete().then(function (deleteCount) {
+                console.log("Deleted " + deleteCount + " outdated scout reports");
+            }).catch((error) => {
+                console.log(error);
+            });
         }
 
         async #clearIndexedDb() {
@@ -2970,6 +2987,7 @@
         async #setScoutReportInIndexedDb(report) {
             if (report) {
                 report.sport = this.#sport;
+                report.ts = Date.now();
                 await this.#db.scout.put(report);
             }
         }
@@ -3105,22 +3123,25 @@
         }
 
         #colorizeSkills(player, report) {
-            const playerSkills = player.querySelectorAll("table.player_skills tr td:nth-child(1)");
-            playerSkills[report.HS[0]].classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
-            playerSkills[report.HS[1]].classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
-            playerSkills[report.LS[0]].classList.add(`mazyar-scout-${report.L}`);
-            playerSkills[report.LS[1]].classList.add(`mazyar-scout-${report.L}`);
+            if (report) {
+                const playerSkills = player.querySelectorAll("table.player_skills tr td:nth-child(1)");
+                playerSkills[report.HS[0]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+                playerSkills[report.HS[1]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+                playerSkills[report.LS[0]]?.classList.add(`mazyar-scout-${report.L}`);
+                playerSkills[report.LS[1]]?.classList.add(`mazyar-scout-${report.L}`);
+            }
         }
 
         async #fetchOrExtractPlayerScoutReport(player, skills) {
             const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
-            let scoutReport = await this.#fetchScoutReportFromIndexedDb(playerId);
-            if (!scoutReport) {
-                scoutReport = await this.#extractPlayerScoutReport(playerId, skills);
-                this.#setScoutReportInIndexedDb(scoutReport);
+            let report = await this.#fetchScoutReportFromIndexedDb(playerId);
+            if (!report) {
+                report = await this.#extractPlayerScoutReport(playerId, skills);
+                if (report) {
+                    this.#setScoutReportInIndexedDb(report);
+                }
             }
-            this.#colorizeSkills(player, scoutReport);
-            return scoutReport;
+            return report;
         }
 
         async #processTransferSearchResults(players, callback = null) {
@@ -3137,7 +3158,10 @@
                         }
                         if (this.#isTransferOptionsEnabled()) {
                             if (player.querySelector("span.scout_report > a")) {
-                                scoutJobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills));
+                                scoutJobs.push(this.#fetchOrExtractPlayerScoutReport(player, skills).then((report) => {
+                                    this.#colorizeSkills(player, report);
+                                    return report;
+                                }));
                             } else if (callback) {
                                 callback(player);
                             }
@@ -4023,7 +4047,9 @@
                 }
                 this.#markMaxedSkills(player);
                 player.id = "";
-                this.#fetchOrExtractPlayerScoutReport(player, skills);
+                this.#fetchOrExtractPlayerScoutReport(player, skills).then(report => {
+                    this.#colorizeSkills(player, report);
+                });
                 const a = player.querySelector("h2>div>a.subheader");
                 if (a) {
                     a.href = `https://www.managerzone.com/?p=transfer&u=${result.playerId}`;
