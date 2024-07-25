@@ -1116,27 +1116,7 @@
         }
     }
 
-    async function squadAddDaysAtThisClubForSinglePlayer(player) {
-        const playerId = getPlayerIdFromContainer(player);
-        const doc = await fetchPlayerProfileDocument(playerId);
-        const days = squadExtractResidencyDays(doc);
-        if (days >= 0) {
-            const text = days === 0 ? 'N/A' : `≤ ${days}`;
-            const daysDiv = document.createElement("div");
-            daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-            daysDiv.classList.add("mazyar-days-at-this-club");
-            player.querySelector("div.mainContent")?.appendChild(daysDiv);
-        }
-    }
 
-    async function squadAddDaysAtThisClubToAllPlayers(container) {
-        const jobs = [];
-        const players = container.querySelectorAll("div.playerContainer");
-        for (const player of players) {
-            jobs.push(squadAddDaysAtThisClubForSinglePlayer(player));
-        }
-        Promise.all(jobs);
-    }
 
     /* *********************** Squad - Total Balls ********************************** */
 
@@ -1395,7 +1375,7 @@
                     const container = document.getElementById('players_container');
                     if (container && !container.injecting) {
                         container.injecting = true;
-                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.squadAddDaysAtThisClubToAllPlayers(container);
                         mazyar.addPlayerComment();
                     }
                 }
@@ -1405,7 +1385,7 @@
                     const container = document.getElementById('players_container');
                     if (container && !container.injecting) {
                         container.injecting = true;
-                        squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.squadAddDaysAtThisClubToAllPlayers(container);
                         mazyar.addPlayerComment();
                     }
                 };
@@ -2940,7 +2920,7 @@
             });
             this.#db.version(2).stores({
                 scout: "[sport+pid],ts",
-                player: "[sport+pid],ts,maxed",
+                player: "[sport+pid],ts,maxed,days",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -3086,13 +3066,9 @@
         }
 
         async #extractPlayerProfile(playerId) {
-            const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
-            const resp = await fetch(url).catch((error) => {
-                console.warn(error);
-            });
-            if (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(await resp.text(), "text/html");
+            const doc = await fetchPlayerProfileDocument(playerId);
+            if (doc) {
+                const days = squadExtractResidencyDays(doc);
                 const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
                 let i = 0;
                 const maxed = [];
@@ -3105,13 +3081,13 @@
                 return {
                     pid: playerId,
                     maxed,
+                    days,
                 };
             }
             return null;
         }
 
-        async #fetchOrExtractPlayerProfile(player) {
-            const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+        async #fetchOrExtractPlayerProfile(playerId) {
             let profile = await this.#fetchPlayerProfileFromIndexedDb(playerId);
             if (!profile) {
                 profile = await this.#extractPlayerProfile(playerId);
@@ -3121,8 +3097,11 @@
         }
 
         async #markMaxedSkills(player) {
-            const profile = await this.#fetchOrExtractPlayerProfile(player)
-            this.#colorizeMaxedSkills(player, profile?.maxed);
+            if (this.#mustMarkMaxedSkills()) {
+                const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
+                const profile = await this.#fetchOrExtractPlayerProfile(playerId)
+                this.#colorizeMaxedSkills(player, profile?.maxed);
+            }
         }
 
         async #extractPlayerScoutReport(pid, skills) {
@@ -3246,6 +3225,10 @@
 
         mustAddCoachSalaries() {
             return this.#settings.coach_salary;
+        }
+
+        #mustMarkMaxedSkills() {
+            return this.#settings.transfer_maxed;
         }
 
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
@@ -3453,6 +3436,27 @@
                 }
                 Promise.all(jobs);
             }
+        }
+
+        async #squadAddDaysAtThisClubForSinglePlayer(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            const profile = await this.#fetchOrExtractPlayerProfile(playerId);
+            if (profile?.days >= 0) {
+                const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
+                const daysDiv = document.createElement("div");
+                daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+                daysDiv.classList.add("mazyar-days-at-this-club");
+                player.querySelector("div.mainContent")?.appendChild(daysDiv);
+            }
+        }
+
+        async squadAddDaysAtThisClubToAllPlayers(container) {
+            const jobs = [];
+            const players = container.querySelectorAll("div.playerContainer");
+            for (const player of players) {
+                jobs.push(this.#squadAddDaysAtThisClubForSinglePlayer(player));
+            }
+            Promise.all(jobs);
         }
 
         // -------------------------------- Transfer Options -------------------------------------
