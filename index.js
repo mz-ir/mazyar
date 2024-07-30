@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.26
+// @version      2.27
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player</b>. To remove players from hide list, use 'MZY Hide' button."],
         "2.26": [
             "<b>[improve]</b> Days at this club: it is optional. It is disabled by default. You can enable it from MZY Settings.",
             "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
@@ -716,8 +717,8 @@
         div.classList.add("mazyar-flex-container-row");
         div.style.justifyItems = "space-between";
         div.innerHTML = `
-            <label style="margin: 0.5rem; font-weight: bold;">${title}: 
-            </label><input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
+            <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
+            <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
         `;
         return div;
     }
@@ -1396,7 +1397,7 @@
     }
 
     function squadInjectInformationToProfiles() {
-        if (document.baseURI.search("/?players&pid=") > -1) {
+        if (document.baseURI.search("/?players&pid=") - 1) {
             squadAddDaysAtThisClubToPlayerProfile();
             mazyar.addPlayerComment();
         } else {
@@ -3042,6 +3043,7 @@
             this.#db.version(2).stores({
                 scout: "[sport+pid],ts",
                 player: "[sport+pid],ts,maxed,days",
+                hide: "[sport+pid],ts",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -3057,14 +3059,14 @@
 
         async #cleanOutdatedDataFromIndexedDb() {
             const scoutOutdate = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            await this.#db.scout.where("ts").below(scoutOutdate).delete().then(function (deleteCount) {
+            await this.#db.scout.where("ts").below(scoutOutdate).delete().then((deleteCount) => {
                 console.log("Deleted " + deleteCount + " outdated scout reports");
             }).catch((error) => {
                 console.warn(error);
             });
 
             const startOfDay = Date.now() - Date.now() % (24 * 60 * 60 * 1000);
-            await this.#db.player.where("ts").below(startOfDay).delete().then(function (deleteCount) {
+            await this.#db.player.where("ts").below(startOfDay).delete().then((deleteCount) => {
                 console.log("Deleted " + deleteCount + " outdated player profile.");
             }).catch((error) => {
                 console.warn(error);
@@ -3077,6 +3079,33 @@
             await this.#db.hit.clear();
             await this.#db.filter.clear();
             await this.#db.player.clear();
+            await this.#db.hide.clear();
+        }
+
+
+        async #isPlayerInHideListInIndexDb(pid) {
+            const player = await this.#db.hide.get({ pid, sport: this.#sport });
+            return player?.ts > 0;
+        }
+
+        async #addPlayerToHideListInIndexDb(pid) {
+            if (pid) {
+                await this.#db.hide.put({ pid, sport: this.#sport, ts: Date.now() });
+            }
+        }
+
+        async #deletePlayersFromHideListInIndexDb(days = 0) {
+            const outdate = Date.now() - days * 24 * 60 * 60 * 1000;
+            return await this.#db.hide.where("ts").below(outdate).delete().then((deleteCount) => {
+                return deleteCount;
+            }).catch((error) => {
+                console.warn(error);
+                return 0;
+            });
+        }
+
+        async #countPlayersOfHideListInIndexDb() {
+            return await this.#db.hide.where("ts").above(0).count();
         }
 
         async #fetchPlayerCommentFromIndexedDb(pid) {
@@ -3372,11 +3401,33 @@
             });
         };
 
+        async #hidePlayerAccordingToHideList(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            if (await this.#isPlayerInHideListInIndexDb(playerId)) {
+                player.style.display = 'none';
+            }
+        }
+
+        #addHideButtonToPlayersInTransferMarket(player) {
+            const playerId = getPlayerIdFromContainer(player);
+            const hideIcon = createDeleteIcon("Hide player from search result.");
+            hideIcon.classList.add("floatRight");
+            hideIcon.style.marginTop = "0.2rem";
+            player.querySelector("h2.clearfix div")?.appendChild(hideIcon);
+
+            hideIcon.addEventListener("click", () => {
+                this.#addPlayerToHideListInIndexDb(playerId);
+                player.style.display = 'none';
+            });
+        }
+
         async #processTransferSearchResults(results) {
             const { lows, highs } = this.#getAcceptableHighsAndLows();
             const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
             const jobs = [];
             for (const player of players) {
+                this.#addHideButtonToPlayersInTransferMarket(player);
+                jobs.push(this.#hidePlayerAccordingToHideList(player));
                 if (this.#isMaxedOrDaysEnabledForTransfer()) {
                     jobs.push(this.#updateMaxedAndDaysInTransfer(player));
                 }
@@ -3407,11 +3458,26 @@
             }
             if (this.#mustUpdateDisplayForTransferSearchResults()) {
                 const results = document.getElementById("players_container");
-                await this.#processTransferSearchResults(results);
+                if (results) {
+                    await this.#processTransferSearchResults(results);
+                }
+            }
+        }
+
+        #injectHideButtonToTransferMarket() {
+            const target = document.querySelector("#searchform div.buttons-wrapper.clearfix");
+            if (target) {
+                const hideButton = createMzStyledButton("MZY Hide", "red", "floatLeft");
+                hideButton.style.margin = "0";
+                hideButton.onclick = () => {
+                    this.#displayTransferHideMenu();
+                };
+                target.appendChild(hideButton);
             }
         }
 
         async executeTransferTasks() {
+            this.#injectHideButtonToTransferMarket();
             this.updateDisplayForTransferSearchResults();
 
             const callback = (mutationsList) => {
@@ -4048,6 +4114,83 @@
             await this.#checkAllFilters(false);
         }
 
+        async #displayTransferHideMenu() {
+            const div = document.createElement("div");
+            div.classList.add("mazyar-flex-container");
+
+            const title = createMzStyledTitle("MZY Transfer Hide List");
+            await this.#countPlayersOfHideListInIndexDb();
+            const body = document.createElement("div");
+            const description = document.createElement("div");
+            const dayClearDiv = document.createElement("div");
+            const daysInput = createTextInput("Days", "0", "");
+            const clear = createMzStyledButton("Remove", "red", "floatRight");
+            const validation = document.createElement("div");
+            const result = document.createElement("div");
+            dayClearDiv.appendChild(daysInput);
+            dayClearDiv.appendChild(clear);
+            body.appendChild(description);
+            body.appendChild(dayClearDiv);
+            body.appendChild(validation);
+            body.appendChild(result);
+
+            body.classList.add("mazyar-flex-container");
+            body.style.maxWidth = "320px";
+            dayClearDiv.classList.add("mazyar-flex-container-row");
+            daysInput.querySelector("input[type='text']").style.width = "2rem";
+
+            const close = createMzStyledButton("Close", "green");
+
+            description.innerHTML = `<p>There are <strong style="color:red;">${await this.#countPlayersOfHideListInIndexDb()}</strong> player(s) hidden from transfer market.</p>
+            <p>You can remove players from hide list.</p>
+            <p>Enter the number of days to remove players hidden before this period.<br>Enter 0 to remove all.</p>`;
+            description.style.paddingLeft = "0.7rem";
+
+            validation.innerText = "Error: Invalid value for days.";
+            validation.style.color = "red";
+            validation.style.display = "none";
+            validation.style.margin = "auto 0.5rem";
+
+            result.style.display = "none";
+            result.style.margin = "auto 0.5rem";
+            result.innerHTML = `Removed <strong style="color:blue;">0</strong> player(s) from hide list.</p>`
+
+            daysInput.addEventListener("input", () => {
+                result.style.display = "none";
+                const days = daysInput.querySelector("input[type='text']").value;
+                if (days.match(/^\d+$/)) {
+                    validation.style.display = "none";
+                    clear.classList.remove(getMzButtonColorClass("grey"));
+                } else {
+                    validation.style.display = "unset";
+                    clear.classList.add(getMzButtonColorClass("grey"));
+                }
+            });
+
+            clear.addEventListener("click", async () => {
+                const days = daysInput.querySelector("input[type='text']").value
+                if (days.match(/\d+/)) {
+                    const deleteCount = await this.#deletePlayersFromHideListInIndexDb(days);
+                    result.querySelector("strong").innerText = deleteCount;
+                    result.style.display = "unset";
+                    description.querySelector("strong").innerText = await this.#countPlayersOfHideListInIndexDb();
+                } else {
+                    validation.style.display = "unset";
+                    clear.classList.add(getMzButtonColorClass("grey"));
+                }
+            });
+
+            close.addEventListener("click", () => {
+                this.hideModal();
+            });
+
+            div.appendChild(title);
+            div.appendChild(body);
+            div.appendChild(close);
+
+            this.#replaceModalContent([div]);
+        }
+
         async displayTransferFilters() {
             const that = this; // used in onclick event listener
 
@@ -4413,8 +4556,8 @@
         } else if (uri.search("/?p=transfer") > -1) {
             if (mazyar.isTransferFiltersEnabled()) {
                 transferInject();
-                mazyar.executeTransferTasks();
             }
+            mazyar.executeTransferTasks();
         } else if (uri.search("/?p=clubhouse") > -1) {
             if (mazyar.mustHelpWithPredictor()) {
                 predictorInject();
