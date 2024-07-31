@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.27
+// @version      2.28
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,7 +27,8 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player</b>. To remove players from hide list, use 'MZY Hide' button."],
+        "2.28": ["<b>[fix]</b> Days at this club: after v2.27, it was broken in players page."],
+        "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player. To remove players from hide list, use 'MZY Hide' button."],
         "2.26": [
             "<b>[improve]</b> Days at this club: it is optional. It is disabled by default. You can enable it from MZY Settings.",
             "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
@@ -1397,7 +1398,7 @@
     }
 
     function squadInjectInformationToProfiles() {
-        if (document.baseURI.search("/?players&pid=") - 1) {
+        if (document.baseURI.search("/?players&pid=") > -1) {
             squadAddDaysAtThisClubToPlayerProfile();
             mazyar.addPlayerComment();
         } else {
