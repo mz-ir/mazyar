@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.28
+// @version      2.29
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.29": ["<b>[fix]</b> Hide Players: fixed an issue about hide icon when transfer scout filters are used."],
         "2.28": ["<b>[fix]</b> Days at this club: after v2.27, it was broken in players page."],
         "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player. To remove players from hide list, use 'MZY Hide' button."],
         "2.26": [
@@ -2628,7 +2629,7 @@
         }
     }
 
-    /* *********************** Transfer Agent ********************************** */
+    /* *********************** Predictor ********************************** */
 
     async function getNationalRankings() {
         const rankings = [];
@@ -3410,6 +3411,10 @@
         }
 
         #addHideButtonToPlayersInTransferMarket(player) {
+            if (player.hideButtonInjected) {
+                return;
+            }
+            player.hideButtonInjected = true;
             const playerId = getPlayerIdFromContainer(player);
             const hideIcon = createDeleteIcon("Hide player from search result.");
             hideIcon.classList.add("floatRight");
