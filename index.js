@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.29
+// @version      2.30
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.30": ["<b>[fix]</b> Transfer Filters: reset selected H & L checkboxes when Transfer filter is not enabled."],
         "2.29": ["<b>[fix]</b> Hide Players: fixed an issue about hide icon when transfer scout filters are used."],
         "2.28": ["<b>[fix]</b> Days at this club: after v2.27, it was broken in players page."],
         "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player. To remove players from hide list, use 'MZY Hide' button."],
@@ -2948,6 +2949,10 @@
             this.#createModal();
 
             this.#showChangelog();
+
+            if (!this.isTransferFiltersEnabled()) {
+                this.#resetTransferOptions();
+            }
         }
 
         // -------------------------------- Settings -------------------------------------
@@ -2981,6 +2986,7 @@
         updateSettings(settings) {
             this.#settings = settings;
             this.#saveSettings();
+            this.#resetTransferOptions();
             if (this.isTransferFiltersEnabled()) {
                 this.#checkAllFilters(true);
             } else {
@@ -3867,7 +3873,6 @@
             });
             this.deleteAllFilters();
             await this.#clearIndexedDb();
-            this.#resetTransferOptions();
             this.#resetTransferOptions();
         }
 
