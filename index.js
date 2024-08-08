@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.30
+// @version      2.31
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -496,7 +496,7 @@
         const players = getClubPlayers(doc, currency);
         const sport = getSportType(doc);
         const count = sport === "soccer" ? 11 : 21;
-        return players ? filterPlayers(players, count).values : 0;
+        return players ? filterPlayers(players, count) : { values: 0, avgAge: 0 };
     }
 
     async function fetchPlayersProfileSummary(teamId) {
@@ -1458,12 +1458,13 @@
                         const parser = new DOMParser();
                         const doc = parser.parseFromString(resp.responseText, "text/html");
                         const currency = getClubCurrency(doc);
-                        const values = getClubTopPlyers(doc);
+                        const { values, avgAge } = getClubTopPlyers(doc);
                         const fin = resp.context?.find((p) => resp.finalUrl === p.url);
                         if (fin) {
                             fin.values = values;
                             fin.done = true;
                             fin.currency = currency;
+                            fin.avgAge = avgAge;
                         }
                     },
                 });
@@ -1489,6 +1490,10 @@
                     const value = team.row.querySelector("td.value");
                     if (value) {
                         value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
+                    }
+                    const age = team.row.querySelector("td.age");
+                    if (age) {
+                        age.innerText = formatAverageAge(team.avgAge);
                     }
                 }
                 const newOrder = finals.map((t) => t.row);
@@ -1521,6 +1526,13 @@
     }
 
     function clashAddRankElements(team, url = "") {
+        const age = document.createElement("td");
+        age.style.width = "max-content";
+        age.innerText = "";
+        age.classList.add("age");
+        age.style.textAlign = "center";
+        team.insertBefore(age, team.firstChild);
+
         const value = document.createElement("td");
         value.style.width = "max-content";
         value.innerText = "";
@@ -1531,6 +1543,7 @@
         const rank = document.createElement("td");
         rank.style.width = "max-content";
         team.insertBefore(rank, team.firstChild);
+
         const button = document.createElement("button");
         button.innerText = "_";
         button.classList.add("mazyar-donut", "mazyar-loading-donut", "rank", "fix-width");
@@ -1547,6 +1560,12 @@
         const headers = table.querySelector("thead tr");
         // mobile view has not headers section
         if (headers) {
+            const age = document.createElement("th");
+            age.style.textAlign = "center";
+            age.innerText = "Age";
+            age.style.width = "10%";
+            headers.insertBefore(age, headers.firstChild);
+
             const value = document.createElement("th");
             value.style.textAlign = "right";
             value.innerText = "Values";
@@ -1572,7 +1591,7 @@
             } else {
                 row.previousSibling.playedMatches?.push(row);
                 const firstTd = row.querySelector("td");
-                firstTd.colSpan = "3";
+                firstTd.colSpan = "4";
                 row.isMatchRow = true;
             }
         }
@@ -1591,7 +1610,7 @@
                 const doc = parser.parseFromString(resp.responseText, "text/html");
                 const team = resp.context.teams.find((t) => t.username === resp.context.username);
                 team.currency = getClubCurrency(doc);
-                team.values = getClubTopPlyers(doc);
+                team.values = getClubTopPlyers(doc).values;
 
                 const name = document.createElement("div");
                 name.style.color = "blue";
