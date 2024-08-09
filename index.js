@@ -1434,95 +1434,79 @@
 
     /* *********************** Clash ********************************** */
 
-    function clashCalculateRankOfTeams(rows) {
-        const finals = [];
-        for (const row of rows) {
-            if (!row.isMatchRow) {
-                const team = row.querySelector("a.team-name");
-                const tid = extractTeamId(team.href);
-                const url = getSquadSummaryLink(tid);
-                finals.push({
-                    target: team,
-                    row,
-                    url,
-                    values: 0,
-                    done: false,
-                    currency: "",
-                    playedMatches: row.playedMatches,
-                });
-                GM_xmlhttpRequest({
-                    method: "GET",
-                    url,
-                    context: finals,
-                    onload: function (resp) {
-                        const parser = new DOMParser();
-                        const doc = parser.parseFromString(resp.responseText, "text/html");
-                        const currency = getClubCurrency(doc);
-                        const { values, avgAge } = getClubTopPlyers(doc);
-                        const fin = resp.context?.find((p) => resp.finalUrl === p.url);
-                        if (fin) {
-                            fin.values = values;
-                            fin.done = true;
-                            fin.currency = currency;
-                            fin.avgAge = avgAge;
-                        }
-                    },
-                });
+    async function clashFetchAndUpdateTeamsInfo(team) {
+        const info = {
+            currency: "",
+            averageAge: 0,
+        };
+        const successful = await fetch(team.url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                return parser.parseFromString(content, "text/html");
+            }).then((doc) => {
+                info.currency = getClubCurrency(doc);
+                ({ values: team.topPlayersValue, avgAge: info.averageAge } = getClubTopPlyers(doc));
+                return true;
+            })
+            .catch((error) => {
+                console.warn(error);
+                team.topPlayersAverageAge = 0;
+                return false;
+            });
+
+        team.querySelector("td.value").innerText = successful
+            ? `${formatBigNumber(team.topPlayersValue, ",")} ${info.currency}`
+            : 'N/A';
+        team.querySelector("td.age").innerText = successful
+            ? formatAverageAge(info.averageAge) :
+            'N/A';
+        return successful;
+    }
+
+    function clashSortTeams(teams) {
+        teams.sort((a, b) => b.topPlayersValue - a.topPlayersValue);
+        let rank = 0;
+        for (const team of teams) {
+            rank++;
+            team.className = rank % 2 ? "odd" : "even";
+            const target = team.querySelector("button.mazyar-donut.rank");
+            if (target) {
+                target.classList.remove("mazyar-loading-donut");
+                target.classList.add("mazyar-final-donut");
+                target.innerText = `${rank}`;
             }
         }
-
-        let timeout = 16000;
-        const step = 500;
-        let interval = setInterval(() => {
-            if (finals.every((a) => a.done)) {
-                clearInterval(interval);
-                finals.sort((a, b) => b.values - a.values);
-                let rank = 0;
-                for (const team of finals) {
-                    rank++;
-                    team.row.className = rank % 2 ? "odd" : "even";
-                    const target = team.row.querySelector("button.mazyar-donut.rank");
-                    if (target) {
-                        target.classList.remove("mazyar-loading-donut");
-                        target.classList.add("mazyar-final-donut");
-                        target.innerText = `${rank}`;
-                    }
-                    const value = team.row.querySelector("td.value");
-                    if (value) {
-                        value.innerText = `${formatBigNumber(team.values, ",")} ${team.currency}`;
-                    }
-                    const age = team.row.querySelector("td.age");
-                    if (age) {
-                        age.innerText = formatAverageAge(team.avgAge);
-                    }
-                }
-                const newOrder = finals.map((t) => t.row);
-                const newOrderWithPlayedMatches = [];
-                for (const row of newOrder) {
-                    newOrderWithPlayedMatches.push(row);
-                    for (const playedMatch of row.playedMatches) {
-                        playedMatch.className = row.className;
-                        newOrderWithPlayedMatches.push(playedMatch);
-                    }
-                }
-                const tbody = document.querySelector("div.panel-2 table tbody");
-                tbody.replaceChildren(...newOrderWithPlayedMatches);
-            } else {
-                timeout -= step;
-                if (timeout < 0) {
-                    clearInterval(interval);
-                    for (const team of finals) {
-                        const target = team.row.querySelector("button.mazyar-donut.rank");
-                        target.classList.remove("mazyar-loading-donut");
-                        target.classList.add("mazyar-final-donut");
-                        target.innerText = `-`;
-
-                        const value = team.row.querySelector("td.value");
-                        value.innerText = `N/A`;
-                    }
-                }
+        const newOrderWithPlayedMatches = [];
+        for (const row of teams) {
+            newOrderWithPlayedMatches.push(row);
+            for (const playedMatch of row.playedMatches) {
+                playedMatch.className = row.className;
+                newOrderWithPlayedMatches.push(playedMatch);
             }
-        }, step);
+        }
+        const tbody = document.querySelector("div.panel-2 table tbody");
+        tbody.replaceChildren(...newOrderWithPlayedMatches);
+    }
+
+    async function clashCalculateRankOfTeams(teams) {
+        const jobs = [];
+        for (const team of teams) {
+            jobs.push(clashFetchAndUpdateTeamsInfo(team));
+        }
+        const results = await Promise.all(jobs);
+        if (results.every(Boolean)) {
+            // data for all teams are fetched successfully
+            clashSortTeams(teams);
+        } else {
+            // data for some teams are not fetched
+            for (const team of teams) {
+                const target = team.querySelector("button.mazyar-donut.rank");
+                target.classList.remove("mazyar-loading-donut");
+                target.classList.add("mazyar-final-donut");
+                target.innerText = `-`;
+            }
+        }
     }
 
     function clashAddRankElements(team, url = "") {
@@ -1581,21 +1565,23 @@
         const rows = table.querySelectorAll("tbody tr");
         for (const row of rows) {
             // in mobile view played challenges are also <tr> and for this rows, the team name is not a hyperlink
-            const name = row.querySelector("a.team-name");
-            if (name?.href) {
-                const tid = extractTeamId(name.href);
+            const team = row.querySelector("a.team-name");
+            if (team?.href) {
+                // this is info row
+                const tid = extractTeamId(team.href);
                 const url = getSquadSummaryLink(tid);
                 clashAddRankElements(row, url);
                 row.playedMatches = [];
-                row.isMatchRow = false;
+                row.url = url;
             } else {
+                // this is match row (in mobile view)
+                // expand to match the previous row
+                row.querySelector("td").colSpan = "4";
                 row.previousSibling.playedMatches?.push(row);
-                const firstTd = row.querySelector("td");
-                firstTd.colSpan = "4";
-                row.isMatchRow = true;
             }
         }
-        clashCalculateRankOfTeams(rows);
+        const teams = [...rows].filter((team) => team.url?.length > 0);
+        clashCalculateRankOfTeams(teams);
     }
 
     /* *********************** Federation Page ********************************** */
