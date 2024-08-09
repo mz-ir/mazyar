@@ -1434,7 +1434,30 @@
 
     /* *********************** Clash ********************************** */
 
-    async function clashFetchAndUpdateTeamsInfo(team) {
+    async function clashFetchAndTeamLeagueAndFlag(team) {
+        const url = `https://www.managerzone.com/?p=team&tid=${team.teamId}`;
+        await fetch(url)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                return parser.parseFromString(content, "text/html");
+            }).then((doc) => {
+                const leagueRow = doc.querySelector("#infoAboutTeam > dd:nth-child(6)");
+                const flag = leagueRow.querySelector("img");
+                const seriesName = leagueRow.querySelector("span:last-child");
+                team.querySelector("td.flag").appendChild(flag);
+                team.querySelector("td.league").appendChild(seriesName);
+            })
+            .catch((error) => {
+                console.warn(error);
+            });
+    }
+
+    async function clashFetchAndUpdateTeamsInfo(team, mobileView) {
+        if (!mobileView) {
+            clashFetchAndTeamLeagueAndFlag(team);
+        }
+
         const info = {
             currency: "",
             averageAge: 0,
@@ -1455,12 +1478,15 @@
                 return false;
             });
 
-        team.querySelector("td.value").innerText = successful
+        team.querySelector("td.value").innerHTML = successful
             ? `${formatBigNumber(team.topPlayersValue, ",")} ${info.currency}`
             : 'N/A';
-        team.querySelector("td.age").innerText = successful
-            ? formatAverageAge(info.averageAge) :
-            'N/A';
+
+        if (!mobileView) {
+            team.querySelector("td.age").innerHTML = successful
+                ? `<strong>${formatAverageAge(info.averageAge)}</strong>` :
+                'N/A';
+        }
         return successful;
     }
 
@@ -1489,10 +1515,10 @@
         tbody.replaceChildren(...newOrderWithPlayedMatches);
     }
 
-    async function clashCalculateRankOfTeams(teams) {
+    async function clashCalculateRankOfTeams(teams, mobileView) {
         const jobs = [];
         for (const team of teams) {
-            jobs.push(clashFetchAndUpdateTeamsInfo(team));
+            jobs.push(clashFetchAndUpdateTeamsInfo(team, mobileView));
         }
         const results = await Promise.all(jobs);
         if (results.every(Boolean)) {
@@ -1509,13 +1535,30 @@
         }
     }
 
-    function clashAddRankElements(team, url = "") {
-        const age = document.createElement("td");
-        age.style.width = "max-content";
-        age.innerText = "";
-        age.classList.add("age");
-        age.style.textAlign = "center";
-        team.insertBefore(age, team.firstChild);
+    function clashAddRankElements(team, mobileView) {
+        if (!mobileView) {
+            const league = document.createElement("td");
+            league.style.whiteSpace = "collapse";
+            league.style.width = "max-content";
+            league.innerText = "";
+            league.classList.add("league");
+            league.style.textAlign = "center";
+            team.insertBefore(league, team.firstChild);
+
+            const flag = document.createElement("td");
+            flag.style.width = "max-content";
+            flag.innerText = "";
+            flag.classList.add("flag");
+            flag.style.textAlign = "center";
+            team.insertBefore(flag, team.firstChild);
+
+            const age = document.createElement("td");
+            age.style.width = "max-content";
+            age.innerText = "";
+            age.classList.add("age");
+            age.style.textAlign = "center";
+            team.insertBefore(age, team.firstChild);
+        }
 
         const value = document.createElement("td");
         value.style.width = "max-content";
@@ -1534,7 +1577,7 @@
         button.title = "Click to see squad summary";
         rank.appendChild(button);
         button.onclick = () => {
-            mazyar.displaySquadSummary(url);
+            mazyar.displaySquadSummary(team.url);
         };
     }
 
@@ -1542,46 +1585,63 @@
         const table = document.querySelector("table.hitlist.challenges-list");
 
         const headers = table.querySelector("thead tr");
+        const mobileView = !headers;
         // mobile view has not headers section
         if (headers) {
+            const league = document.createElement("th");
+            league.style.textAlign = "center";
+            league.innerText = "League";
+            league.style.whiteSpace = "collapse";
+            league.style.width = "11%";
+            headers.insertBefore(league, headers.firstChild);
+
+            const flag = document.createElement("th");
+            flag.style.textAlign = "center";
+            flag.innerText = "";
+            flag.style.width = "2%";
+            headers.insertBefore(flag, headers.firstChild);
+
             const age = document.createElement("th");
             age.style.textAlign = "center";
             age.innerText = "Age";
-            age.style.width = "10%";
+            age.title = "Average Age of Top Players";
+            age.style.width = "4%";
             headers.insertBefore(age, headers.firstChild);
 
-            const value = document.createElement("th");
-            value.style.textAlign = "right";
-            value.innerText = "Values";
-            value.style.width = "15%";
-            headers.insertBefore(value, headers.firstChild);
+            const values = document.createElement("th");
+            values.style.textAlign = "center";
+            values.innerText = "Values";
+            values.title = "Top Players Total Values";
+            values.style.width = "13%";
+            headers.insertBefore(values, headers.firstChild);
 
             const rank = document.createElement("th");
+            rank.style.textAlign = "center";
             rank.innerText = "Rank";
-            rank.style.width = "5%";
+            rank.title = "Team Rank in This Federation";
+            rank.style.width = "3%";
             headers.insertBefore(rank, headers.firstChild);
         }
 
         const rows = table.querySelectorAll("tbody tr");
         for (const row of rows) {
             // in mobile view played challenges are also <tr> and for this rows, the team name is not a hyperlink
-            const team = row.querySelector("a.team-name");
-            if (team?.href) {
+            const name = row.querySelector("a.team-name");
+            if (name?.href) {
                 // this is info row
-                const tid = extractTeamId(team.href);
-                const url = getSquadSummaryLink(tid);
-                clashAddRankElements(row, url);
+                row.teamId = extractTeamId(name.href);
+                row.url = getSquadSummaryLink(row.teamId);
+                clashAddRankElements(row, mobileView);
                 row.playedMatches = [];
-                row.url = url;
             } else {
                 // this is match row (in mobile view)
                 // expand to match the previous row
-                row.querySelector("td").colSpan = "4";
+                row.querySelector("td").colSpan = mobileView ? "3" : "6";
                 row.previousSibling.playedMatches?.push(row);
             }
         }
         const teams = [...rows].filter((team) => team.url?.length > 0);
-        clashCalculateRankOfTeams(teams);
+        clashCalculateRankOfTeams(teams, mobileView);
     }
 
     /* *********************** Federation Page ********************************** */
