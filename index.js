@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.31
+// @version      2.32
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.32": ["<b>[improve]</b> Federation: first team member sort"],
         "2.31": ["<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."],
         "2.30": ["<b>[fix]</b> Transfer Filters: reset selected H & L checkboxes when Transfer filter is not enabled."],
         "2.29": ["<b>[fix]</b> Hide Players: fixed an issue about hide icon when transfer scout filters are used."],
@@ -1647,60 +1648,68 @@
 
     /* *********************** Federation Page ********************************** */
 
-    function federationFetchTopPlayers(context, url) {
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            context,
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/html");
-                const team = resp.context.teams.find((t) => t.username === resp.context.username);
-                team.currency = getClubCurrency(doc);
-                team.values = getClubTopPlyers(doc).values;
-
-                const name = document.createElement("div");
-                name.style.color = "blue";
-                name.style.width = "100%";
-                name.style.marginTop = "0.5em";
-                name.title = team.teamName;
-                const teamName = team.teamName.length > 20 ? team.teamName.substring(0, 16) + " >>>" : team.teamName;
-                name.innerHTML = `<span style="color:red;">Team: </span>${teamName}`;
-                team.node.querySelector("td").appendChild(name);
-
-                const value = document.createElement("div");
-                value.style.color = "blue";
-                value.style.width = "100%";
-                value.style.marginTop = "0.5em";
-                const count = resp.context.sport === "soccer" ? 11 : 21;
-                value.innerHTML = `<span style="color:red;">Top${count}: </span>${formatBigNumber(team.values, ",")} ${team.currency}`;
-                team.node.querySelector("td").appendChild(value);
-
-                team.done = true;
-            },
-        });
-    }
-
-    function federationFetchTeamValue(sport, teams, username) {
-        const url = `https://www.managerzone.com/xml/manager_data.php?username=${username}`;
-        GM_xmlhttpRequest({
-            method: "GET",
-            url: url,
-            context: { sport, teams, username },
-            onload: function (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(resp.responseText, "text/xml");
-                const teamId = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamId");
-                const teamName = doc.querySelector(`Team[sport="${resp.context.sport}"]`).getAttribute("teamName");
-                resp.context.teams.find((t) => t.username === resp.context.username).teamName = teamName;
-                const squadUrl = getSquadSummaryLink(teamId);
-                federationFetchTopPlayers(resp.context, squadUrl);
-            },
-        });
-    }
-
     function federationGetUsername(node) {
-        return node.querySelector("a").innerText;
+        return node?.querySelector("a")?.innerText;
+    }
+
+    async function federationUpdateMemberInfo(member, username, sport) {
+        let values = 0;
+        let currency = "";
+        const teamXmlUrl = `https://www.managerzone.com/xml/manager_data.php?username=${username}`;
+        const { teamId, teamName } = await fetch(teamXmlUrl)
+            .then((resp) => resp.text())
+            .then((content) => {
+                const parser = new DOMParser();
+                return parser.parseFromString(content, "text/xml");
+            }).then((doc) => {
+                const teamId = doc.querySelector(`Team[sport="${sport}"]`).getAttribute("teamId");
+                const teamName = doc.querySelector(`Team[sport="${sport}"]`).getAttribute("teamName");
+                return { teamId, teamName };
+            })
+            .catch((error) => {
+                console.warn(error);
+                return { teamId: null, teamName: null };
+            });
+        if (teamId) {
+            const squadUrl = getSquadSummaryLink(teamId);
+            await fetch(squadUrl)
+                .then((resp) => resp.text())
+                .then((content) => {
+                    const parser = new DOMParser();
+                    return parser.parseFromString(content, "text/html");
+                }).then((doc) => {
+                    currency = getClubCurrency(doc);
+                    values = getClubTopPlyers(doc).values;
+                })
+                .catch((error) => {
+                    console.warn(error);
+                });
+        }
+
+        const name = document.createElement("div");
+        name.style.color = "blue";
+        name.style.width = "100%";
+        name.style.marginTop = "0.5em";
+        name.title = teamName;
+        name.innerHTML = `<strong style="color:black;">Team: </strong>${teamName.length > 20 ? teamName.substring(0, 16) + " >>>" : teamName}`;
+        member.querySelector("td").appendChild(name);
+
+        const value = document.createElement("div");
+        value.style.color = "blue";
+        value.style.width = "100%";
+        value.style.marginTop = "0.5em";
+        value.innerHTML = `<strong style="color:black;">Top${sport === "soccer" ? 11 : 21}: </strong>${formatBigNumber(values, ",")} ${currency}`;
+        member.querySelector("td").appendChild(value);
+
+        const separator = document.createElement("hr");
+        separator.style.marginBottom = "-3px";
+        member.querySelector("td").appendChild(separator);
+
+        return {
+            member,
+            values,
+            currency
+        };
     }
 
     function federationGetTableHeader() {
@@ -1713,62 +1722,47 @@
         thead.innerText = text;
     }
 
-    function federationSortTeamsByTopPlayers() {
-        const tbody = document.querySelector("#federation_clash_members_list tbody");
+    async function federationSortTeamsByTopPlayers() {
         const sport = getSportType();
-        const teams = [];
-        for (const child of tbody.children) {
-            const username = federationGetUsername(child);
-            teams.push({
-                node: child,
-                username,
-                teamName: "",
-                teamId: "",
-                values: 0,
-                currency: "",
-                done: false,
-            });
-            federationFetchTeamValue(sport, teams, username);
+        const jobs = [];
+        const tbody = document.querySelector("#federation_clash_members_list tbody");
+        for (const member of tbody.children) {
+            const username = federationGetUsername(member);
+            if (username) {
+                jobs.push(federationUpdateMemberInfo(member, username, sport));
+            }
         }
-
-        let timeout = 60000;
-        const step = 500;
-        const tableHeader = federationGetTableHeader();
-        let dots = 0;
-        let interval = setInterval(() => {
-            if (teams.every((t) => t.done)) {
-                clearInterval(interval);
-                teams.sort((a, b) => b.values - a.values);
-                const newOrder = teams.map((t) => t.node);
-                let rank = 0;
-                for (const row of newOrder) {
-                    rank++;
-                    row.className = rank % 2 ? "odd" : "even";
-                }
-                tbody.replaceChildren(...newOrder);
-                federationSetTableHeader(tableHeader + " ▼");
-
-                let totalValue = 0;
-                for (const team of teams) {
-                    totalValue += team.values;
-                }
-
-                const total = document.createElement("tr");
-                total.style.color = "blue";
-                total.style.width = "100%";
-                total.style.marginTop = "3px";
-                total.innerHTML = `<td><hr><span style="color:red;">Total: </span>${formatBigNumber(totalValue, ",")} ${teams[0].currency}</td>`;
-                tbody.appendChild(total);
-            } else {
-                timeout -= step;
+        if (jobs.length > 0) {
+            const tableHeader = federationGetTableHeader();
+            let dots = 0;
+            const loadingInterval = setInterval(() => {
                 federationSetTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
                 dots++;
-                if (timeout < 0) {
-                    clearInterval(interval);
-                    federationSetTableHeader(tableHeader + " (failed)");
-                }
+            }, 1000);
+            const members = await Promise.all(jobs);
+            clearInterval(loadingInterval);
+            federationSetTableHeader(tableHeader + " ▼");
+
+            members.sort((a, b) => b.values - a.values);
+            const newOrder = members.map((t) => t.member);
+            let rank = 0;
+            for (const row of newOrder) {
+                rank++;
+                row.className = rank % 2 ? "odd" : "even";
             }
-        }, step);
+            tbody.replaceChildren(...newOrder);
+
+            let totalValue = 0;
+            for (const member of members) {
+                totalValue += member.values;
+            }
+            const total = document.createElement("tr");
+            total.style.color = "blue";
+            total.style.textAlign = "center";
+            total.style.width = "100%";
+            total.innerHTML = `<td><strong style="color:black;">Total: </strong>${formatBigNumber(totalValue, ",")} ${members[0].currency}</td>`;
+            tbody.appendChild(total);
+        }
     }
 
     /* *********************** Match ********************************** */
