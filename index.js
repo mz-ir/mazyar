@@ -1698,8 +1698,12 @@
         value.style.color = "blue";
         value.style.width = "100%";
         value.style.marginTop = "0.5em";
-        value.innerHTML = `<strong style="color:black;">Top${sport === "soccer" ? 11 : 21}: </strong>${formatBigNumber(values, ",")} ${currency}<hr>`;
+        value.innerHTML = `<strong style="color:black;">Top${sport === "soccer" ? 11 : 21}: </strong>${formatBigNumber(values, ",")} ${currency}`;
         member.querySelector("td").appendChild(value);
+
+        const separator = document.createElement("hr");
+        separator.style.marginBottom = "-3px";
+        member.querySelector("td").appendChild(separator);
 
         return {
             member,
