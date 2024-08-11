@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.33
+// @version      2.34
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.34": ["<b>[new]</b> Transfer: deadline alert"],
         "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
         "2.32": ["<b>[improve]</b> Federation: first team member sort"],
         "2.31": ["<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."],
@@ -156,8 +157,17 @@
         100%  {background-color: inherit;}
     }
 
+    div.mazyar-deadline-throb-lightgreen {
+        animation: mazyar-throb-deadline-icon 3s infinite;
+    }
+
+    @keyframes mazyar-throb-deadline-icon {
+        0%   {color: inherit;}
+        50%  {color: lightgreen;}
+        100%  {color: inherit;}
+    }
+
     span.mazyar-icon-delete {
-        display: inline-block;
         cursor: pointer;
         background-image: url("nocache-869/img/player/discard.png");
         width: 21px;
@@ -277,6 +287,13 @@
         return new Date(year, month - 1, day);
     }
 
+    function parseMzDateTime(dateTimeString) {
+        const [date, time] = dateTimeString.split(' ');
+        const [day, month, year] = date.split('-').map(Number);
+        const [hours, minutes] = time.split(':').map(Number);
+        return new Date(year, month - 1, day, hours, minutes);
+    }
+
     function generateUuidV4() {
         return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
             const r = (Math.random() * 16) | 0,
@@ -338,6 +355,11 @@
         return match ? match[1] : null;
     }
 
+    function extractPlayerIDFromTransferMonitor(link) {
+        const regex = /u=(\d+)/;
+        const match = regex.exec(link);
+        return match ? match[1] : null;
+    }
 
     function getPlayerIdFromContainer(player) {
         return player?.querySelector("h2 span.player_id_span")?.innerText;
@@ -648,8 +670,7 @@
         return rows;
     }
 
-    async function fetchPlayerProfileDocument(playerId) {
-        const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+    async function fetchDocument(url) {
         return await fetch(url)
             .then((resp) => resp.text())
             .then((content) => {
@@ -660,6 +681,25 @@
                 console.warn(error);
                 return null;
             });
+    }
+
+    async function fetchJson(url) {
+        return await fetch(url)
+            .then((resp) => resp.json())
+            .catch((error) => {
+                console.warn(error);
+                return null;
+            });
+    }
+
+    async function fetchPlayerProfileDocument(playerId) {
+        const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+        return await fetchDocument(url);
+    }
+
+    async function fetchTransferMonitorData(sport = "soccer") {
+        const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
+        return await fetchJson(url);
     }
 
     /* *********************** DOM Utils ********************************** */
@@ -813,6 +853,23 @@
             icon.title = title;
         }
         return icon;
+    }
+
+    function createAddToDeadlineIcon(title) {
+        const icon = createLegalIcon();
+        icon.style.verticalAlign = "unset";
+        icon.style.borderRadius = "50%";
+        icon.style.border = "solid 1px";
+        icon.style.padding = "3px";
+        icon.style.color = "green";
+
+        const span = document.createElement("span");
+        span.classList.add("floatRight");
+        if (title) {
+            span.title = title;
+        }
+        span.appendChild(icon);
+        return span;
     }
 
     function createDeleteButtonWithTrashIcon(title = "Delete") {
@@ -999,6 +1056,10 @@
         return createIconFromFontAwesomeClass(["fa", "fa-refresh"], title);
     }
 
+    function createLegalIcon(title = "") {
+        return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+    }
+
     function createLoadingIcon(title = "") {
         const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
         icon.style.cursor = "unset";
@@ -1064,6 +1125,25 @@
         toolbar.appendChild(transfer);
 
         return { toolbar, menu, transfer };
+    }
+
+    function createDeadlineIndicator() {
+        const toolbar = document.createElement("div");
+        const transferIcon = createLegalIcon();
+
+        toolbar.classList.add("mazyar-flex-container");
+        toolbar.style.position = "fixed";
+        toolbar.style.zIndex = "9997";
+        toolbar.style.top = "50%";
+        toolbar.style.right = "50%";
+        toolbar.style.color = "white";
+        toolbar.style.textAlign = "center";
+
+        transferIcon.style.fontSize = "2rem";
+
+        toolbar.appendChild(transferIcon);
+
+        return toolbar;
     }
 
     /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
@@ -3018,6 +3098,8 @@
         };
         #filters = { soccer: [], hockey: [] }; // each key is like [{id, name, params, scout, interval}]
         #sport = "soccer";
+        #deadlines = {}; // {pid1: {name, deadline}, ...}
+        #deadlineUpdateInterval;
         #db;
 
         constructor() {
@@ -3135,6 +3217,7 @@
                 scout: "[sport+pid],ts",
                 player: "[sport+pid],ts,maxed,days",
                 hide: "[sport+pid],ts",
+                deadline: "[sport+pid],ts,deadline, name",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -3183,6 +3266,28 @@
             if (pid) {
                 await this.#db.hide.put({ pid, sport: this.#sport, ts: Date.now() });
             }
+        }
+
+        async #addPlayerToDeadlineListInIndexDb(pid, deadline = 0, name = "") {
+            if (pid) {
+                await this.#db.deadline.put({ pid, sport: this.#sport, ts: Date.now(), deadline, name });
+            }
+        }
+
+        async #removePlayerFromDeadlineListInIndexDb(pid) {
+            if (pid) {
+                await this.#db.deadline.delete([this.#sport, pid]);
+            }
+        }
+
+        async #fetchDeadlinePlayersFromIndexedDb() {
+            return await this.#db.deadline.toArray()
+                .then((players) => {
+                    return players?.map(({ pid, deadline, name }) => ({ pid, deadline, name }));
+                }
+                ).catch((err) => {
+                    return [];
+                });
         }
 
         async #deletePlayersFromHideListInIndexDb(days = 0) {
@@ -3499,7 +3604,7 @@
             }
         }
 
-        #addHideButtonToPlayersInTransferMarket(player) {
+        #addHideButtonToPlayerInTransferMarket(player) {
             if (player.hideButtonInjected) {
                 return;
             }
@@ -3521,7 +3626,8 @@
             const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
             const jobs = [];
             for (const player of players) {
-                this.#addHideButtonToPlayersInTransferMarket(player);
+                this.#addHideButtonToPlayerInTransferMarket(player);
+                this.#addDeadlineButtonToPlayerInTransferMarket(player);
                 jobs.push(this.#hidePlayerAccordingToHideList(player));
                 if (this.#isMaxedOrDaysEnabledForTransfer()) {
                     jobs.push(this.#updateMaxedAndDaysInTransfer(player));
@@ -4361,6 +4467,160 @@
                 });
         }
 
+        async #displayTransferDeadlines() {
+            const div = document.createElement("div");
+            div.classList.add("mazyar-flex-container");
+
+            const title = createMzStyledTitle("MZY Transfer Deadlines");
+
+            const bids = document.createElement("div");
+            div.classList.add("mazyar-flex-container");
+            const sortedBids = Object.values(this.#deadlines)?.sort((a, b) => a.deadline - b.deadline);
+            for (const bid of sortedBids) {
+                const row = document.createElement("div");
+                row.style.padding = "1rem";
+                row.innerHTML = `<a href="/?p=transfer&sub=players&u=${bid.pid}" target="_blank">${bid.name}</a>`
+                    + ` (deadline in <strong>${bid.deadline}</strong> minutes)`;
+                bids.appendChild(row);
+            }
+
+            const close = createMzStyledButton("Close", "green");
+            close.addEventListener("click", () => {
+                this.hideModal();
+            });
+
+            div.appendChild(title);
+            div.appendChild(bids);
+            div.appendChild(close);
+
+            this.#replaceModalContent([div]);
+        }
+
+        #addDeadlineIndicator() {
+            const deadline = createDeadlineIndicator();
+            deadline.id = "mazyar-deadline";
+            deadline.style.display = "none";
+            deadline.style.border = "1px solid black";
+            deadline.style.borderRadius = "50%";
+            deadline.style.padding = "0.5rem";
+            document.body?.appendChild(deadline);
+            deadline.addEventListener("click", () => {
+                this.#displayTransferDeadlines();
+            });
+            return deadline;
+        }
+
+        #isDeadlinesEmpty() {
+            return Object.values(this.#deadlines).length === 0;
+        }
+
+        async #deadlineFetchAndProcessMonitor() {
+            const response = await fetchTransferMonitorData();
+            if (response) {
+                const yourBids = document.createElement("div");
+                yourBids.innerHTML = response.content;
+                const bids = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table a:not([class="player_icon"])`);
+                const deadlines = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table img[src="img/icon_deadline.gif"]`);
+
+                const players = [...Array(bids.length).keys()].map((n) => ({
+                    name: bids[n].innerText,
+                    pid: extractPlayerIDFromTransferMonitor(bids[n].href),
+                    deadline: 1 + Math.ceil((parseMzDateTime(deadlines[n]?.parentNode?.parentNode?.innerText?.trim()) - new Date()) / 60_000)
+                }));
+                for (const player of players) {
+                    if (player.deadline > 0) {
+                        this.#deadlines[player.pid] = player;
+                        await this.#addPlayerToDeadlineListInIndexDb(player.pid, player.deadline, player.name);
+                        console.debug({ name: player.name, pid: player.pid, deadline: player.deadline });
+                    } else {
+                        await this.#removePlayerFromDeadlineListInIndexDb(player.pid);
+                    }
+                }
+            }
+        }
+
+        async #updatePlayerDeadlineFromMarket(pid) {
+            const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
+            const result = await fetch(url)
+                .then((resp) => resp.json())
+                .catch(() => {
+                    return null;
+                });
+            if (result?.totalHits > 0) {
+                const parser = new DOMParser();
+                const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
+                const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
+                const player = {
+                    pid,
+                    deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
+                    name: playerDiv.querySelector(".player_name")?.innerText,
+                };
+                this.#deadlines[pid] = player;
+                await this.#addPlayerToDeadlineListInIndexDb(player.pid, player.deadline, player.name);
+                console.debug({ name: player.name, pid: player.pid, deadline: player.deadline });
+            } else {
+                await this.#removePlayerFromDeadlineListInIndexDb(pid);
+            }
+        }
+
+        async #deadlineProcessPlayersInIndexedDb() {
+            const players = await this.#fetchDeadlinePlayersFromIndexedDb();
+            const jobs = [];
+            for (const player of players) {
+                jobs.push(this.#updatePlayerDeadlineFromMarket(player.pid));
+            }
+            await Promise.all(jobs);
+        }
+
+        async #updateDeadlines() {
+            await this.#deadlineProcessPlayersInIndexedDb();
+            await this.#deadlineFetchAndProcessMonitor();
+            if (this.#isDeadlinesEmpty() && this.#deadlineUpdateInterval) {
+                clearInterval(this.#deadlineUpdateInterval);
+                this.#deadlineUpdateInterval = null;
+                console.debug("deadline interval cleared");
+            }
+        }
+
+        #deadlineUpdateIconStyle(deadlineIcon) {
+            const DEADLINE_MINUTES = 10;
+            const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= DEADLINE_MINUTES).length > 0;
+            if (strobe && deadlineIcon) {
+                deadlineIcon.style.display = 'unset';
+                deadlineIcon.classList.add("mazyar-deadline-throb-lightgreen");
+            }
+        }
+
+        #addDeadlineButtonToPlayerInTransferMarket(player) {
+            if (player.deadlineAddInjected) {
+                return;
+            }
+            player.deadlineAddInjected = true;
+            const playerId = getPlayerIdFromContainer(player);
+            const addButton = createAddToDeadlineIcon("Add player to deadline monitor.");
+            player.querySelector("h2.clearfix div")?.appendChild(addButton);
+
+            addButton.addEventListener("click", async () => {
+                await this.#addPlayerToDeadlineListInIndexDb(playerId);
+                await this.#updatePlayerDeadlineFromMarket(playerId);
+                const deadlineIcon = document.getElementById("mazyar-deadline");
+                this.#deadlineUpdateIconStyle(deadlineIcon);
+            });
+        }
+
+        async injectTransferDeadlineAlert() {
+            const deadline = this.#addDeadlineIndicator();
+            await this.#deadlineProcessPlayersInIndexedDb();
+            await this.#deadlineFetchAndProcessMonitor();
+            this.#deadlineUpdateIconStyle(deadline);
+            if (!this.#isDeadlinesEmpty()) {
+                this.#deadlineUpdateInterval = setInterval(async () => {
+                    await this.#updateDeadlines();
+                    this.#deadlineUpdateIconStyle(deadline);
+                }, 10_000);
+            }
+        }
+
         #createFilterInfo(data = { name: "", scout: { high: [], low: [] }, count: "" }) {
             const info = document.createElement("div");
             const nameSpan = document.createElement("span");
@@ -4621,6 +4881,7 @@
         if (mazyar.isTransferFiltersEnabled()) {
             mazyar.setInitialFiltersHitInToolbar();
         }
+        mazyar.injectTransferDeadlineAlert();
 
         const uri = document.baseURI;
         if (uri.search("/?p=federations") > -1) {
