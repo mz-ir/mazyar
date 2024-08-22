@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.32
+// @version      2.33
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -27,6 +27,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
         "2.32": ["<b>[improve]</b> Federation: first team member sort"],
         "2.31": ["<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."],
         "2.30": ["<b>[fix]</b> Transfer Filters: reset selected H & L checkboxes when Transfer filter is not enabled."],
@@ -1712,20 +1713,20 @@
         };
     }
 
-    function federationGetTableHeader() {
-        const thead = document.querySelector("#federation_clash_members_list thead td");
+    function federationGetTableHeader(target) {
+        const thead = target.querySelector("thead td");
         return thead.innerText;
     }
 
-    function federationSetTableHeader(text) {
-        const thead = document.querySelector("#federation_clash_members_list thead td");
+    function federationSetTableHeader(target, text) {
+        const thead = target.querySelector("thead td");
         thead.innerText = text;
     }
 
-    async function federationSortTeamsByTopPlayers() {
+    async function federationSortTeamsByTopPlayers(target) {
         const sport = getSportType();
         const jobs = [];
-        const tbody = document.querySelector("#federation_clash_members_list tbody");
+        const tbody = target?.querySelector(" tbody");
         for (const member of tbody.children) {
             const username = federationGetUsername(member);
             if (username) {
@@ -1733,15 +1734,15 @@
             }
         }
         if (jobs.length > 0) {
-            const tableHeader = federationGetTableHeader();
+            const tableHeader = federationGetTableHeader(target);
             let dots = 0;
             const loadingInterval = setInterval(() => {
-                federationSetTableHeader(tableHeader + " " + ".".repeat(1 + (dots % 3)));
+                federationSetTableHeader(target, tableHeader + " " + ".".repeat(1 + (dots % 3)));
                 dots++;
             }, 1000);
             const members = await Promise.all(jobs);
             clearInterval(loadingInterval);
-            federationSetTableHeader(tableHeader + " ▼");
+            federationSetTableHeader(target, tableHeader + " ▼");
 
             members.sort((a, b) => b.values - a.values);
             const newOrder = members.map((t) => t.member);
@@ -1762,6 +1763,28 @@
             total.style.width = "100%";
             total.innerHTML = `<td><strong style="color:black;">Total: </strong>${formatBigNumber(totalValue, ",")} ${members[0].currency}</td>`;
             tbody.appendChild(total);
+        }
+    }
+
+    function federationFrontPage() {
+        const content = document.getElementById('federation-content');
+        if (content) {
+            const target = document.getElementById("federation_clash_members_list");
+            if (target && !target.topPlayersInjected) {
+                target.topPlayersInjected = true;
+                federationSortTeamsByTopPlayers(target);
+            }
+
+            const callback = () => {
+                const target = document.getElementById("federation_clash_members_list");
+                if (target && !target.topPlayersInjected) {
+                    target.topPlayersInjected = true;
+                    federationSortTeamsByTopPlayers(target);
+                }
+            };
+            const observer = new MutationObserver(callback);
+            const config = { childList: true, subtree: true };
+            observer.observe(content, config);
         }
     }
 
@@ -4600,15 +4623,11 @@
         }
 
         const uri = document.baseURI;
-        const url = document.URL;
         if (uri.search("/?p=federations") > -1) {
             if (uri.search("&sub=clash") > -1) {
                 clashInjectRanks();
-            } else if (uri.search("&fid=") > -1 || url.endsWith("p=federations")) {
-                federationSortTeamsByTopPlayers();
-            } else if (url.search("p=federations#fid=") > -1) {
-                // redirect
-                window.location.href = url.replace("#", "&");
+            } else if (uri.search("&fid=") > -1 || uri.endsWith("p=federations")) {
+                federationFrontPage();
             }
         } else if (uri.search("/?p=players") > -1) {
             squadInjectInformationToSummary();
