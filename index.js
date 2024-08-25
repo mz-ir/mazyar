@@ -23,8 +23,8 @@
 (async function () {
     "use strict";
 
-    const DEADLINE_MINUTES = 10; // in minutes
-    const DEADLINE_INTERVAL_SECONDS = 10; // in seconds
+    const DEADLINE_MINUTES = 30; // in minutes
+    const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     let mazyar = null;
 
@@ -32,7 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.34": ["<b>[new]</b> Transfer: deadline alert"],
+        "2.34": ["<b>[new]</b> <b>(Experimental)</b> Transfer: add deadline alert."],
         "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
         "2.32": ["<b>[improve]</b> Federation: first team member sort"],
         "2.31": ["<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."],
@@ -1061,6 +1061,10 @@
 
     function createLegalIcon(title = "") {
         return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+    }
+
+    function createTrashIcon(title = "") {
+        return createIconFromFontAwesomeClass(["fa", "fa-trash"], title);
     }
 
     function createLoadingIcon(title = "") {
@@ -4503,15 +4507,51 @@
 
             const title = createMzStyledTitle("MZY Transfer Deadlines");
 
-            const bids = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
+            const middle = document.createElement("div");
+
+            middle.style.flex = "1";
+            middle.style.overflowY = "auto"; // make it scrollable
+            middle.style.margin = "5px 2px";
+
+            const bids = document.createElement("table");
+            bids.style.margin = "5px 2px";
+            middle.appendChild(bids);
+
+            const thead = document.createElement("thead");
+            thead.innerHTML = `<tr><th style="width: 15px;"></th><th style="text-align: left;"><strong>Player</strong></th><th><strong>Deadline</strong></th></tr>`;
+            bids.appendChild(thead);
+
             const sortedBids = Object.values(this.#deadlines)?.sort((a, b) => a.deadline - b.deadline);
+            const tbody = document.createElement("tbody");
+            bids.appendChild(tbody);
             for (const bid of sortedBids) {
-                const row = document.createElement("div");
-                row.style.padding = "1rem";
-                row.innerHTML = `<a href="/?p=transfer&sub=players&u=${bid.pid}" target="_blank">${bid.name}</a>`
-                    + ` (deadline in <strong>${bid.deadline}</strong> minutes)`;
-                bids.appendChild(row);
+                const row = document.createElement("tr");
+
+                const deleteButton = document.createElement("td");
+                deleteButton.addEventListener("click", async () => {
+                    await this.#removePlayerFromDeadlineList(bid.pid);
+                    row.remove();
+                    if (tbody.childElementCount === 0) {
+                        this.#deadlineUpdateIconStyle();
+                        this.hideModal();
+                    }
+                });
+
+                const trashIcon = createTrashIcon("Remove from deadline list");
+                deleteButton.appendChild(trashIcon);
+
+                const name = document.createElement("td");
+                name.innerHTML = `<a href="/?p=transfer&sub=players&u=${bid.pid}" target="_blank">${bid.name}</a>`;
+                name.style.paddingRight = "15px";
+
+                const deadline = document.createElement("td");
+                deadline.innerHTML = `<strong>${bid.deadline}</strong> minutes`;
+                deadline.style.paddingRight = "15px";
+
+                row.appendChild(deleteButton);
+                row.appendChild(name);
+                row.appendChild(deadline);
+                tbody.appendChild(row);
             }
 
             const close = createMzStyledButton("Close", "green");
@@ -4520,7 +4560,7 @@
             });
 
             div.appendChild(title);
-            div.appendChild(bids);
+            div.appendChild(middle);
             div.appendChild(close);
 
             this.#replaceModalContent([div]);
@@ -4567,21 +4607,24 @@
             const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
             const result = await fetch(url)
                 .then((resp) => resp.json())
-                .catch(() => {
+                .catch((err) => {
+                    console.warn(err);
                     return null;
                 });
-            if (result?.totalHits > 0) {
-                const parser = new DOMParser();
-                const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
-                const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
-                const player = {
-                    name: playerDiv.querySelector(".player_name")?.innerText,
-                    pid,
-                    deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
-                };
-                await this.#addPlayerToDeadlineListInIndexDb(player);
-            } else {
-                await this.#removePlayerFromDeadlineList(pid);
+            if (result) {
+                if (result.totalHits > 0) {
+                    const parser = new DOMParser();
+                    const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
+                    const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
+                    const player = {
+                        name: playerDiv.querySelector(".player_name")?.innerText,
+                        pid,
+                        deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
+                    };
+                    await this.#addPlayerToDeadlineListInIndexDb(player);
+                } else {
+                    await this.#removePlayerFromDeadlineList(pid);
+                }
             }
         }
 
@@ -4590,13 +4633,10 @@
             const jobs = [];
             for (const player of players) {
                 if (this.#deadlineLockAcquired) {
-                    console.debug("creating job");
                     jobs.push(this.#updatePlayerDeadlineFromMarket(player.pid));
                 } else if (player.deadline > 0) {
-                    console.debug("add");
                     this.#deadlines[player.pid] = player;
                 } else {
-                    console.debug("delete");
                     delete this.#deadlines[player.pid];
                 }
             }
@@ -4619,7 +4659,7 @@
                     this.#deadlineLockAcquired = false;
                     if (this.#deadlineIsLockerTabDead()) {
                         // it seems locker tab is not alive. make it available for other tabs
-                        console.debug("locker tab is dead. release the lock.");
+                        console.warn("locker tab is dead. release the lock.");
                         GM_setValue("deadline_is_locked", false);
                     }
                 } else {
