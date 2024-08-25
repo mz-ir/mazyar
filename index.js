@@ -3083,6 +3083,7 @@
             mz_predictor: false,
             player_comment: false,
             coach_salary: false,
+            deadline: false,
             days: {
                 display_in_profiles: false,
                 display_in_transfer: false,
@@ -3130,6 +3131,7 @@
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
+            this.#settings.deadline = GM_getValue("deadline", true);
             this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", false);
             this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
             this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", false);
@@ -3143,6 +3145,7 @@
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
             GM_setValue("coach_salary", this.#settings.coach_salary);
+            GM_setValue("deadline", this.#settings.deadline);
             GM_setValue("display_days_in_profiles", this.#settings.days.display_in_profiles);
             GM_setValue("display_days_in_transfer", this.#settings.days.display_in_transfer);
             GM_setValue("display_days_for_one_clubs", this.#settings.days.display_for_one_clubs);
@@ -3197,6 +3200,10 @@
 
         mustAddCoachSalaries() {
             return this.#settings.coach_salary;
+        }
+
+        #isTransferDeadlineAlertEnabled() {
+            return this.#settings.deadline;
         }
 
         #mustMarkMaxedSkills() {
@@ -3627,7 +3634,9 @@
             const jobs = [];
             for (const player of players) {
                 this.#addHideButtonToPlayerInTransferMarket(player);
-                this.#addDeadlineButtonToPlayerInTransferMarket(player);
+                if (this.#isTransferDeadlineAlertEnabled()) {
+                    this.#addDeadlineButtonToPlayerInTransferMarket(player);
+                }
                 jobs.push(this.#hidePlayerAccordingToHideList(player));
                 if (this.#isMaxedOrDaysEnabledForTransfer()) {
                     jobs.push(this.#updateMaxedAndDaysInTransfer(player));
@@ -4054,6 +4063,7 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
+                deadline: false,
                 days: {
                     display_in_profiles: false,
                     display_in_transfer: false,
@@ -4126,8 +4136,10 @@
             const transferGroup = createMenuGroup("Transfer Market:");
             const transferFilters = createMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
             const transferMaxed = createMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
+            const transferDeadline = createMenuCheckBox("Enable deadline alert", this.#settings.deadline, submenuStyle);
             transferGroup.appendChild(transferFilters);
-            transferGroup.appendChild(transferMaxed);
+            transferGroup.appendChild(transferFilters);
+            transferGroup.appendChild(transferDeadline);
 
             const daysGroup = createMenuGroup("Days at this club:");
             const daysInProfiles = createMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
@@ -4156,6 +4168,7 @@
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transferFilters.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
+                    deadline: transferDeadline.querySelector("input[type=checkbox]").checked,
                     mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
@@ -4609,15 +4622,17 @@
         }
 
         async injectTransferDeadlineAlert() {
-            const deadline = this.#addDeadlineIndicator();
-            await this.#deadlineProcessPlayersInIndexedDb();
-            await this.#deadlineFetchAndProcessMonitor();
-            this.#deadlineUpdateIconStyle(deadline);
-            if (!this.#isDeadlinesEmpty()) {
-                this.#deadlineUpdateInterval = setInterval(async () => {
-                    await this.#updateDeadlines();
-                    this.#deadlineUpdateIconStyle(deadline);
-                }, 10_000);
+            if (this.#isTransferDeadlineAlertEnabled()) {
+                const deadline = this.#addDeadlineIndicator();
+                await this.#deadlineProcessPlayersInIndexedDb();
+                await this.#deadlineFetchAndProcessMonitor();
+                this.#deadlineUpdateIconStyle(deadline);
+                if (!this.#isDeadlinesEmpty()) {
+                    this.#deadlineUpdateInterval = setInterval(async () => {
+                        await this.#updateDeadlines();
+                        this.#deadlineUpdateIconStyle(deadline);
+                    }, 30_000);
+                }
             }
         }
 
