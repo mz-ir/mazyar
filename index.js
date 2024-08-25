@@ -23,6 +23,11 @@
 (async function () {
     "use strict";
 
+    const DEADLINE_MINUTES = 10; // in minutes
+    const DEADLINE_INTERVAL_SECONDS = 10; // in seconds
+
+    let mazyar = null;
+
     /* *********************** Changelogs ********************************** */
 
     const currentVersion = GM_info.script.version;
@@ -57,8 +62,6 @@
             "<b>[improve]</b> change icon style of player's comment."],
         "2.17": ["<b>[fix]</b> fixed total skill balls"],
     }
-
-    let mazyar = null;
 
     /* *********************** Styles ********************************** */
 
@@ -162,9 +165,9 @@
     }
 
     @keyframes mazyar-throb-deadline-icon {
-        0%   {color: inherit;}
-        50%  {color: lightgreen;}
-        100%  {color: inherit;}
+        0%   {color: yellow;}
+        50%  {color: crimson;}
+        100%  {color: yellow;}
     }
 
     span.mazyar-icon-delete {
@@ -1128,22 +1131,22 @@
     }
 
     function createDeadlineIndicator() {
-        const toolbar = document.createElement("div");
+        const div = document.createElement("div");
         const transferIcon = createLegalIcon();
 
-        toolbar.classList.add("mazyar-flex-container");
-        toolbar.style.position = "fixed";
-        toolbar.style.zIndex = "9997";
-        toolbar.style.top = "50%";
-        toolbar.style.right = "50%";
-        toolbar.style.color = "white";
-        toolbar.style.textAlign = "center";
+        div.classList.add("mazyar-flex-container");
+        div.style.position = "fixed";
+        div.style.zIndex = "9997";
+        div.style.top = "48%";
+        div.style.right = "35px";
+        div.style.color = "white";
+        div.style.textAlign = "center";
 
         transferIcon.style.fontSize = "2rem";
 
-        toolbar.appendChild(transferIcon);
+        div.appendChild(transferIcon);
 
-        return toolbar;
+        return div;
     }
 
     /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
@@ -3100,8 +3103,8 @@
         #filters = { soccer: [], hockey: [] }; // each key is like [{id, name, params, scout, interval}]
         #sport = "soccer";
         #deadlines = {}; // {pid1: {name, deadline}, ...}
-        #deadlineUpdateInterval;
         #db;
+        #deadlineLockAcquired;
 
         constructor() {
             this.#initializeIndexedDb("Mazyar");
@@ -3277,7 +3280,6 @@
 
         async #addPlayerToDeadlineListInIndexDb(player = { pid: "", deadline: 0, name: "" }) {
             if (player?.pid) {
-                console.debug(player);
                 this.#deadlines[player.pid] = player;
                 await this.#db.deadline.put({
                     sport: this.#sport,
@@ -3292,7 +3294,8 @@
         async #removePlayerFromDeadlineList(pid) {
             if (pid) {
                 delete this.#deadlines[pid];
-                await this.#db.deadline.delete([this.#sport, pid]);
+                await this.#db.deadline.delete([this.#sport, pid])
+                    .catch((err) => console.warn(err));
             }
         }
 
@@ -3305,6 +3308,7 @@
                     return players?.map(({ pid, deadline, name }) => ({ pid, deadline, name }));
                 }
                 ).catch((err) => {
+                    console.warn(err);
                     return [];
                 });
         }
@@ -4536,10 +4540,6 @@
             return deadline;
         }
 
-        #isDeadlinesEmpty() {
-            return Object.values(this.#deadlines).length === 0;
-        }
-
         async #deadlineFetchAndProcessMonitor() {
             const response = await fetchTransferMonitorData();
             if (response) {
@@ -4589,23 +4589,55 @@
             const players = await this.#fetchDeadlinePlayersFromIndexedDb();
             const jobs = [];
             for (const player of players) {
-                jobs.push(this.#updatePlayerDeadlineFromMarket(player.pid));
+                if (this.#deadlineLockAcquired) {
+                    console.debug("creating job");
+                    jobs.push(this.#updatePlayerDeadlineFromMarket(player.pid));
+                } else if (player.deadline > 0) {
+                    console.debug("add");
+                    this.#deadlines[player.pid] = player;
+                } else {
+                    console.debug("delete");
+                    delete this.#deadlines[player.pid];
+                }
             }
             await Promise.all(jobs);
         }
 
-        async #updateDeadlines() {
-            await this.#deadlineProcessPlayersInIndexedDb();
-            await this.#deadlineFetchAndProcessMonitor();
-            if (this.#isDeadlinesEmpty() && this.#deadlineUpdateInterval) {
-                clearInterval(this.#deadlineUpdateInterval);
-                this.#deadlineUpdateInterval = null;
-                console.debug("deadline interval cleared");
+        #deadlineIsLockerTabDead() {
+            return Date.now() - Number(GM_getValue("deadline_locker_last_call", 0)) > (2 * DEADLINE_INTERVAL_SECONDS * 1000);
+        }
+
+        #deadlineUpdateLockStatus() {
+            if (this.#deadlineLockAcquired) {
+                // we have the lock
+                GM_setValue("deadline_locker_last_call", Date.now());
+            } else {
+                // check whether if lock is available to acquire
+                const isLocked = GM_getValue("deadline_is_locked", false);
+                if (isLocked) {
+                    // other instance of mazyar is already required the lock
+                    this.#deadlineLockAcquired = false;
+                    if (this.#deadlineIsLockerTabDead()) {
+                        // it seems locker tab is not alive. make it available for other tabs
+                        console.debug("locker tab is dead. release the lock.");
+                        GM_setValue("deadline_is_locked", false);
+                    }
+                } else {
+                    // we can acquire the lock
+                    GM_setValue("deadline_is_locked", true);
+                    GM_setValue("deadline_locker_last_call", Date.now());
+                    this.#deadlineLockAcquired = true;
+                    window.onbeforeunload = () => {
+                        // release lock
+                        GM_setValue("deadline_is_locked", false);
+                        this.#deadlineLockAcquired = false;
+                    }
+                }
             }
         }
 
-        #deadlineUpdateIconStyle(deadlineIcon) {
-            const DEADLINE_MINUTES = 10;
+        #deadlineUpdateIconStyle() {
+            const deadlineIcon = document.getElementById("mazyar-deadline");
             const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= DEADLINE_MINUTES).length > 0;
             if (strobe && deadlineIcon) {
                 deadlineIcon.style.display = 'unset';
@@ -4616,11 +4648,32 @@
             }
         }
 
+        async #updateDeadlines() {
+            this.#deadlineUpdateLockStatus();
+            // remove old data
+            this.#deadlines = {};
+            await this.#deadlineProcessPlayersInIndexedDb();
+            if (this.#deadlineLockAcquired) {
+                await this.#deadlineFetchAndProcessMonitor();
+            }
+            this.#deadlineUpdateIconStyle();
+        }
+
+        async injectTransferDeadlineAlert() {
+            if (this.#isTransferDeadlineAlertEnabled()) {
+                this.#addDeadlineIndicator();
+                await this.#updateDeadlines();
+                setInterval(() => {
+                    this.#updateDeadlines();
+                }, 1000 * DEADLINE_INTERVAL_SECONDS);
+            }
+        }
+
         #addDeadlineButtonToPlayerInTransferMarket(player, deadlines) {
-            if (player.deadlineAddInjected) {
+            if (player.deadlineIconInjected) {
                 return;
             }
-            player.deadlineAddInjected = true;
+            player.deadlineIconInjected = true;
             const playerId = getPlayerIdFromContainer(player);
             let alreadyAdded = deadlines.find((player) => player.pid == playerId);
             const addButton = createAddToDeadlineIcon("Deadline Monitor Add/Remove", alreadyAdded ? "red" : "green")
@@ -4636,24 +4689,8 @@
                     addButton.style.color = "red";
                     await this.#updatePlayerDeadlineFromMarket(playerId);
                 }
-                const deadlineIcon = document.getElementById("mazyar-deadline");
-                this.#deadlineUpdateIconStyle(deadlineIcon);
+                this.#deadlineUpdateIconStyle();
             });
-        }
-
-        async injectTransferDeadlineAlert() {
-            if (this.#isTransferDeadlineAlertEnabled()) {
-                const deadline = this.#addDeadlineIndicator();
-                await this.#deadlineProcessPlayersInIndexedDb();
-                await this.#deadlineFetchAndProcessMonitor();
-                this.#deadlineUpdateIconStyle(deadline);
-                if (!this.#isDeadlinesEmpty()) {
-                    this.#deadlineUpdateInterval = setInterval(async () => {
-                        await this.#updateDeadlines();
-                        this.#deadlineUpdateIconStyle(deadline);
-                    }, 30_000);
-                }
-            }
         }
 
         #createFilterInfo(data = { name: "", scout: { high: [], low: [] }, count: "" }) {
