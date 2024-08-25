@@ -855,15 +855,15 @@
         return icon;
     }
 
-    function createAddToDeadlineIcon(title) {
+    function createAddToDeadlineIcon(title, color) {
         const icon = createLegalIcon();
         icon.style.verticalAlign = "unset";
         icon.style.borderRadius = "50%";
         icon.style.border = "solid 1px";
         icon.style.padding = "3px";
-        icon.style.color = "green";
 
         const span = document.createElement("span");
+        span.style.color = color;
         span.classList.add("floatRight");
         if (title) {
             span.title = title;
@@ -3275,19 +3275,31 @@
             }
         }
 
-        async #addPlayerToDeadlineListInIndexDb(pid, deadline = 0, name = "") {
-            if (pid) {
-                await this.#db.deadline.put({ pid, sport: this.#sport, ts: Date.now(), deadline, name });
+        async #addPlayerToDeadlineListInIndexDb(player = { pid: "", deadline: 0, name: "" }) {
+            if (player?.pid) {
+                console.debug(player);
+                this.#deadlines[player.pid] = player;
+                await this.#db.deadline.put({
+                    sport: this.#sport,
+                    ts: Date.now(),
+                    pid: player.pid,
+                    deadline: player.deadline,
+                    name: player.name
+                });
             }
         }
 
-        async #removePlayerFromDeadlineListInIndexDb(pid) {
+        async #removePlayerFromDeadlineList(pid) {
             if (pid) {
+                delete this.#deadlines[pid];
                 await this.#db.deadline.delete([this.#sport, pid]);
             }
         }
 
         async #fetchDeadlinePlayersFromIndexedDb() {
+            if (!this.#isTransferDeadlineAlertEnabled()) {
+                return [];
+            }
             return await this.#db.deadline.toArray()
                 .then((players) => {
                     return players?.map(({ pid, deadline, name }) => ({ pid, deadline, name }));
@@ -3631,11 +3643,12 @@
         async #processTransferSearchResults(results) {
             const { lows, highs } = this.#getAcceptableHighsAndLows();
             const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
+            const deadlines = await this.#fetchDeadlinePlayersFromIndexedDb();
             const jobs = [];
             for (const player of players) {
                 this.#addHideButtonToPlayerInTransferMarket(player);
                 if (this.#isTransferDeadlineAlertEnabled()) {
-                    this.#addDeadlineButtonToPlayerInTransferMarket(player);
+                    this.#addDeadlineButtonToPlayerInTransferMarket(player, deadlines);
                 }
                 jobs.push(this.#hidePlayerAccordingToHideList(player));
                 if (this.#isMaxedOrDaysEnabledForTransfer()) {
@@ -4542,11 +4555,9 @@
                 }));
                 for (const player of players) {
                     if (player.deadline > 0) {
-                        this.#deadlines[player.pid] = player;
-                        await this.#addPlayerToDeadlineListInIndexDb(player.pid, player.deadline, player.name);
-                        console.debug({ name: player.name, pid: player.pid, deadline: player.deadline });
+                        await this.#addPlayerToDeadlineListInIndexDb(player);
                     } else {
-                        await this.#removePlayerFromDeadlineListInIndexDb(player.pid);
+                        await this.#removePlayerFromDeadlineList(player.pid);
                     }
                 }
             }
@@ -4564,15 +4575,13 @@
                 const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
                 const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
                 const player = {
+                    name: playerDiv.querySelector(".player_name")?.innerText,
                     pid,
                     deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
-                    name: playerDiv.querySelector(".player_name")?.innerText,
                 };
-                this.#deadlines[pid] = player;
-                await this.#addPlayerToDeadlineListInIndexDb(player.pid, player.deadline, player.name);
-                console.debug({ name: player.name, pid: player.pid, deadline: player.deadline });
+                await this.#addPlayerToDeadlineListInIndexDb(player);
             } else {
-                await this.#removePlayerFromDeadlineListInIndexDb(pid);
+                await this.#removePlayerFromDeadlineList(pid);
             }
         }
 
@@ -4601,21 +4610,32 @@
             if (strobe && deadlineIcon) {
                 deadlineIcon.style.display = 'unset';
                 deadlineIcon.classList.add("mazyar-deadline-throb-lightgreen");
+            } else {
+                deadlineIcon.style.display = 'none';
+                deadlineIcon.classList.remove("mazyar-deadline-throb-lightgreen");
             }
         }
 
-        #addDeadlineButtonToPlayerInTransferMarket(player) {
+        #addDeadlineButtonToPlayerInTransferMarket(player, deadlines) {
             if (player.deadlineAddInjected) {
                 return;
             }
             player.deadlineAddInjected = true;
             const playerId = getPlayerIdFromContainer(player);
-            const addButton = createAddToDeadlineIcon("Add player to deadline monitor.");
+            let alreadyAdded = deadlines.find((player) => player.pid == playerId);
+            const addButton = createAddToDeadlineIcon("Deadline Monitor Add/Remove", alreadyAdded ? "red" : "green")
             player.querySelector("h2.clearfix div")?.appendChild(addButton);
 
             addButton.addEventListener("click", async () => {
-                await this.#addPlayerToDeadlineListInIndexDb(playerId);
-                await this.#updatePlayerDeadlineFromMarket(playerId);
+                if (alreadyAdded) {
+                    alreadyAdded = false;
+                    addButton.style.color = "green";
+                    await this.#removePlayerFromDeadlineList(playerId);
+                } else {
+                    alreadyAdded = true;
+                    addButton.style.color = "red";
+                    await this.#updatePlayerDeadlineFromMarket(playerId);
+                }
                 const deadlineIcon = document.getElementById("mazyar-deadline");
                 this.#deadlineUpdateIconStyle(deadlineIcon);
             });
