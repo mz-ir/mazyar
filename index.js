@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.34
+// @version      2.35
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.35": ["<b>[new]</b> Days at this club: add to player profiles in training report. It is optional and disabled by default. You can enable it from MZY Settings."],
         "2.34": ["<b>[new]</b> <b>(Experimental)</b> Transfer: add deadline alert."],
         "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
         "2.32": ["<b>[improve]</b> Federation: first team member sort"],
@@ -3077,6 +3078,21 @@
         }
     }
 
+    function trainingAddDays() {
+        const cssSelector = '#lightboxContent_player_profile #players_container';
+        const callback = () => {
+            const profile = document.querySelector(cssSelector);
+            if (profile && !profile.daysInjected) {
+                profile.daysInjected = true;
+                mazyar.trainingAddDaysAtThisClubToPlayerProfile(profile);
+            }
+        }
+        const target = document.body;
+        const config = { childList: true, subtree: true };
+        const observer = new MutationObserver(callback);
+        observer.observe(target, config);
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -3094,6 +3110,7 @@
             days: {
                 display_in_profiles: false,
                 display_in_transfer: false,
+                display_in_training: false,
                 display_for_one_clubs: false,
             }
         };
@@ -3141,6 +3158,7 @@
             this.#settings.deadline = GM_getValue("deadline", true);
             this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", false);
             this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
+            this.#settings.days.display_in_training = GM_getValue("display_days_in_training", false);
             this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", false);
         }
 
@@ -3155,6 +3173,7 @@
             GM_setValue("deadline", this.#settings.deadline);
             GM_setValue("display_days_in_profiles", this.#settings.days.display_in_profiles);
             GM_setValue("display_days_in_transfer", this.#settings.days.display_in_transfer);
+            GM_setValue("display_days_in_training", this.#settings.days.display_in_training);
             GM_setValue("display_days_for_one_clubs", this.#settings.days.display_for_one_clubs);
         }
 
@@ -3187,6 +3206,10 @@
 
         isDaysAtThisClubEnabledForPlayerProfiles() {
             return this.#settings.days.display_in_profiles;
+        }
+
+        #isDaysAtThisClubEnabledForTraining() {
+            return this.#settings.days.display_in_training;
         }
 
         #isDaysAtThisClubEnabledForTransferMarket() {
@@ -3820,6 +3843,16 @@
             }
         }
 
+        async trainingAddDaysAtThisClubToPlayerProfile(container) {
+            if (this.#isDaysAtThisClubEnabledForTraining()) {
+                const player = container.querySelector("div.playerContainer");
+                const playerId = getPlayerIdFromContainer(player);
+                await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                });
+            }
+        }
+
         // -------------------------------- Transfer Options -------------------------------------
 
         #fetchTransferOptions() {
@@ -4088,6 +4121,7 @@
                 days: {
                     display_in_profiles: false,
                     display_in_transfer: false,
+                    display_for_training: false,
                     display_for_one_clubs: false,
                 }
             });
@@ -4165,9 +4199,11 @@
             const daysGroup = createMenuGroup("Days at this club:");
             const daysInProfiles = createMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
             const daysInTransfer = createMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, submenuStyle);
+            const daysInTraining = createMenuCheckBox("Display in training report", this.#settings.days.display_in_training, submenuStyle);
             const daysForOneClubs = createMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, submenuStyle);
             daysGroup.appendChild(daysInProfiles);
             daysGroup.appendChild(daysInTransfer);
+            daysGroup.appendChild(daysInTraining);
             daysGroup.appendChild(daysForOneClubs);
 
             const buttons = document.createElement("div");
@@ -4196,6 +4232,7 @@
                     days: {
                         display_in_profiles: daysInProfiles.querySelector("input[type=checkbox]").checked,
                         display_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
+                        display_in_training: daysInTraining.querySelector("input[type=checkbox]").checked,
                         display_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
                     }
                 });
@@ -5033,6 +5070,7 @@
             }
         } else if (uri.search("/?p=training_report") > -1) {
             trainingAddCampOpenerToReport();
+            trainingAddDays();
         }
     }
 
