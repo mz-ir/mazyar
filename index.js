@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.35
+// @version      2.36
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -23,7 +23,6 @@
 (async function () {
     "use strict";
 
-    const DEADLINE_MINUTES = 30; // in minutes
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     let mazyar = null;
@@ -32,6 +31,12 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.36": [
+            "<b>[new]</b> Deadline Alert: add 'Timeout' option in <b>MZY Settings</b> to set deadline timeout. Its value must be between 1 and 360 minutes.",
+            "<b>[new]</b> Deadline Alert: add 'Sound Notification' option to play a bell sound when deadline of at least one of monitored players is less than timeout.",
+            "<b>[fix]</b> Deadline Alert: trash icon was missing in 'MZY Transfer Deadlines' modal when 'van.mz.playerAdvanced' script is enabled.",
+            "<b>[fix]</b> MZY Settings: 'Mark maxed skills' option was missing."
+        ],
         "2.35": ["<b>[new]</b> Days at this club: add to player profiles in training report. It is optional and disabled by default. You can enable it from MZY Settings."],
         "2.34": ["<b>[new]</b> <b>(Experimental)</b> Transfer: add deadline alert."],
         "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
@@ -283,6 +288,55 @@
             label: "never",
         },
     };
+
+    const deadlineAlertSound =
+        "data:audio/mpeg;base64,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"
+        + "gKk4CBsw8PVHAtgA+DeGjf///+hglki///0x0Adjk2/1UF///5gO7//////qWZD5CRy6pUQwH/AHzxCf/////M0xP0PKqaiXgBmb"
+        + "P6mLX///SBHjD/mMp1//+UFn/////+k04lAOAoDqgwHA9wA+JQd////+gUC6h///ogjgm2+1f///UZf//M0xPsPEp6sfgKavP///"
+        + "+3+mOgWUaUCBwBoAPkoPP////qW5SHf///0gFWXH////+o9//////+gvB1VABkBgPsAPjgAKd3///M0xPkTCqaqXgBibP//1NF3/"
+        + "//KwLhNv1N///1mX//////2L5MdEOBLSB8Ihf////+oHjZ///6zAIG/9////O///////j5K//M0xOcK0qakHgKm8MeVIOAMyB8aD"
+        + "P////6KEn///WAzlf////qMv//////zo7Ug4HoQHyYz////+g8GW///zAD1O/7f//9S//MkxPYJ2qK0PgRU+P//////+VOqCQcCw"
+        + "ID5dHr///9/Uw1C7///0gGSMP9v///J//MkxPEJqqKsXgHk5P//////x2oAQDgCBAfEIFv///1N8qobf///QA4mf////9f///Mkx"
+        + "O0JIqKwXgRU+P/////MagFwOBvIB8zGA/////Wohf//84FOh/p///1J//////MkxOsJcqK4ngHa8P//oCoDBwLQwPhQsf////xXO"
+        + "///6gEF93/p///6ajDAD5MG//MkxOgIkqKsPgHg8H////6GCz///nASdX/////9dRwH8uDah////7IJic///8vg//MkxOgH8p6wP"
+        + "gHa8MBn7/////9SAD0AoVepE/8XwqrChgzJftMv/NjGih/1PRZI//MkxOsICqK0PgHa8MieM/YCokdCCEqCkwFm4UeF46akNIKKG"
+        + "HJb/b/IqYF0EhE3//MkxO0IYqKoXgSE+P//pkxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO4IUp6sfgHa8Kqqq"
+        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO8IIp64fgNE+Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+        + "qqqqqqq//MkxPEGUW60XgCU4Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPoFmW6oOAHa8Kqqqqqqqqqqq"
+        + "qqq//MkxO4GKW6gGUBoAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//M0xPgQMcqoeYCgAKqqqqqqqqqqqqqqq"
+        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPIAAAP8AYAAAKqqqqqqqqqqqqqq";
 
     /* *********************** Utils ********************************** */
 
@@ -762,13 +816,28 @@
         return datalist;
     }
 
-    function createTextInput(title = "input", placeholder = "example", datalistId = "") {
+    function createMenuTextInput(title = "input", placeholder = "example", datalistId = "") {
         const div = document.createElement("div");
         div.classList.add("mazyar-flex-container-row");
         div.style.justifyItems = "space-between";
         div.innerHTML = `
             <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
             <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
+        `;
+        return div;
+    }
+
+    function createSubMenuTextInput(title = "input", placeholder = "example", initialValue = 0, style = {
+        margin: "0.1rem 2.2rem",
+        inputSize: "5px"
+    }) {
+        const div = document.createElement("div");
+        div.classList.add("mazyar-flex-container-row");
+        div.style.justifyItems = "space-between";
+        div.style.margin = style?.margin ?? "0.1rem 2.2rem";
+        div.innerHTML = `
+            <label style="margin-left: 0.5rem;">${title}: </label>
+            <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">
         `;
         return div;
     }
@@ -1065,7 +1134,7 @@
     }
 
     function createTrashIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa", "fa-trash"], title);
+        return createIconFromFontAwesomeClass(["fas", "fa-trash"], title);
     }
 
     function createLoadingIcon(title = "") {
@@ -3106,7 +3175,11 @@
             mz_predictor: false,
             player_comment: false,
             coach_salary: false,
-            deadline: false,
+            deadline: {
+                enabled: false,
+                play_bell: false,
+                timeout: 30,// minutes,
+            },
             days: {
                 display_in_profiles: false,
                 display_in_transfer: false,
@@ -3155,7 +3228,9 @@
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
-            this.#settings.deadline = GM_getValue("deadline", true);
+            this.#settings.deadline.enabled = GM_getValue("deadline", true);
+            this.#settings.deadline.play_bell = GM_getValue("deadline_play_bell", false);
+            this.#settings.deadline.timeout = GM_getValue("deadline_timeout", 30);
             this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", false);
             this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
             this.#settings.days.display_in_training = GM_getValue("display_days_in_training", false);
@@ -3170,7 +3245,9 @@
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
             GM_setValue("coach_salary", this.#settings.coach_salary);
-            GM_setValue("deadline", this.#settings.deadline);
+            GM_setValue("deadline", this.#settings.deadline.enabled);
+            GM_setValue("deadline_play_bell", this.#settings.deadline.play_bell);
+            GM_setValue("deadline_timeout", this.#settings.deadline.timeout);
             GM_setValue("display_days_in_profiles", this.#settings.days.display_in_profiles);
             GM_setValue("display_days_in_transfer", this.#settings.days.display_in_transfer);
             GM_setValue("display_days_in_training", this.#settings.days.display_in_training);
@@ -3233,7 +3310,7 @@
         }
 
         #isTransferDeadlineAlertEnabled() {
-            return this.#settings.deadline;
+            return this.#settings.deadline.enabled;
         }
 
         #mustMarkMaxedSkills() {
@@ -4167,6 +4244,45 @@
             this.#replaceModalContent([div]);
         }
 
+        #createDeadlineOptions(submenuStyle) {
+            const div = document.createElement("div");
+            div.classList.add("mazyar-flex-container");
+
+            const enabled = createMenuCheckBox("Enable deadline alert", this.#settings.deadline.enabled, submenuStyle);
+            const playBell = createMenuCheckBox("Sound Notification", this.#settings.deadline.play_bell, { margin: "0.1rem 2.2rem" });
+            const timeout = createSubMenuTextInput("Timeout", "30", this.#settings.deadline.timeout);
+            const unit = document.createTextNode("minute(s)");
+            timeout.appendChild(unit);
+
+            timeout.style.display = this.#settings.deadline.enabled ? "unset" : "none";
+            playBell.style.display = this.#settings.deadline.enabled ? "unset" : "none";
+
+            div.appendChild(enabled); // child node 0
+            div.appendChild(timeout); // child node 1
+            div.appendChild(playBell); // child node 2
+
+            enabled.addEventListener("input", () => {
+                timeout.style.display = enabled.querySelector("input[type='checkbox']").checked ? "unset" : "none";
+                playBell.style.display = enabled.querySelector("input[type='checkbox']").checked ? "unset" : "none";
+            });
+
+            timeout.addEventListener("input", () => {
+                const minutes = timeout.querySelector("input[type='text']");
+                if (minutes?.value?.match(/^\d+$/)) {
+                    const value = Number(minutes?.value)
+                    if (value < 1) {
+                        minutes.value = "1";
+                    } else if (value > 360) {
+                        minutes.value = "360";
+                    }
+                } else {
+                    minutes.value = "";
+                }
+            });
+
+            return div;
+        }
+
         displaySettingsMenu() {
             const submenuStyle = { margin: "0.1rem 1.2rem" };
 
@@ -4191,9 +4307,9 @@
             const transferGroup = createMenuGroup("Transfer Market:");
             const transferFilters = createMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
             const transferMaxed = createMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
-            const transferDeadline = createMenuCheckBox("Enable deadline alert", this.#settings.deadline, submenuStyle);
+            const transferDeadline = this.#createDeadlineOptions(submenuStyle);
             transferGroup.appendChild(transferFilters);
-            transferGroup.appendChild(transferFilters);
+            transferGroup.appendChild(transferMaxed);
             transferGroup.appendChild(transferDeadline);
 
             const daysGroup = createMenuGroup("Days at this club:");
@@ -4220,12 +4336,17 @@
             };
 
             save.onclick = () => {
+                const deadlineTimeout = Number(transferDeadline.childNodes[1].querySelector("input[type=text]")?.value);
                 this.updateSettings({
                     in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transferFilters.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
-                    deadline: transferDeadline.querySelector("input[type=checkbox]").checked,
+                    deadline: {
+                        enabled: transferDeadline.childNodes[0].querySelector("input[type=checkbox]")?.checked,
+                        play_bell: transferDeadline.childNodes[2].querySelector("input[type=checkbox]")?.checked,
+                        timeout: deadlineTimeout > 0 && deadlineTimeout <= 360 ? deadlineTimeout : 30,
+                    },
                     mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
@@ -4267,7 +4388,7 @@
             const title = createMzStyledTitle("MZY Transfer Filter");
             const div = document.createElement("div");
             const datalist = createSuggestionList(filters.map((f) => f.name));
-            const filterName = createTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
+            const filterName = createMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
             const useScout = createMenuCheckBox(`Use scout reports too (${scoutText})`);
             const checkInterval = createMenuDropDown("Check Interval", TRANSFER_INTERVALS, TRANSFER_INTERVALS.onceHour.value);
 
@@ -4394,7 +4515,7 @@
             const body = document.createElement("div");
             const description = document.createElement("div");
             const dayClearDiv = document.createElement("div");
-            const daysInput = createTextInput("Days", "0", "");
+            const daysInput = createMenuTextInput("Days", "0", "");
             const clear = createMzStyledButton("Remove", "red", "floatRight");
             const validation = document.createElement("div");
             const result = document.createElement("div");
@@ -4584,6 +4705,9 @@
                 const deadline = document.createElement("td");
                 deadline.innerHTML = `<strong>${bid.deadline}</strong> minutes`;
                 deadline.style.paddingRight = "15px";
+                if (bid.deadline <= this.#settings.deadline.timeout) {
+                    deadline.style.color = "red";
+                }
 
                 row.appendChild(deleteButton);
                 row.appendChild(name);
@@ -4713,12 +4837,20 @@
             }
         }
 
+        #playDeadlineAlert() {
+            if (this.#settings.deadline.play_bell) {
+                const ding = new Audio(deadlineAlertSound);
+                ding.play();
+            }
+        }
+
         #deadlineUpdateIconStyle() {
             const deadlineIcon = document.getElementById("mazyar-deadline");
-            const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= DEADLINE_MINUTES).length > 0;
+            const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= this.#settings.deadline.timeout).length > 0;
             if (strobe && deadlineIcon) {
                 deadlineIcon.style.display = 'unset';
                 deadlineIcon.classList.add("mazyar-deadline-throb-lightgreen");
+                this.#playDeadlineAlert();
             } else {
                 deadlineIcon.style.display = 'none';
                 deadlineIcon.classList.remove("mazyar-deadline-throb-lightgreen");
