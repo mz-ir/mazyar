@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.36
+// @version      2.37
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,6 +16,7 @@
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
 // @match        https://www.managerzone.com/*
+// @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
 // ==/UserScript==
@@ -31,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.37": ["<b>[new]</b> support Managerzone Test Site (test.managerzone.com). It is not fully tested. Please report any issues you encounter in Test site too."],
         "2.36": [
             "<b>[new]</b> Deadline Alert: add 'Timeout' option in <b>MZY Settings</b> to set deadline timeout. Its value must be between 1 and 360 minutes.",
             "<b>[new]</b> Deadline Alert: add 'Sound Notification' option to play a bell sound when deadline of at least one of monitored players is less than timeout.",
@@ -223,19 +225,19 @@
         color: fuchsia;
     }
 
+    .mazyar-player-comment-icon-www {
+        vertical-align: top;
+    }
+
+    .mazyar-player-comment-icon-www span.player_icon_wrapper {
+        text-align: center;
+    }
+
     .mazyar-player-comment-icon-inactive {
-        position: relative;
-        top: -0.2rem;
-        margin-left: 0.3rem;
-        font-size: 1.4rem;
         color: lightskyblue;
     }
 
     .mazyar-player-comment-icon-active {
-        position: relative;
-        top: -0.2rem;
-        margin-left: 0.3rem;
-        font-size: 1.4rem;
         color: blue;
     }
 
@@ -429,7 +431,7 @@
     }
 
     function getSquadSummaryLink(tid) {
-        return `https://www.managerzone.com/?p=players&sub=alt&tid=${tid}`;
+        return `https://${location.hostname}/?p=players&sub=alt&tid=${tid}`;
     }
 
     function formatBigNumber(n, sep = " ") {
@@ -532,7 +534,7 @@
     }
 
     async function getNationalPlayersAndCurrency(tid, sport) {
-        const url = `https://www.managerzone.com/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
+        const url = `https://${location.hostname}/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
         let players = [];
         let currency = '';
         await fetch(url)
@@ -583,7 +585,7 @@
     }
 
     async function fetchPlayersProfileSummary(teamId) {
-        const url = `https://www.managerzone.com/?p=players&tid=${teamId}`;
+        const url = `https://${location.hostname}/?p=players&tid=${teamId}`;
         return await fetch(url)
             .then((resp) => {
                 return resp.text();
@@ -751,12 +753,12 @@
     }
 
     async function fetchPlayerProfileDocument(playerId) {
-        const url = `https://www.managerzone.com/?p=players&pid=${playerId}`;
+        const url = `https://${location.hostname}/?p=players&pid=${playerId}`;
         return await fetchDocument(url);
     }
 
     async function fetchTransferMonitorData(sport = "soccer") {
-        const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
+        const url = `https://${location.hostname}/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
         return await fetchJson(url);
     }
 
@@ -1018,7 +1020,7 @@
             const filterName = filter.name.length > 32 ? filter.name.substring(0, 29) + "..." : filter.name;
 
             const name = document.createElement("td");
-            name.innerHTML = `<a target="_blank" href="https://www.managerzone.com/?p=transfer&mzy_filter_name=${filter.name}">${filterName}</a>`;
+            name.innerHTML = `<a target="_blank" href="https://${location.hostname}/?p=transfer&mzy_filter_name=${filter.name}">${filterName}</a>`;
             name.title = filter.name.length > 32 ? `Filter's full name: ${filter.name}` : "Filter's name";
 
             const total = document.createElement("td");
@@ -1595,7 +1597,7 @@
     /* *********************** Clash ********************************** */
 
     async function clashFetchAndTeamLeagueAndFlag(team) {
-        const url = `https://www.managerzone.com/?p=team&tid=${team.teamId}`;
+        const url = `https://${location.hostname}/?p=team&tid=${team.teamId}`;
         await fetch(url)
             .then((resp) => resp.text())
             .then((content) => {
@@ -1813,7 +1815,7 @@
     async function federationUpdateMemberInfo(member, username, sport) {
         let values = 0;
         let currency = "";
-        const teamXmlUrl = `https://www.managerzone.com/xml/manager_data.php?username=${username}`;
+        const teamXmlUrl = `https://${location.hostname}/xml/manager_data.php?username=${username}`;
         const { teamId, teamName } = await fetch(teamXmlUrl)
             .then((resp) => resp.text())
             .then((content) => {
@@ -2251,7 +2253,7 @@
             const mid = extractMatchID(result.href);
             // this always returns your id
             const visitorId = extractTeamId(result.href);
-            const url = `http://www.managerzone.com/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
             GM_xmlhttpRequest({
                 method: "GET",
                 url,
@@ -2531,7 +2533,7 @@
         const inProgressMatches = [...matches].filter((match) => isMatchInProgress(match.innerText));
         for (const match of inProgressMatches) {
             const mid = extractMatchID(match.href);
-            const url = `http://www.managerzone.com/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
             GM_xmlhttpRequest({
                 method: "GET",
                 url,
@@ -2752,7 +2754,7 @@
     }
 
     function transferLoadFilter(filterParams) {
-        const url = new URL(`https://www.managerzone.com/?${filterParams}`);
+        const url = new URL(`https://${location.hostname}/?${filterParams}`);
         const params = new URLSearchParams(url.search);
         for (const param of params) {
             const element = document.getElementById(param[0]);
@@ -2874,7 +2876,7 @@
 
     async function getNationalRankings() {
         const rankings = [];
-        const url = 'https://www.managerzone.com/?p=rank&sub=countryrank';
+        const url = 'https://${location.hostname}/?p=rank&sub=countryrank';
         const resp = await fetch(url).catch((error) => {
             console.warn(error);
         });
@@ -3048,7 +3050,7 @@
     function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
         GM_xmlhttpRequest({
             method: "GET",
-            url: `https://www.managerzone.com/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
+            url: `https://${location.hostname}/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
             onload: function (response) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(response.responseText, "text/html");
@@ -3570,7 +3572,7 @@
         }
 
         async #extractPlayerScoutReport(pid, skills) {
-            const url = `https://www.managerzone.com/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
+            const url = `https://${location.hostname}/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
             const resp = await fetch(url).catch((error) => {
                 console.warn(error);
             });
@@ -3863,16 +3865,39 @@
 
         async #addPlayerCommentIcon(player) {
             const playerId = getPlayerIdFromContainer(player);
+
+            const parent = document.createElement("span");
+            parent.classList.add("player_icon_placeholder");
+
+            const a = document.createElement("a");
+            a.classList.add("player_icon");
+            parent.appendChild(a);
+
+            const iconSpan = document.createElement("span");
+            iconSpan.classList.add("player_icon_wrapper");
+            a.appendChild(iconSpan);
+
             const commentIcon = createCommentIcon("MZY Comment");
+            commentIcon.style.fontSize = "1.2rem";
+            iconSpan.appendChild(commentIcon);
+
+            if (location.hostname === 'www.managerzone.com') {
+                parent.classList.add("mazyar-player-comment-icon-www");
+            }
+
             if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
                 commentIcon.classList.add("mazyar-player-comment-icon-active");
             } else {
                 commentIcon.classList.add("mazyar-player-comment-icon-inactive");
             }
-            player.querySelector(".p_links")?.appendChild(commentIcon);
+
             commentIcon.addEventListener("click", async (event) => {
                 this.#displayPlayerComment(event?.target, playerId);
             })
+
+            const whitespace = document.createTextNode(" ");
+            player.querySelector(".p_links")?.appendChild(whitespace);
+            player.querySelector(".p_links")?.appendChild(parent);
         }
 
         async addPlayerComment() {
@@ -4070,7 +4095,7 @@
         async #getFilterHitsByOffset(filter, offset = 0) {
             let totalHits = -1;
             let scoutHits = -1;
-            const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${filter.params}&o=${offset}`;
+            const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${filter.params}&o=${offset}`;
             const response = await fetch(url).catch((error) => {
                 console.warn(error);
             });
@@ -4765,7 +4790,7 @@
         }
 
         async #updatePlayerDeadlineFromMarket(pid) {
-            const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
+            const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
             const result = await fetch(url)
                 .then((resp) => resp.json())
                 .catch((err) => {
@@ -4935,7 +4960,7 @@
                 });
                 const a = player.querySelector("h2>div>a.subheader");
                 if (a) {
-                    a.href = `https://www.managerzone.com/?p=transfer&u=${result.playerId}`;
+                    a.href = `https://${location.hostname}/?p=transfer&u=${result.playerId}`;
                     a.target = "_blank";
                     const tools = player.querySelector("td span.player_icon_placeholder.bid_button")?.parentNode;
                     if (tools) {
@@ -4973,7 +4998,7 @@
             this.#displayLoading("MZY Filter Results");
             const jobs = [];
             for (const player of players) {
-                const url = `https://www.managerzone.com/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${player.pid}`;
+                const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${player.pid}`;
                 jobs.push(
                     fetch(url)
                         .then((resp) => resp.json())
