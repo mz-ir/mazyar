@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.38
+// @version      2.39
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.39": ["<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."],
         "2.38": ["<b>[fix]</b> Transfer Filters: delete icon was missing in 'MZY Transfer Filters' modal."],
         "2.37": ["<b>[new]</b> support Managerzone Test Site (test.managerzone.com). It is not fully tested. Please report any issues you encounter in Test site too."],
         "2.36": [
@@ -1288,21 +1289,25 @@
 
     /* *********************** Squad - Residency ********************************** */
 
-    function squadExtractResidencyDays(doc = document) {
+    function squadExtractResidencyDaysAndPrice(doc = document) {
         if (!doc) {
-            return 0;
+            return { days: 0, price: -1 };
         }
-        const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist > tbody");
-        if (transfers?.children.length > 1) {
-            const arrived = transfers.lastChild.querySelector("td")?.innerText;
-            return Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+        const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist");
+        const history = transfers?.querySelector("tbody");
+        if (history?.children.length > 1) {
+            const arrived = history?.lastChild?.querySelector("td")?.innerText;
+            const days = Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+            const price = history.lastChild?.querySelector("td:last-child")?.innerText;
+            const currency = transfers?.querySelector("thead tr td:last-child")?.innerText?.match(/.*\((.*)\)/)?.[1];
+            return { days, price: price + ' ' + currency };
         }
-        return -1;
+        return { days: -1, price: -1 };
     }
 
     function squadAddDaysAtThisClubToPlayerProfile() {
         if (mazyar.isDaysAtThisClubEnabledForPlayerProfiles()) {
-            const days = squadExtractResidencyDays(document);
+            const { days } = squadExtractResidencyDaysAndPrice(document);
             const daysDiv = document.createElement("div");
             if (days >= 0) {
                 const text = days === 0 ? 'N/A' : `≤ ${days}`;
@@ -1331,7 +1336,6 @@
             icon.style.color = "#000";
             const rows = [...players].sort((a, b) => a.skillBalls - b.skillBalls);
             table.querySelector("tbody").replaceChildren(...rows);
-
         } else {
             table.ascending = true;
             const icon = th.querySelector("i");
@@ -3545,7 +3549,7 @@
         async #extractPlayerProfile(playerId) {
             const doc = await fetchPlayerProfileDocument(playerId);
             if (doc) {
-                const days = squadExtractResidencyDays(doc);
+                const { days, price } = squadExtractResidencyDaysAndPrice(doc);
                 const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
                 let i = 0;
                 const maxed = [];
@@ -3559,6 +3563,7 @@
                     pid: playerId,
                     maxed,
                     days,
+                    price,
                 };
             }
             return null;
@@ -3566,7 +3571,7 @@
 
         async #fetchOrExtractPlayerProfile(playerId) {
             let profile = await this.#fetchPlayerProfileFromIndexedDb(playerId);
-            if (!profile) {
+            if (!profile || (profile.days > 0 && !profile.price)) {
                 profile = await this.#extractPlayerProfile(playerId);
                 this.#setPlayerProfileInIndexedDb(profile);
             }
@@ -3720,7 +3725,7 @@
             const playerId = getPlayerIdFromContainer(player);
             await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                 if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
-                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
                 }
                 if (this.#mustMarkMaxedSkills()) {
                     this.#colorizeMaxedSkills(player, profile?.maxed);
@@ -3913,7 +3918,7 @@
             }
         }
 
-        async #squadAddDaysAtThisClubForSinglePlayer(player, profile) {
+        async #squadAddDaysAtThisClubForSinglePlayer(player, profile, addPrice = false) {
             if (player.daysInjected) {
                 return;
             }
@@ -3922,6 +3927,9 @@
             if (profile?.days >= 0) {
                 const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
+                if (addPrice && profile?.price !== null) {
+                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Fee: <strong style="color: red;">${profile?.price}</strong><span>`;
+                }
                 daysDiv.classList.add("mazyar-days-at-this-club");
             } else if (this.isDaysAtThisClubEnabledForOneClubPlayers()) {
                 const text = 'Entire Career';
