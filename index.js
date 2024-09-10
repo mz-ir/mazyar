@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.39
+// @version      2.40
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.40": ["<b>[fix]</b> Transfer: change Fee font color to blue."],
         "2.39": ["<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."],
         "2.38": ["<b>[fix]</b> Transfer Filters: delete icon was missing in 'MZY Transfer Filters' modal."],
         "2.37": ["<b>[new]</b> support Managerzone Test Site (test.managerzone.com). It is not fully tested. Please report any issues you encounter in Test site too."],
@@ -3928,7 +3929,7 @@
                 const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
                 if (addPrice && profile?.price !== null) {
-                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Fee: <strong style="color: red;">${profile?.price}</strong><span>`;
+                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Fee: <strong style="color: blue;">${profile?.price}</strong><span>`;
                 }
                 daysDiv.classList.add("mazyar-days-at-this-club");
             } else if (this.isDaysAtThisClubEnabledForOneClubPlayers()) {
