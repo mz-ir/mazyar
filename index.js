@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.40
+// @version      2.41
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.41": ["<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."],
         "2.40": ["<b>[fix]</b> Transfer: change Fee font color to blue."],
         "2.39": ["<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."],
         "2.38": ["<b>[fix]</b> Transfer Filters: delete icon was missing in 'MZY Transfer Filters' modal."],
@@ -85,7 +86,6 @@
         top: 0;
         width: 100%;
         height: 100%;
-        overflow: auto;
         background-color: rgba(0, 0, 0, 0.4);
     }
 
@@ -94,6 +94,44 @@
         background-color: beige;
         border-radius: 5px;
         max-height: 100%;
+    }
+
+    .mazyar-notebook-plain {
+        z-index: 9990;
+        position: absolute;
+        left: 0;
+        top: 0;
+        flex-wrap: nowrap;
+    }
+
+    .mazyar-notebook-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        background-color: beige;
+        border-radius: 5px;
+        min-width: 200px;
+        min-height: 250px;
+        max-width: 95vw;
+        max-height: 99vh;
+        flex-wrap: nowrap;
+    }
+
+    .mazyar-notebook-textarea {
+        padding: 5px;
+        min-width: 180px;
+        resize: none;
+        width: 90%;
+        flex: 1;
+    }
+
+    .mazyar-scrollable-vertical {
+        overflow-x: clip;
+        overflow-y: auto;
+    }
+
+    .mazyar-resizable {
+        resize: both;
     }
 
     .mazyar-flex-container {
@@ -768,6 +806,59 @@
 
     /* *********************** DOM Utils ********************************** */
 
+    function makeElementDraggable(element, dragHandleElement, dragEndCallback = null) {
+        let deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
+
+        dragHandleElement.style.cursor = "move";
+        dragHandleElement.onmousedown = dragMouseDown;
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            e.preventDefault();
+            // get the mouse cursor position at startup:
+            lastX = e.clientX;
+            lastY = e.clientY;
+            document.onmouseup = closeDragElement;
+            // call a function whenever the cursor moves:
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            e.preventDefault();
+
+            // calculate the new cursor position:
+            deltaX = lastX - e.clientX;
+            deltaY = lastY - e.clientY;
+            lastX = e.clientX;
+            lastY = e.clientY;
+
+            // set the element's new position:
+            let newTop = Math.max(0, element.offsetTop - deltaY);
+            let newLeft = Math.max(0, element.offsetLeft - deltaX);
+
+            const { right, bottom, width, height } = element.getBoundingClientRect();
+            if (right > window.innerWidth) {
+                newLeft = window.innerWidth - width;
+            }
+            if (bottom > window.innerHeight) {
+                newTop = window.innerHeight - height;
+            }
+
+            element.style.top = newTop + "px";
+            element.style.left = newLeft + "px";
+        }
+
+        function closeDragElement() {
+            // stop moving when mouse button is released:
+            document.onmouseup = null;
+            document.onmousemove = null;
+            if (dragEndCallback) {
+                dragEndCallback();
+            }
+        }
+    }
+
     function getMzButtonColorClass(color) {
         if (color) {
             if (color === "red") {
@@ -1111,6 +1202,10 @@
         return icon;
     }
 
+    function createMoveIcon(title) {
+        return createIconFromFontAwesomeClass(["fa-solid", "fa-up-down-left-right"], title);
+    }
+
     function createSharedIcon(title) {
         return createIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
     }
@@ -1129,6 +1224,10 @@
 
     function createSearchIcon(title = "") {
         return createIconFromFontAwesomeClass(["fa", "fa-search"], title);
+    }
+
+    function createNoteIcon(title = "") {
+        return createIconFromFontAwesomeClass(["fa-solid", "fa-note-sticky"], title);
     }
 
     function createRefreshIcon(title = "") {
@@ -1158,16 +1257,17 @@
     function createToolbar() {
         const toolbar = document.createElement("div");
         const logo = document.createElement("span");
-        const menu = createCogIcon();
+        const menu = createCogIcon("Settings");
+        const note = createNoteIcon("Notebook");
         const separator = document.createElement("span");
         const transfer = document.createElement("div");
-        const transferIcon = createSearchIcon();
+        const transferIcon = createSearchIcon("Transfer");
         const transferCount = document.createElement("span");
 
         toolbar.classList.add("mazyar-flex-container");
         toolbar.style.position = "fixed";
         toolbar.style.zIndex = "9998";
-        toolbar.style.top = "45%";
+        toolbar.style.top = "40%";
         toolbar.style.right = "5px";
         toolbar.style.background = "black";
         toolbar.style.color = "white";
@@ -1181,6 +1281,8 @@
 
         menu.style.fontSize = "large";
         transferIcon.style.fontSize = "large";
+        note.style.fontSize = "large";
+        note.style.marginTop = "5px";
 
         separator.innerText = "-------";
         separator.style.textAlign = "center";
@@ -1204,10 +1306,11 @@
 
         toolbar.appendChild(logo);
         toolbar.appendChild(menu);
+        toolbar.appendChild(note);
         toolbar.appendChild(separator);
         toolbar.appendChild(transfer);
 
-        return { toolbar, menu, transfer };
+        return { toolbar, menu, transfer, note };
     }
 
     function createDeadlineIndicator() {
@@ -3176,6 +3279,17 @@
     class Mazyar {
         #modal = null; // dom element
         #content = null; // dom element
+        #notebook = {
+            element: null,
+            text: "",
+            style: {
+                hide: true,
+                top: 0,
+                left: 0,
+                width: 200,
+                height: 250,
+            }
+        }
         #settings = {
             in_progress_results: true,
             top_players_in_tables: true,
@@ -3217,6 +3331,7 @@
 
             this.#sport = getSportType();
 
+            this.#createNotebook();
             this.#addToolbar();
             this.#createModal();
 
@@ -3899,9 +4014,9 @@
                 commentIcon.classList.add("mazyar-player-comment-icon-inactive");
             }
 
-            commentIcon.addEventListener("click", async (event) => {
+            commentIcon.addEventListener("click", (event) => {
                 this.#displayPlayerComment(event?.target, playerId);
-            })
+            });
 
             const whitespace = document.createTextNode(" ");
             player.querySelector(".p_links")?.appendChild(whitespace);
@@ -4056,7 +4171,7 @@
             return this.#getCurrentFilters().find((f) => f.name === name)?.params;
         }
 
-        async updateFilterDetails(name, params, scout, interval) {
+        async #updateFilterDetails(name, params, scout, interval) {
             const filters = this.#getCurrentFilters();
             let filter = filters.find((f) => f.name === name);
             if (filter) {
@@ -4174,22 +4289,30 @@
 
             this.#content = document.createElement("div");
             this.#content.id = "mazyar-modal-content";
-            this.#content.classList.add("mazyar-flex-container");
+            this.#content.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
 
             this.#modal.appendChild(this.#content);
-            this.hideModal();
+            this.#hideModal();
             document.body?.appendChild(this.#modal);
         }
 
         #addToolbar() {
-            const that = this;
-            const { toolbar, menu, transfer } = createToolbar();
-            menu.onclick = () => {
-                that.displaySettingsMenu();
-            };
-            transfer.onclick = () => {
-                that.displayTransferFilters();
-            };
+            const { toolbar, menu, transfer, note } = createToolbar();
+            menu.addEventListener("click", () => {
+                this.#displaySettingsMenu();
+            });
+            transfer.addEventListener("click", () => {
+                this.#displayTransferFilters();
+            });
+            note.addEventListener("click", () => {
+                if (this.#notebook.style.hide) {
+                    this.#showNotebook();
+                    this.#saveNotebookStyle();
+                } else {
+                    this.#hideNotebook();
+                    this.#saveNotebookStyle();
+                }
+            });
             document.body?.appendChild(toolbar);
         }
 
@@ -4243,8 +4366,7 @@
             this.#resetTransferOptions();
         }
 
-        displayCleanMenu() {
-            const that = this;
+        #displayCleanMenu() {
 
             const div = document.createElement("div");
             const title = createMzStyledTitle("MZY Settings");
@@ -4260,16 +4382,16 @@
             notice.innerHTML = "All Settings, Filters, Scout Reports and ... will be deleted.<br>Are you sure?";
             notice.style.padding = "1rem";
 
-            clean.onclick = async () => {
-                await that.cleanInstall();
-                that.hideModal();
-                that.displaySettingsMenu();
-            };
+            clean.addEventListener("click", async () => {
+                await this.cleanInstall();
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
 
-            cancel.onclick = () => {
-                that.hideModal();
-                that.displaySettingsMenu();
-            };
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
 
             div.appendChild(title);
             div.appendChild(notice);
@@ -4279,6 +4401,162 @@
 
             this.#replaceModalContent([div]);
         }
+
+        // --------------------------- Notebook ------------------------------------
+
+        #fetchNotebookStyle() {
+            const defaultStyle = {
+                hide: true,
+                top: 0,
+                left: 0,
+                width: 200,
+                height: 250,
+            };
+            this.#notebook.style = GM_getValue("notebook_style", defaultStyle);
+
+            // reject invalid data
+            if (this.#notebook.style.top < 0
+                || this.#notebook.style.left < 0
+                || this.#notebook.style.left > window.innerWidth
+                || this.#notebook.style.top > window.innerHeight) {
+                this.#notebook.style.top = 0;
+                this.#notebook.style.left = 0;
+                this.#saveNotebookStyle();
+            }
+        }
+
+        #saveNotebookStyle() {
+            GM_setValue("notebook_style", this.#notebook.style);
+        }
+
+        #fetchNotebookText() {
+            this.#notebook.text = GM_getValue("notebook_text", "");
+        }
+
+        #saveNotebookText() {
+            GM_setValue("notebook_text", this.#notebook.text);
+        }
+
+        #updateNotebookDisplay(content, text) {
+            this.#fetchNotebookStyle();
+            this.#fetchNotebookText();
+
+            if (this.#notebook.style.hide) {
+                this.#notebook.element.style.display = "none";
+            } else {
+                this.#notebook.element.style.display = "flex";
+            }
+            text.value = this.#notebook.text;
+            content.style.width = this.#notebook.style.width + "px";
+            content.style.height = this.#notebook.style.height + "px";
+            content.style.top = this.#notebook.style.top + "px";
+            content.style.left = this.#notebook.style.left + "px";
+        }
+
+        #updateNotebookLocation(content) {
+            const { top, left, width, height } = content.getBoundingClientRect();
+            this.#notebook.style.top = top;
+            this.#notebook.style.left = left;
+            this.#notebook.style.width = width;
+            this.#notebook.style.height = height;
+        }
+
+        #hideNotebook() {
+            this.#notebook.element.style.display = "none";
+            this.#notebook.style.hide = true;
+        }
+
+        #showNotebook() {
+            this.#notebook.element.style.display = "flex";
+            this.#notebook.style.hide = false;
+        }
+
+        #createNotebook() {
+            this.#notebook.element = document.createElement("div");
+            const content = document.createElement("div");
+
+            const contentHeader = createMzStyledTitle("MZY Notebook");
+            const text = document.createElement("textarea");
+            const hide = createMzStyledButton("Hide", "blue");
+            const save = createMzStyledButton("Save", "green");
+            const warning = document.createElement("div");
+            const discard = createMzStyledButton("Discard", "red");
+            const buttons = document.createElement("div");
+
+            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-notebook-plain", "mazyar-scrollable-vertical");
+            content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
+            text.classList.add("mazyar-notebook-textarea");
+            buttons.classList.add("mazyar-flex-container-row");
+
+            warning.innerText = "You have unsaved changes!";
+            warning.style.color = "red";
+            warning.style.display = "none";
+            warning.style.marginTop = "5px";
+            save.style.display = "none";
+            discard.style.display = "none";
+
+            this.#updateNotebookDisplay(content, text);
+            document.addEventListener("focus", () => {
+                this.#updateNotebookDisplay(content, text);
+                save.style.display = "none";
+                warning.style.display = "none";
+                discard.style.display = "none";
+            });
+
+            makeElementDraggable(content, contentHeader, () => {
+                this.#updateNotebookLocation(content);
+                this.#saveNotebookStyle();
+            });
+
+            content.addEventListener("mouseup", () => {
+                this.#updateNotebookLocation(content);
+                this.#saveNotebookStyle();
+            })
+
+            text.addEventListener("input", () => {
+                if (text.value !== this.#notebook.text) {
+                    save.style.display = "unset";
+                    warning.style.display = "unset";
+                    discard.style.display = "unset";
+                } else {
+                    save.style.display = "none";
+                    warning.style.display = "none";
+                    discard.style.display = "none";
+                }
+            })
+
+            discard.addEventListener("click", () => {
+                text.value = this.#notebook.text;
+                save.style.display = "none";
+                warning.style.display = "none";
+                discard.style.display = "none";
+            });
+
+            hide.addEventListener("click", () => {
+                this.#hideNotebook();
+                this.#saveNotebookStyle();
+            });
+
+            save.addEventListener("click", () => {
+                this.#notebook.text = text.value;
+                this.#saveNotebookText();
+                save.style.display = "none";
+                warning.style.display = "none";
+                discard.style.display = "none";
+            });
+
+            buttons.appendChild(hide);
+            buttons.appendChild(discard);
+            buttons.appendChild(save);
+            content.appendChild(contentHeader);
+            content.appendChild(text);
+            content.appendChild(warning);
+            content.appendChild(buttons);
+            this.#notebook.element.appendChild(content);
+            document.body?.appendChild(this.#notebook.element);
+        }
+
+        // ----------------------------------------------------------------------------------
 
         #createDeadlineOptions(submenuStyle) {
             const div = document.createElement("div");
@@ -4319,7 +4597,7 @@
             return div;
         }
 
-        displaySettingsMenu() {
+        #displaySettingsMenu() {
             const submenuStyle = { margin: "0.1rem 1.2rem" };
 
             const div = document.createElement("div");
@@ -4367,9 +4645,9 @@
 
             buttons.classList.add("mazyar-flex-container-row");
 
-            cancel.onclick = () => {
-                this.hideModal();
-            };
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
+            });
 
             save.onclick = () => {
                 const deadlineTimeout = Number(transferDeadline.childNodes[1].querySelector("input[type=text]")?.value);
@@ -4393,14 +4671,14 @@
                         display_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
                     }
                 });
-                this.hideModal();
+                this.#hideModal();
             };
 
             clean.style.marginBottom = "0";
-            clean.onclick = () => {
-                this.hideModal();
-                this.displayCleanMenu();
-            };
+            clean.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displayCleanMenu();
+            });
 
             div.appendChild(title);
             div.appendChild(transferGroup);
@@ -4415,9 +4693,29 @@
             this.#replaceModalContent([div]);
         }
 
+        #getSelectedHighLows(useScout) {
+            const high = [];
+            const low = [];
+            if (useScout.querySelector("input[type=checkbox]").checked) {
+                const options = this.getTransferOptions();
+                if (options.H4) {
+                    high.push(4);
+                }
+                if (options.H3) {
+                    high.push(3);
+                }
+                if (options.L2) {
+                    low.push(2);
+                }
+                if (options.L1) {
+                    low.push(1);
+                }
+            }
+            return { low, high };
+        }
+
         displayFilterSaveMenu(params) {
             const filters = this.#getCurrentFilters();
-            const that = this; // used in onclick event listener
 
             const scoutText = this.#getSelectedScoutsOptionText();
 
@@ -4454,40 +4752,24 @@
 
             buttons.classList.add("mazyar-flex-container-row");
 
-            cancel.onclick = () => {
-                that.hideModal();
-            };
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
+            });
 
-            save.onclick = () => {
+            save.addEventListener("click", () => {
                 // save then close
                 const name = filterName.querySelector("input[type=text]").value;
                 if (name) {
-                    const high = [];
-                    const low = [];
-                    if (useScout.querySelector("input[type=checkbox]").checked) {
-                        const options = that.getTransferOptions();
-                        if (options.H4) {
-                            high.push(4);
-                        }
-                        if (options.H3) {
-                            high.push(3);
-                        }
-                        if (options.L2) {
-                            low.push(2);
-                        }
-                        if (options.L1) {
-                            low.push(1);
-                        }
-                    }
+                    const { low, high } = this.#getSelectedHighLows(useScout);
                     const scout = high.length === 0 && low.length === 0 ? null : { high, low };
                     const interval = checkInterval.querySelector("select").value;
-                    that.updateFilterDetails(name, params, scout, interval);
-                    that.hideModal();
+                    this.#updateFilterDetails(name, params, scout, interval);
+                    this.#hideModal();
                 } else {
                     validation.style.display = "unset";
                     save.classList.add(getMzButtonColorClass("grey"));
                 }
-            };
+            });
 
             buttons.appendChild(cancel);
             buttons.appendChild(save);
@@ -4609,7 +4891,7 @@
             });
 
             close.addEventListener("click", () => {
-                this.hideModal();
+                this.#hideModal();
             });
 
             div.appendChild(title);
@@ -4619,9 +4901,7 @@
             this.#replaceModalContent([div]);
         }
 
-        async displayTransferFilters() {
-            const that = this; // used in onclick event listener
-
+        async #displayTransferFilters() {
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
@@ -4638,11 +4918,11 @@
             const filters = this.#getCurrentFilters();
             if (filters.length > 0) {
                 const deleteAll = createDeleteButtonWithTrashIcon("Delete all filters");
-                deleteAll.onclick = () => {
-                    that.deleteAllFilters();
+                deleteAll.addEventListener("click", () => {
+                    this.deleteAllFilters();
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
-                };
+                });
                 const table = filtersViewCreateTable(filters);
                 table.addEventListener("destroy", () => {
                     // remove 'delete all' button if no filter is left
@@ -4656,9 +4936,9 @@
             }
 
             const close = createMzStyledButton("Close", "green");
-            close.onclick = () => {
-                that.hideModal();
-            };
+            close.addEventListener("click", () => {
+                this.#hideModal();
+            });
 
             div.appendChild(title);
             div.appendChild(filtersView);
@@ -4685,9 +4965,9 @@
 
                     const header = createMzStyledTitle("MZY Squad Summary");
                     const button = createMzStyledButton("Close", "red");
-                    button.onclick = () => {
-                        mazyar.hideModal();
-                    };
+                    button.addEventListener("click", () => {
+                        this.#hideModal();
+                    });
                     this.#replaceModalContent([header, topPlayers, button]);
                 })
                 .catch((error) => {
@@ -4702,9 +4982,9 @@
             const title = createMzStyledTitle("MZY Transfer Deadlines");
 
             const middle = document.createElement("div");
+            middle.classList.add("mazyar-scrollable-vertical");
 
             middle.style.flex = "1";
-            middle.style.overflowY = "auto"; // make it scrollable
             middle.style.margin = "5px 2px";
 
             const bids = document.createElement("table");
@@ -4727,7 +5007,7 @@
                     row.remove();
                     if (tbody.childElementCount === 0) {
                         this.#deadlineUpdateIconStyle();
-                        this.hideModal();
+                        this.#hideModal();
                     }
                 });
 
@@ -4753,7 +5033,7 @@
 
             const close = createMzStyledButton("Close", "green");
             close.addEventListener("click", () => {
-                this.hideModal();
+                this.#hideModal();
             });
 
             div.appendChild(title);
@@ -4958,7 +5238,7 @@
             return info;
         }
 
-        async #appendFilterResultToModal(middle, searchResults) {
+        async #appendFilterResultToModal(middle, searchResults, filterId) {
             for (const result of searchResults) {
                 const parser = new DOMParser();
                 const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
@@ -4995,15 +5275,15 @@
 
             div.classList.add("mazyar-flex-container");
 
+            middle.classList.add("mazyar-scrollable-vertical");
             middle.style.flex = "1";
-            middle.style.overflowY = "auto"; // make it scrollable
             middle.style.margin = "5px 2px";
 
             close.style.marginBottom = "1px";
-            close.onclick = () => {
-                this.hideModal();
-                this.displayTransferFilters();
-            };
+            close.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displayTransferFilters();
+            });
 
             const players = await this.#getHitsFromIndexedDb(filterId);
             this.#displayLoading("MZY Filter Results");
@@ -5019,7 +5299,7 @@
                 );
             }
             const searchResults = await Promise.all(jobs);
-            this.#appendFilterResultToModal(middle, searchResults);
+            this.#appendFilterResultToModal(middle, searchResults, filterId);
 
             const noResult = middle.childNodes.length === 0;
             if (noResult) {
@@ -5055,8 +5335,8 @@
             text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
             text.classList.add("mazyar-player-comment-textarea");
 
-            cancel.addEventListener("click", async () => {
-                this.hideModal();
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
             });
 
             save.addEventListener("click", async () => {
@@ -5068,7 +5348,7 @@
                     target?.classList.add("mazyar-player-comment-icon-inactive");
                     target?.classList.remove("mazyar-player-comment-icon-active");
                 }
-                this.hideModal();
+                this.#hideModal();
             });
 
             buttons.appendChild(cancel);
@@ -5140,7 +5420,7 @@
             changes.style.backgroundColor = "khaki";
             changes.style.padding = "5px";
             changes.style.flex = "1";
-            changes.style.overflowY = "scroll"; // make it scrollable
+            changes.classList.add("mazyar-scrollable-vertical");
 
             const text = document.createElement("div");
             text.classList.add("mazyar-flex-container");
@@ -5153,9 +5433,9 @@
             const header = createMzStyledTitle("MZY Notice");
             const close = createMzStyledButton("close", "green");
 
-            close.addEventListener("click", async () => {
+            close.addEventListener("click", () => {
                 GM_setValue("previous_version", currentVersion);
-                this.hideModal();
+                this.#hideModal();
             });
 
             this.#replaceModalContent([header, text, close]);
@@ -5171,14 +5451,14 @@
             const header = createMzStyledTitle("MZY Player View");
             const close = createMzStyledButton("close", "green");
 
-            close.addEventListener("click", async () => {
-                this.hideModal();
+            close.addEventListener("click", () => {
+                this.#hideModal();
             });
 
             this.#replaceModalContent([header, player, close]);
         }
 
-        hideModal() {
+        #hideModal() {
             this.#modal.style.display = "none";
             this.#clearModalContent();
         }
