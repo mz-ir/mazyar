@@ -86,7 +86,6 @@
         top: 0;
         width: 100%;
         height: 100%;
-        overflow: auto;
         background-color: rgba(0, 0, 0, 0.4);
     }
 
@@ -102,7 +101,6 @@
         position: absolute;
         left: 0;
         top: 0;
-        overflow: auto;
         flex-wrap: nowrap;
     }
 
@@ -127,10 +125,13 @@
         flex: 1;
     }
 
-    .mazyar-resizable {
-        resize: both;
+    .mazyar-scrollable-vertical {
         overflow-x: clip;
         overflow-y: auto;
+    }
+
+    .mazyar-resizable {
+        resize: both;
     }
 
     .mazyar-flex-container {
@@ -4288,7 +4289,7 @@
 
             this.#content = document.createElement("div");
             this.#content.id = "mazyar-modal-content";
-            this.#content.classList.add("mazyar-flex-container");
+            this.#content.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
 
             this.#modal.appendChild(this.#content);
             this.#hideModal();
@@ -4482,8 +4483,8 @@
             const discard = createMzStyledButton("Discard", "red");
             const buttons = document.createElement("div");
 
-            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-notebook-plain");
-            content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-notebook-modal");
+            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-notebook-plain", "mazyar-scrollable-vertical");
+            content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
             text.classList.add("mazyar-notebook-textarea");
             buttons.classList.add("mazyar-flex-container-row");
 
@@ -4981,9 +4982,9 @@
             const title = createMzStyledTitle("MZY Transfer Deadlines");
 
             const middle = document.createElement("div");
+            middle.classList.add("mazyar-scrollable-vertical");
 
             middle.style.flex = "1";
-            middle.style.overflowY = "auto"; // make it scrollable
             middle.style.margin = "5px 2px";
 
             const bids = document.createElement("table");
@@ -5237,7 +5238,7 @@
             return info;
         }
 
-        async #appendFilterResultToModal(middle, searchResults) {
+        async #appendFilterResultToModal(middle, searchResults, filterId) {
             for (const result of searchResults) {
                 const parser = new DOMParser();
                 const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
@@ -5274,8 +5275,8 @@
 
             div.classList.add("mazyar-flex-container");
 
+            middle.classList.add("mazyar-scrollable-vertical");
             middle.style.flex = "1";
-            middle.style.overflowY = "auto"; // make it scrollable
             middle.style.margin = "5px 2px";
 
             close.style.marginBottom = "1px";
@@ -5298,7 +5299,7 @@
                 );
             }
             const searchResults = await Promise.all(jobs);
-            this.#appendFilterResultToModal(middle, searchResults);
+            this.#appendFilterResultToModal(middle, searchResults, filterId);
 
             const noResult = middle.childNodes.length === 0;
             if (noResult) {
@@ -5419,7 +5420,7 @@
             changes.style.backgroundColor = "khaki";
             changes.style.padding = "5px";
             changes.style.flex = "1";
-            changes.style.overflowY = "scroll"; // make it scrollable
+            changes.classList.add("mazyar-scrollable-vertical");
 
             const text = document.createElement("div");
             text.classList.add("mazyar-flex-container");
