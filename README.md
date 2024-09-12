@@ -9,6 +9,7 @@
 * [How to use Scout Filters](https://www.youtube.com/watch?v=zUy_3dTN-1A)
 * [How to setup and use Transfer Filters](https://www.youtube.com/watch?v=By3Q6ayD6Ww)
 * [How to use Transfer Deadline Alert](https://www.youtube.com/watch?v=PxUQeWVym7o)
+* [How to use Notebook](<https://youtu.be/yKr8Usop0Lg>)
 
 ## Transfer Market
 
