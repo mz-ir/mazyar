@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.41
+// @version      2.42
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.42": ["<b>[improve]</b> Squad Summary: add share and market icon for your own players too."],
         "2.41": ["<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."],
         "2.40": ["<b>[fix]</b> Transfer: change Fee font color to blue."],
         "2.39": ["<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."],
@@ -1334,7 +1335,13 @@
 
     /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
 
-    function squadAddIconsHeaderToSummaryTable(table) {
+    function squadAddIconsHeaderToSummaryTable(table, ownView = false) {
+        if (ownView) {
+            const age = table.querySelector("thead tr th:nth-child(5) a");
+            age.innerText = age.innerText[0];
+            const born = table.querySelector("thead tr th:nth-child(6) a");
+            born.innerText = born.innerText[0];
+        }
         const th = document.createElement("th");
         th.style.width = "0px";
         const target = table.querySelector("thead tr th:nth-child(2)");
@@ -1369,9 +1376,6 @@
     async function squadInjectIconsToSummaryTable(table) {
         const players = table?.querySelectorAll("tbody tr");
         const ownView = players?.[0]?.children?.length > 6;
-        if (ownView) {
-            return;
-        }
         const text = document.createElement("div");
         text.innerHTML = `<b>MZY:</b> fetching players' info ...`;
         table.parentNode.insertBefore(text, table);
@@ -1383,7 +1387,7 @@
             return;
         }
         text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: green;"> done</span>.`;
-        squadAddIconsHeaderToSummaryTable(table);
+        squadAddIconsHeaderToSummaryTable(table, ownView);
         for (const player of players) {
             const name = player.querySelector("a");
             const playerId = extractPlayerID(name?.href);
