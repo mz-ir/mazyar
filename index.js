@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.42
+// @version      2.43
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
         "2.42": ["<b>[improve]</b> Squad Summary: add share and market icon for your own players too."],
         "2.41": ["<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."],
         "2.40": ["<b>[fix]</b> Transfer: change Fee font color to blue."],
@@ -803,6 +804,11 @@
     async function fetchTransferMonitorData(sport = "soccer") {
         const url = `https://${location.hostname}/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
         return await fetchJson(url);
+    }
+
+    async function fetchSquadSummaryDocument(teamId) {
+        const url = getSquadSummaryLink(teamId);
+        return await fetchDocument(url);
     }
 
     /* *********************** DOM Utils ********************************** */
@@ -1705,6 +1711,125 @@
                 const config = { childList: true, subtree: true };
                 observer.observe(target, config);
             }
+        }
+    }
+
+    /* *********************** Rankings ********************************** */
+
+    function createSortableHeaderCell(cellText = "", options = { title: "", textAlign: "", marginBetween: "" }) {
+        const cell = document.createElement("th");
+        const sortIcon = document.createElement("i");
+        const text = document.createElement("span");
+        cell.appendChild(sortIcon);
+        cell.appendChild(text);
+
+        cell.style.textDecoration = "none";
+
+        sortIcon.style.display = "inline";
+        sortIcon.style.fontSize = "11px";
+        sortIcon.style.color = "#555";
+        sortIcon.classList.add("fa-solid", "fa-sort", "mazyar-sort-icon");
+        sortIcon.setAttribute("aria-hidden", "true");
+
+        text.style.fontSize = "11px";
+        text.innerText = cellText;
+        if (options?.marginBetween) {
+            text.style.marginLeft = options.marginBetween;
+        }
+
+        if (options?.title) {
+            cell.title = options.title;
+        }
+        if (options?.textAlign) {
+            cell.style.textAlign = options.textAlign;
+        }
+        return cell;
+    }
+
+    function resetMazyarSortIcons(table) {
+        const sortIcons = table.querySelectorAll("thead th i.mazyar-sort-icon");
+        for (const icon of sortIcons) {
+            icon.classList.value = '';
+            icon.classList.add("fa-solid", "fa-sort", "mazyar-sort-icon");
+        }
+    }
+
+    function rankingSortTeamsByKey(table, th, key) {
+        resetMazyarSortIcons(table);
+        const teams = table?.querySelectorAll("tbody tr");
+        if (table.ascending) {
+            table.ascending = false;
+            const icon = th.querySelector("i");
+            icon.classList.value = '';
+            icon.classList.add("fa-solid", "fa-sort-down", "mazyar-sort-icon");
+            icon.style.color = "#000";
+            const rows = [...teams].sort((a, b) => a[key] - b[key]);
+            table.querySelector("tbody").replaceChildren(...rows);
+        } else {
+            table.ascending = true;
+            const icon = th.querySelector("i");
+            icon.classList.value = '';
+            icon.classList.add("fa-solid", "fa-sort-up", "mazyar-sort-icon");
+            icon.style.color = "#000";
+            const rows = [...teams].sort((a, b) => b[key] - a[key]);
+            table.querySelector("tbody").replaceChildren(...rows);
+        }
+    }
+
+    function rankingAddSquadHeaders(table) {
+        const header = table.querySelector("thead tr");
+        const value = createSortableHeaderCell("Value", { textAlign: "center", marginBetween: "3px" });
+        const age = createSortableHeaderCell("Age", { textAlign: "center", marginBetween: "2px" });
+        header.appendChild(value);
+        header.appendChild(age);
+
+        value.addEventListener("click", () => {
+            rankingSortTeamsByKey(table, value, "topPlayersValue");
+        });
+
+        age.addEventListener("click", () => {
+            rankingSortTeamsByKey(table, age, "topPlayersAge");
+        });
+    }
+
+    async function rankingInjectTeamInfo(team) {
+        const value = document.createElement("td");
+        value.style.whiteSpace = "nowrap";
+        value.style.textAlign = "center";
+        value.replaceChildren(createLoadingIcon2());
+
+        const age = document.createElement("td");
+        age.style.whiteSpace = "nowrap";
+        age.style.textAlign = "center";
+        age.replaceChildren(createLoadingIcon2());
+
+        team.appendChild(value);
+        team.appendChild(age);
+
+        team.topPlayersValue = 0;
+        team.topPlayersAge = 0;
+
+        const link = team.querySelector("td:nth-child(4) a");
+        const teamId = extractTeamId(link?.href);
+        const doc = await fetchSquadSummaryDocument(teamId);
+        if (doc) {
+            const currency = getClubCurrency(doc);
+            ({ values: team.topPlayersValue, avgAge: team.topPlayersAge } = getClubTopPlyers(doc));
+            value.innerHTML = `<strong>${formatBigNumber(team.topPlayersValue, ",")}</strong> ${currency}`;
+            age.innerHTML = `<strong>${formatAverageAge(team.topPlayersAge)}</strong>`;
+        }
+    }
+
+    async function rankingInjectSquadValue() {
+        const table = document.getElementById("userRankTable");
+        const teams = table.querySelectorAll("tbody tr");
+        if (teams[0]?.childElementCount > 1) {
+            rankingAddSquadHeaders(table);
+            const jobs = [];
+            for (const team of teams) {
+                jobs.push(rankingInjectTeamInfo(team));
+            }
+            await Promise.all(jobs);
         }
     }
 
@@ -5523,6 +5648,8 @@
         } else if (uri.search("/?p=training_report") > -1) {
             trainingAddCampOpenerToReport();
             trainingAddDays();
+        } else if (uri.search("/?p=rank&sub=userrank") > -1) {
+            rankingInjectSquadValue();
         }
     }
 
