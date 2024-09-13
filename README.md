@@ -74,6 +74,12 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
 
 <img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/Fixtures.png" alt="Fixtures" style="border: 2px solid black;">
 
+## Manager Ranking
+
+* Adds top players values and average age.
+
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/Ranking.png" alt="Ranking" style="border: 2px solid black;">
+
 ## About The Name
 
 Mazyar is acronym for **Ma**nager**Z**one**Yar**.  
