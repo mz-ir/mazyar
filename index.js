@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.43
+// @version      2.44
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.44": ["<b>[fix]</b> Tables: fix not adding top players to friendly league tables."],
         "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
         "2.42": ["<b>[improve]</b> Squad Summary: add share and market icon for your own players too."],
         "2.41": ["<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."],
@@ -2595,7 +2596,7 @@
         const ageValue = document.createElement("td");
         team.appendChild(ageValue);
 
-        teamValue.innerText = "loading...";
+        teamValue.replaceChildren(createLoadingIcon2());
         teamValue.classList.add("mazyar-injected", "team-value");
         teamValue.title = "Click to see squad summary";
         teamValue.style.textAlign = "center";
@@ -2605,8 +2606,8 @@
             mazyar.displaySquadSummary(url);
         };
 
+        ageValue.replaceChildren(createLoadingIcon2());
         ageValue.classList.add("mazyar-injected", "age-value");
-        ageValue.innerText = "...";
         ageValue.style.textAlign = "center";
         ageValue.style.whiteSpace = "nowrap";
         ageValue.style.padding = "auto 3px";
@@ -2630,7 +2631,7 @@
         secondRow.classList.add("responsive-show", "mazyar-responsive-show");
 
         value.colSpan = "6";
-        value.innerText = "loading...";
+        value.replaceChildren(createLoadingIcon2());
         value.classList.add("mazyar-injected", "team-value");
         value.title = "Click to see squad summary";
         value.style.textAlign = "center";
@@ -2642,8 +2643,8 @@
         };
 
         age.colSpan = "2";
+        age.replaceChildren(createLoadingIcon2());
         age.classList.add("mazyar-injected", "age-value");
-        age.innerText = "...";
         age.style.textAlign = "center";
         age.style.whiteSpace = "nowrap";
         age.style.padding = "auto 3px";
@@ -2847,6 +2848,8 @@
     }
 
     function tableInjectTopPlayersInfoToFriendlyLeague() {
+        tableWaitAndInjectTopPlayersInfo();
+
         const links = document.getElementsByTagName("a");
         for (const link of links) {
             if (["p=friendlySeries", "sub=standings"].every((text) => link.href.indexOf(text) > -1)) {
@@ -2856,6 +2859,8 @@
     }
 
     function tableInjectTopPlayersInfoToCup() {
+        tableWaitAndInjectTopPlayersInfo();
+
         const links = document.getElementsByTagName("a");
         for (const link of links) {
             if (["p=cups", "sub=groupplay"].every((text) => link.href.indexOf(text) > -1)) {
