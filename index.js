@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.44
+// @version      2.45
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.45": ["<b>[new]</b> Market: add optional feature to show training camp status of players. It is disabled by default. To enable it, please select 'Check if player is sent to camp' option from <b>MZY Settings</b>."],
         "2.44": ["<b>[fix]</b> Tables: fix not adding top players to friendly league tables."],
         "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
         "2.42": ["<b>[improve]</b> Squad Summary: add share and market icon for your own players too."],
@@ -3429,6 +3430,7 @@
             top_players_in_tables: true,
             transfer: false,
             transfer_maxed: false,
+            transfer_camp: false,
             mz_predictor: false,
             player_comment: false,
             coach_salary: false,
@@ -3483,6 +3485,7 @@
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
             this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
             this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
+            this.#settings.transfer_camp = GM_getValue("display_camp_in_transfer", false);
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
@@ -3500,6 +3503,7 @@
             GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
             GM_setValue("enable_transfer_filters", this.#settings.transfer);
             GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
+            GM_setValue("display_camp_in_transfer", this.#settings.transfer_camp);
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
             GM_setValue("coach_salary", this.#settings.coach_salary);
@@ -3535,8 +3539,8 @@
             return this.#settings.transfer;
         }
 
-        #isTransferMaxedSkillsEnabled() {
-            return this.#settings.transfer_maxed;
+        #isTransferCampEnabled() {
+            return this.#settings.transfer_camp;
         }
 
         isDaysAtThisClubEnabledForPlayerProfiles() {
@@ -3587,9 +3591,9 @@
             });
             this.#db.version(2).stores({
                 scout: "[sport+pid],ts",
-                player: "[sport+pid],ts,maxed,days",
+                player: "[sport+pid],ts,maxed,days,camp",
                 hide: "[sport+pid],ts",
-                deadline: "[sport+pid],ts,deadline, name",
+                deadline: "[sport+pid],ts,deadline,name",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -3800,6 +3804,7 @@
             const doc = await fetchPlayerProfileDocument(playerId);
             if (doc) {
                 const { days, price } = squadExtractResidencyDaysAndPrice(doc);
+                const camp = !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
                 const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
                 let i = 0;
                 const maxed = [];
@@ -3814,6 +3819,7 @@
                     maxed,
                     days,
                     price,
+                    camp,
                 };
             }
             return null;
@@ -3821,7 +3827,7 @@
 
         async #fetchOrExtractPlayerProfile(playerId) {
             let profile = await this.#fetchPlayerProfileFromIndexedDb(playerId);
-            if (!profile || (profile.days > 0 && !profile.price)) {
+            if (!profile || (profile.days > 0 && !profile.price) || (profile.camp === undefined)) {
                 profile = await this.#extractPlayerProfile(playerId);
                 this.#setPlayerProfileInIndexedDb(profile);
             }
@@ -3967,11 +3973,31 @@
             document.querySelectorAll(".mazyar-dim-60")?.forEach((el) => el.classList.remove("mazyar-dim-60"));
         }
 
-        #isMaxedOrDaysEnabledForTransfer() {
-            return this.#isDaysAtThisClubEnabledForTransferMarket() || this.#isTransferMaxedSkillsEnabled()
+        #doesTransferNeedPlayerProfile() {
+            return this.#isDaysAtThisClubEnabledForTransferMarket() || this.#mustMarkMaxedSkills() || this.#isTransferCampEnabled();
         }
 
-        async #updateMaxedAndDaysInTransfer(player) {
+        #addCampIconToTransferProfile(player, isSent) {
+            if (player.campInjected) {
+                return;
+            }
+            player.campInjected = true;
+            const camp = document.createElement("tr");
+
+            const label = document.createElement("td");
+            label.innerText = "Camp Status:";
+
+            const status = document.createElement("td");
+            status.innerHTML = `<img style="height:1rem; border: solid 1px;" src="nocache-904/img/player/icon_trainingcamp_${isSent ? "dg" : "bw"}.png">`
+
+            camp.appendChild(label);
+            camp.appendChild(status);
+
+            const target = player.querySelector("div.floatLeft table td:nth-child(2) > table tbody");
+            target?.appendChild(camp);
+        }
+
+        async #updateProfileRelatedFieldsInTransfer(player) {
             const playerId = getPlayerIdFromContainer(player);
             await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                 if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
@@ -3979,6 +4005,9 @@
                 }
                 if (this.#mustMarkMaxedSkills()) {
                     this.#colorizeMaxedSkills(player, profile?.maxed);
+                }
+                if (this.#isTransferCampEnabled()) {
+                    this.#addCampIconToTransferProfile(player, profile?.camp);
                 }
             });
         };
@@ -4018,8 +4047,8 @@
                     this.#addDeadlineButtonToPlayerInTransferMarket(player, deadlines);
                 }
                 jobs.push(this.#hidePlayerAccordingToHideList(player));
-                if (this.#isMaxedOrDaysEnabledForTransfer()) {
-                    jobs.push(this.#updateMaxedAndDaysInTransfer(player));
+                if (this.#doesTransferNeedPlayerProfile()) {
+                    jobs.push(this.#updateProfileRelatedFieldsInTransfer(player));
                 }
                 if (this.#areTransferScoutOptionsSelected()) {
                     if (player.querySelector("span.scout_report > a")) {
@@ -4037,9 +4066,7 @@
         }
 
         #mustUpdateDisplayForTransferSearchResults() {
-            return this.#areTransferScoutOptionsSelected()
-                || this.#isTransferMaxedSkillsEnabled()
-                || this.#isDaysAtThisClubEnabledForTransferMarket();
+            return this.#areTransferScoutOptionsSelected() || this.#doesTransferNeedPlayerProfile();
         }
 
         async updateDisplayForTransferSearchResults(clear = false) {
@@ -4484,6 +4511,7 @@
                 top_players_in_tables: false,
                 transfer: false,
                 transfer_maxed: false,
+                transfer_camp: false,
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
@@ -4755,9 +4783,11 @@
             const transferGroup = createMenuGroup("Transfer Market:");
             const transferFilters = createMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
             const transferMaxed = createMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
+            const transferCamp = createMenuCheckBox("Check if player is sent to camp", this.#settings.transfer_camp, submenuStyle);
             const transferDeadline = this.#createDeadlineOptions(submenuStyle);
             transferGroup.appendChild(transferFilters);
             transferGroup.appendChild(transferMaxed);
+            transferGroup.appendChild(transferCamp);
             transferGroup.appendChild(transferDeadline);
 
             const daysGroup = createMenuGroup("Days at this club:");
@@ -4790,6 +4820,7 @@
                     top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     transfer: transferFilters.querySelector("input[type=checkbox]").checked,
                     transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
+                    transfer_camp: transferCamp.querySelector("input[type=checkbox]").checked,
                     deadline: {
                         enabled: transferDeadline.childNodes[0].querySelector("input[type=checkbox]")?.checked,
                         play_bell: transferDeadline.childNodes[2].querySelector("input[type=checkbox]")?.checked,
@@ -5376,8 +5407,8 @@
             for (const result of searchResults) {
                 const parser = new DOMParser();
                 const player = parser.parseFromString(result.content.players, "text/html").body.firstChild;
-                if (this.#isMaxedOrDaysEnabledForTransfer()) {
-                    this.#updateMaxedAndDaysInTransfer(player);
+                if (this.#doesTransferNeedPlayerProfile()) {
+                    this.#updateProfileRelatedFieldsInTransfer(player);
                 }
                 player.id = "";
                 this.#fetchOrExtractPlayerScoutReport(player).then(report => {
