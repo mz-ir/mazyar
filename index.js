@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.45
+// @version      2.46
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,10 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.46": [
+            "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
+            "<b>[fix]</b> clean install was broken."
+        ],
         "2.45": ["<b>[new]</b> Market: add optional feature to show training camp status of players. It is disabled by default. To enable it, please select 'Check if player is sent to camp' option from <b>MZY Settings</b>."],
         "2.44": ["<b>[fix]</b> Tables: fix not adding top players to friendly league tables."],
         "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
@@ -213,7 +217,7 @@
         100%  {background-color: inherit;}
     }
 
-    div.mazyar-deadline-throb-lightgreen {
+    .mazyar-deadline-throb-lightgreen {
         animation: mazyar-throb-deadline-icon 3s infinite;
     }
 
@@ -221,6 +225,16 @@
         0%   {color: yellow;}
         50%  {color: crimson;}
         100%  {color: yellow;}
+    }
+
+    .mazyar-deadline-monitor-throb {
+        animation: mazyar-throb-deadline-monitor 3s infinite;
+    }
+
+    @keyframes mazyar-throb-deadline-monitor {
+        0%   {background-color: inherit;}
+        50%  {background-color: yellow;}
+        100%  {background-color: inherit;}
     }
 
     span.mazyar-icon-delete {
@@ -3117,6 +3131,119 @@
         }
     }
 
+    /* *********************** Monitor ********************************** */
+
+    function monitorCreateSectionSeparator() {
+        const tr = document.createElement("tr");
+        tr.style.height = "10px";
+        tr.innerHTML = '<td></td>';
+        return tr;
+    }
+
+    function monitorCreateRowSeparator(color) {
+        const tr = document.createElement("tr");
+        tr.classList.add("mazyar-monitor-player-row");
+        tr.style.height = "1px";
+        tr.style.backgroundColor = color;
+        tr.innerHTML = '<td></td>';
+        return tr;
+    }
+
+    function monitorAddRowSeparator() {
+        return [
+            monitorCreateRowSeparator("#999999"),
+            monitorCreateRowSeparator("#FFFFFF")
+        ];
+    }
+
+    function monitorCreateSection(title, id) {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+            <td><div id="${id}">
+            <table width="100%" cellpadding="0" cellspacing="0">
+            <tbody><tr>
+            <td style="background-image: url(img/subheader_right.gif);">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tbody><tr>
+                    <td class="subheader" valign="bottom">${title}</td>
+                </tr></tbody>
+                </table>
+            </td>
+            </tr></tbody>
+            </table>
+            </div></td>`;
+        return tr;
+    }
+
+    function monitorClearPlayerRows(tbody) {
+        const players = tbody.querySelectorAll(".mazyar-monitor-player-row");
+        for (const player of players) {
+            tbody.removeChild(player);
+        }
+    }
+
+    function monitorCreatePlayerRow(
+        player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
+        timeout = 0) {
+        const tr = document.createElement("tr");
+        tr.classList.add("mazyar-monitor-player-row");
+        console.log({ player });
+        if (player.deadline <= timeout) {
+            tr.classList.add("mazyar-deadline-monitor-throb");
+        }
+        tr.innerHTML = `
+            <td valign="top" style="" width="100%">
+            <table width="100%" border="0">
+                <tbody>
+                <tr style="height: 25px;">
+                    <td colspan="2">
+                    <table cellpadding="0" cellspacing="0" width="100%" border="0">
+                        <tbody>
+                        <tr>
+                            <td width="220">
+                            <table>
+                                <tbody>
+                                <tr>
+                                    <td><img src="${player.flag}"></td>
+                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
+                                    <td></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                            <td>
+                            <table class="deadline-table">
+                                <tbody>
+                                <tr>
+                                    <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
+                                    <td>${player.deadlineFull}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                            <td align="right">
+                            <table border="0">
+                                <tbody>
+                                <tr>
+                                    <td>Latest bid:</td>
+                                    <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            </td>
+       `;
+        return tr;
+    }
+
     /* *********************** Predictor ********************************** */
 
     async function getNationalRankings() {
@@ -3593,7 +3720,7 @@
                 scout: "[sport+pid],ts",
                 player: "[sport+pid],ts,maxed,days,camp",
                 hide: "[sport+pid],ts",
-                deadline: "[sport+pid],ts,deadline,name",
+                deadline: "[sport+pid],ts,deadline,name,deadlineFull,latestBid,source,flag",
             }).upgrade(trans => {
                 return trans.table("scout").toCollection().modify(report => {
                     report.ts = 0;
@@ -3630,6 +3757,7 @@
             await this.#db.filter.clear();
             await this.#db.player.clear();
             await this.#db.hide.clear();
+            await this.#db.deadline.clear();
         }
 
 
@@ -3644,15 +3772,27 @@
             }
         }
 
-        async #addPlayerToDeadlineListInIndexDb(player = { pid: "", deadline: 0, name: "" }) {
+        async #addPlayerToDeadlineListInIndexDb(player = {
+            pid: "",
+            deadline: 0,
+            name: "",
+            deadlineFull: "",
+            latestBid: "",
+            source: "monitor",
+            flag: "",
+        }) {
             if (player?.pid) {
-                this.#deadlines[player.pid] = player;
+                this.#deadlines[player.pid] = { ...player };
                 await this.#db.deadline.put({
                     sport: this.#sport,
                     ts: Date.now(),
                     pid: player.pid,
                     deadline: player.deadline,
-                    name: player.name
+                    name: player.name,
+                    deadlineFull: player.name,
+                    latestBid: player.latestBid,
+                    source: player.source,
+                    flag: player.flag,
                 });
             }
         }
@@ -3671,7 +3811,7 @@
             }
             return await this.#db.deadline.toArray()
                 .then((players) => {
-                    return players?.map(({ pid, deadline, name }) => ({ pid, deadline, name }));
+                    return players?.map(({ pid, deadline, name, source }) => ({ pid, deadline, name, source }));
                 }
                 ).catch((err) => {
                     console.warn(err);
@@ -4145,6 +4285,63 @@
             return texts.join(", ");
         }
 
+        #monitorCreateNoPlayerWarning() {
+            const warning = document.createElement("div");
+            warning.classList.add("mazyar-monitor-player-row");
+            warning.innerText = "No players have been added to the MZY Deadline Monitor.";
+            warning.style.padding = "1rem 0.5rem 0";
+            return warning;
+        }
+
+        #monitorAddPlayers(tbody, players) {
+            monitorClearPlayerRows(tbody);
+            if (players.length === 0) {
+                const warning = this.#monitorCreateNoPlayerWarning();
+                tbody.appendChild(warning);
+                return;
+            }
+
+            for (const player of players) {
+                const row = monitorCreatePlayerRow(player, this.#settings.deadline.timeout);
+                const removeIcon = createAddToDeadlineIcon("Remove player from MZY Deadline Monitor", "red");
+                removeIcon.style.fontSize = "11px";
+                row.querySelector("table.deadline-table tbody tr").appendChild(removeIcon);
+                tbody.appendChild(row);
+                const separators = monitorAddRowSeparator();
+                separators?.forEach((sep) => tbody.appendChild(sep));
+
+                removeIcon.addEventListener("click", async () => {
+                    await this.#removePlayerFromDeadlineList(player.pid);
+                    this.#deadlineUpdateIconStyle();
+                    tbody.removeChild(row);
+                    separators.forEach((sep) => tbody.removeChild(sep));
+                    if (!tbody.querySelector(".mazyar-monitor-player-row")) {
+                        const warning = this.#monitorCreateNoPlayerWarning();
+                        tbody.appendChild(warning);
+                    }
+                });
+            }
+        }
+
+        monitorInject() {
+            if (this.#isTransferDeadlineAlertEnabled()) {
+                const target = document.querySelector('div.baz.bazCenter >div > div.win_back > table');
+                if (target) {
+                    const monitor = monitorCreateSection("MZY Monitor", "mazyar-monitor-section");
+                    target.appendChild(monitor);
+                    target.appendChild(monitorCreateSectionSeparator());
+
+                    const tbody = monitor.querySelector("td > div > table > tbody");
+                    document.body.addEventListener("deadlines-updated", () => {
+                        const players = Object.values(this.#deadlines)
+                            .filter((player) => player.source === "mzy")
+                            .sort((a, b) => a.deadline - b.deadline);
+                        this.#monitorAddPlayers(tbody, players);
+                    });
+                }
+            }
+        }
+
         // -------------------------------- Player Options -------------------------------------
 
         async #addPlayerCommentIcon(player) {
@@ -4515,11 +4712,15 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
-                deadline: false,
+                deadline: {
+                    enabled: false,
+                    play_bell: false,
+                    timeout: 30,// minutes,
+                },
                 days: {
                     display_in_profiles: false,
                     display_in_transfer: false,
-                    display_for_training: false,
+                    display_in_training: false,
                     display_for_one_clubs: false,
                 }
             });
@@ -5222,27 +5423,27 @@
             return deadline;
         }
 
-        async #deadlineFetchAndProcessMonitor() {
+        async #monitorFetchAndProcessYourBidsPlayers() {
             const response = await fetchTransferMonitorData();
             if (response) {
                 const yourBids = document.createElement("div");
                 yourBids.innerHTML = response.content;
                 const bids = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table a:not([class="player_icon"])`);
-                const deadlines = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table img[src="img/icon_deadline.gif"]`);
-
-                const players = [...Array(bids.length).keys()].map((n) => ({
-                    name: bids[n].innerText,
-                    pid: extractPlayerIDFromTransferMonitor(bids[n].href),
-                    deadline: 1 + Math.ceil((parseMzDateTime(deadlines[n]?.parentNode?.parentNode?.innerText?.trim()) - new Date()) / 60_000)
-                }));
-                for (const player of players) {
-                    if (player.deadline > 0) {
-                        await this.#addPlayerToDeadlineListInIndexDb(player);
-                    } else {
-                        await this.#removePlayerFromDeadlineList(player.pid);
+                const rows = [...bids].map((element) => element.parentNode.parentNode.parentNode.parentNode.parentElement.parentNode);
+                return rows.map((row) => {
+                    const sections = [...row.childNodes].filter((el) => el.tagName === "TD");
+                    // sections are: [0: player name], [1:deadline], [2:latest bid]
+                    const deadlineFull = sections[1].innerText?.trim();
+                    return {
+                        name: sections[0].innerText.trim(),
+                        pid: extractPlayerIDFromTransferMonitor(sections[0].querySelector(`a:not([class="player_icon"]`).href),
+                        deadline: 1 + Math.ceil((parseMzDateTime(deadlineFull) - new Date()) / 60_000),
+                        deadlineFull,
+                        latestBid: sections[2].querySelector(`td[align="right"]`).innerText,
                     }
-                }
+                });
             }
+            return [];
         }
 
         async #updatePlayerDeadlineFromMarket(pid) {
@@ -5258,10 +5459,16 @@
                     const parser = new DOMParser();
                     const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
                     const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
+                    const latestBid = playerDiv.querySelector("span:is(.bid_button, .semi_transparent).player_icon_placeholder").parentNode.previousElementSibling.querySelector("strong").innerText;
+                    const flag = playerDiv.querySelector(`img[src*="/flags/"]`)?.src;
                     const player = {
                         name: playerDiv.querySelector(".player_name")?.innerText,
                         pid,
                         deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
+                        deadlineFull: deadline.trim(),
+                        latestBid,
+                        source: "mzy",
+                        flag,
                     };
                     await this.#addPlayerToDeadlineListInIndexDb(player);
                 } else {
@@ -5344,9 +5551,18 @@
             this.#deadlines = {};
             await this.#deadlineProcessPlayersInIndexedDb();
             if (this.#deadlineLockAcquired) {
-                await this.#deadlineFetchAndProcessMonitor();
+                const players = await this.#monitorFetchAndProcessYourBidsPlayers();
+                for (const player of players) {
+                    if (player.deadline > 0) {
+                        player.source = "monitor";
+                        await this.#addPlayerToDeadlineListInIndexDb(player);
+                    } else {
+                        await this.#removePlayerFromDeadlineList(player.pid);
+                    }
+                }
             }
             this.#deadlineUpdateIconStyle();
+            document.body.dispatchEvent(new Event("deadlines-updated"));
         }
 
         async injectTransferDeadlineAlert() {
@@ -5667,10 +5883,14 @@
         } else if (uri.search("/?p=cup&") > -1 || uri.search("/?p=private_cup&") > -1) {
             tableInjectTopPlayersInfoToCup();
         } else if (uri.search("/?p=transfer") > -1) {
-            if (mazyar.isTransferFiltersEnabled()) {
-                transferInject();
+            if (uri.search("/?p=transfer&sub=yourplayers") > -1) {
+                mazyar.monitorInject();
+            } else {
+                if (mazyar.isTransferFiltersEnabled()) {
+                    transferInject();
+                }
+                mazyar.executeTransferTasks();
             }
-            mazyar.executeTransferTasks();
         } else if (uri.search("/?p=clubhouse") > -1) {
             if (mazyar.mustHelpWithPredictor()) {
                 predictorInject();
