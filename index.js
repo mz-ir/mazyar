@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.45
+// @version      2.46
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,10 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.46": [
+            "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
+            "<b>[fix]</b> clean install was broken."
+        ],
         "2.45": ["<b>[new]</b> Market: add optional feature to show training camp status of players. It is disabled by default. To enable it, please select 'Check if player is sent to camp' option from <b>MZY Settings</b>."],
         "2.44": ["<b>[fix]</b> Tables: fix not adding top players to friendly league tables."],
         "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
@@ -213,7 +217,7 @@
         100%  {background-color: inherit;}
     }
 
-    div.mazyar-deadline-throb-lightgreen {
+    .mazyar-deadline-throb-lightgreen {
         animation: mazyar-throb-deadline-icon 3s infinite;
     }
 
@@ -221,6 +225,16 @@
         0%   {color: yellow;}
         50%  {color: crimson;}
         100%  {color: yellow;}
+    }
+
+    .mazyar-deadline-monitor-throb {
+        animation: mazyar-throb-deadline-monitor 3s infinite;
+    }
+
+    @keyframes mazyar-throb-deadline-monitor {
+        0%   {background-color: inherit;}
+        50%  {background-color: yellow;}
+        100%  {background-color: inherit;}
     }
 
     span.mazyar-icon-delete {
@@ -3168,9 +3182,15 @@
         }
     }
 
-    function monitorCreatePlayerRow(player = { pid: "", name: "", deadlineFull: "", latestBid: "", flag: "" }) {
+    function monitorCreatePlayerRow(
+        player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
+        timeout = 0) {
         const tr = document.createElement("tr");
         tr.classList.add("mazyar-monitor-player-row");
+        console.log({ player });
+        if (player.deadline <= timeout) {
+            tr.classList.add("mazyar-deadline-monitor-throb");
+        }
         tr.innerHTML = `
             <td valign="top" style="" width="100%">
             <table width="100%" border="0">
@@ -3185,7 +3205,7 @@
                                 <tbody>
                                 <tr>
                                     <td><img src="${player.flag}"></td>
-                                    <td><a href="/?p=transfer&amp;sub=players&amp;u=${player.pid}">${player.name}</a></td>
+                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
                                     <td></td>
                                 </tr>
                                 </tbody>
@@ -4282,7 +4302,7 @@
             }
 
             for (const player of players) {
-                const row = monitorCreatePlayerRow(player);
+                const row = monitorCreatePlayerRow(player, this.#settings.deadline.timeout);
                 const removeIcon = createAddToDeadlineIcon("Remove player from MZY Deadline Monitor", "red");
                 removeIcon.style.fontSize = "11px";
                 row.querySelector("table.deadline-table tbody tr").appendChild(removeIcon);
@@ -4313,7 +4333,9 @@
 
                     const tbody = monitor.querySelector("td > div > table > tbody");
                     document.body.addEventListener("deadlines-updated", () => {
-                        const players = Object.values(this.#deadlines).filter((player) => player.source === "mzy");
+                        const players = Object.values(this.#deadlines)
+                            .filter((player) => player.source === "mzy")
+                            .sort((a, b) => a.deadline - b.deadline);
                         this.#monitorAddPlayers(tbody, players);
                     });
                 }
