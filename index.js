@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.47
+// @version      2.48
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -19,6 +19,8 @@
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
+// @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
+// @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
 // ==/UserScript==
 
 (async function () {
@@ -32,6 +34,9 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.48": [
+            "<b>[fix]</b> download and update urls for userscript were missing."
+        ],
         "2.47": [
             "<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."
         ],
