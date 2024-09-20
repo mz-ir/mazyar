@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.48
+// @version      2.49
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,12 +34,9 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.48": [
-            "<b>[fix]</b> download and update urls for userscript were missing."
-        ],
-        "2.47": [
-            "<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."
-        ],
+        "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
+        "2.48": ["<b>[fix]</b> download and update urls for userscript were missing."],
+        "2.47": ["<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."],
         "2.46": [
             "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
             "<b>[fix]</b> clean install was broken."
@@ -3948,11 +3945,18 @@
             }
         }
 
+        #isSentToCamp(doc) {
+            if (location.hostname.startsWith("test")) {
+                return !!doc.querySelector(`#thePlayers_0 span.player_icon_wrapper i.fa-traffic-cone.tc-status-icon:not(.tc-status-icon--disabled)`);
+            }
+            return !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
+        }
+
         async #extractPlayerProfile(playerId) {
             const doc = await fetchPlayerProfileDocument(playerId);
             if (doc) {
                 const { days, price } = squadExtractResidencyDaysAndPrice(doc);
-                const camp = !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
+                const camp = this.#isSentToCamp(doc);
                 const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
                 let i = 0;
                 const maxed = [];
