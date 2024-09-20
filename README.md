@@ -80,6 +80,12 @@ If `Display Maxed Skills in Transfer (If Available)` is enabled from **MZY Setti
 
 <img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/Ranking.png" alt="Ranking" style="border: 2px solid black;">
 
+## Transfer Monitor
+
+If `Enable deadline alert` is set from **MZY Settings**, it adds a section to Transfer Monitor to display players you added to monitor their deadline.
+
+<img src="https://raw.githubusercontent.com/mz-ir/mazyar/main/img/TransferMonitor.png" alt="Transfer Monitor" style="border: 2px solid black;">
+
 ## About The Name
 
 Mazyar is acronym for **Ma**nager**Z**one**Yar**.  
