@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.46
+// @version      2.47
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -32,6 +32,9 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.47": [
+            "<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."
+        ],
         "2.46": [
             "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
             "<b>[fix]</b> clean install was broken."
@@ -3187,7 +3190,6 @@
         timeout = 0) {
         const tr = document.createElement("tr");
         tr.classList.add("mazyar-monitor-player-row");
-        console.log({ player });
         if (player.deadline <= timeout) {
             tr.classList.add("mazyar-deadline-monitor-throb");
         }
@@ -3248,7 +3250,7 @@
 
     async function getNationalRankings() {
         const rankings = [];
-        const url = 'https://${location.hostname}/?p=rank&sub=countryrank';
+        const url = `https://${location.hostname}/?p=rank&sub=countryrank`;
         const resp = await fetch(url).catch((error) => {
             console.warn(error);
         });
@@ -3420,9 +3422,10 @@
     }
 
     function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
+        const url = `https://${location.hostname}/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`;
         GM_xmlhttpRequest({
             method: "GET",
-            url: `https://${location.hostname}/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`,
+            url,
             onload: function (response) {
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(response.responseText, "text/html");
@@ -3789,7 +3792,7 @@
                     pid: player.pid,
                     deadline: player.deadline,
                     name: player.name,
-                    deadlineFull: player.name,
+                    deadlineFull: player.deadlineFull,
                     latestBid: player.latestBid,
                     source: player.source,
                     flag: player.flag,
@@ -3811,7 +3814,7 @@
             }
             return await this.#db.deadline.toArray()
                 .then((players) => {
-                    return players?.map(({ pid, deadline, name, source }) => ({ pid, deadline, name, source }));
+                    return players?.filter((player) => player.sport === this.#sport);
                 }
                 ).catch((err) => {
                     console.warn(err);
@@ -5428,7 +5431,7 @@
             if (response) {
                 const yourBids = document.createElement("div");
                 yourBids.innerHTML = response.content;
-                const bids = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table a:not([class="player_icon"])`);
+                const bids = yourBids.querySelectorAll(`table[cellpadding="0"][border="0"] table img[src*="/flags/"]`);
                 const rows = [...bids].map((element) => element.parentNode.parentNode.parentNode.parentNode.parentElement.parentNode);
                 return rows.map((row) => {
                     const sections = [...row.childNodes].filter((el) => el.tagName === "TD");
