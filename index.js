@@ -4690,11 +4690,15 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
-                deadline: false,
+                deadline: {
+                    enabled: false,
+                    play_bell: false,
+                    timeout: 30,// minutes,
+                },
                 days: {
                     display_in_profiles: false,
                     display_in_transfer: false,
-                    display_for_training: false,
+                    display_in_training: false,
                     display_for_one_clubs: false,
                 }
             });
@@ -5435,7 +5439,6 @@
                     const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
                     const latestBid = playerDiv.querySelector("span:is(.bid_button, .semi_transparent).player_icon_placeholder").parentNode.previousElementSibling.querySelector("strong").innerText;
                     const flag = playerDiv.querySelector(`img[src*="/flags/"]`)?.src;
-                    console.log({ flag });
                     const player = {
                         name: playerDiv.querySelector(".player_name")?.innerText,
                         pid,
