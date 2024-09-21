@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.49
+// @version      2.50
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,6 +34,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
         "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
         "2.48": ["<b>[fix]</b> download and update urls for userscript were missing."],
         "2.47": ["<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."],
@@ -4414,7 +4415,7 @@
                 const text = profile?.days === 0 ? 'N/A' : `≤ ${profile?.days}`;
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
                 if (addPrice && profile?.price !== null) {
-                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Fee: <strong style="color: blue;">${profile?.price}</strong><span>`;
+                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Transfer Fee: <strong style="color: blue;">${profile?.price}</strong><span>`;
                 }
                 daysDiv.classList.add("mazyar-days-at-this-club");
             } else if (this.isDaysAtThisClubEnabledForOneClubPlayers()) {
@@ -4433,7 +4434,7 @@
                     jobs.push((async (player) => {
                         const playerId = getPlayerIdFromContainer(player);
                         await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
-                            this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                            this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
                         });
                     })(player));
                 }
@@ -4742,7 +4743,6 @@
         }
 
         #displayCleanMenu() {
-
             const div = document.createElement("div");
             const title = createMzStyledTitle("MZY Settings");
             const notice = document.createElement("div");
@@ -4976,7 +4976,7 @@
             const submenuStyle = { margin: "0.1rem 1.2rem" };
 
             const div = document.createElement("div");
-            const title = createMzStyledTitle("MZY Settings");
+            const title = createMzStyledTitle(`MZY Settings (v${currentVersion})`);
 
             const miscellaneousGroup = createMenuGroup("Miscellaneous:");
             const playerComment = createMenuCheckBox("Enable player comment", this.#settings.player_comment, submenuStyle);
