@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.50
+// @version      2.51
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,6 +34,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.51": ["<b>[new]</b> show transfer fee in more places."],
         "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
         "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
         "2.48": ["<b>[fix]</b> download and update urls for userscript were missing."],
@@ -1427,7 +1428,7 @@
 
     function squadExtractResidencyDaysAndPrice(doc = document) {
         if (!doc) {
-            return { days: 0, price: -1 };
+            return { days: 0, price: '' };
         }
         const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist");
         const history = transfers?.querySelector("tbody");
@@ -1438,17 +1439,20 @@
             const currency = transfers?.querySelector("thead tr td:last-child")?.innerText?.match(/.*\((.*)\)/)?.[1];
             return { days, price: price + ' ' + currency };
         }
-        return { days: -1, price: -1 };
+        return { days: -1, price: '' };
     }
 
     function squadAddDaysAtThisClubToPlayerProfile() {
         if (mazyar.isDaysAtThisClubEnabledForPlayerProfiles()) {
-            const { days } = squadExtractResidencyDaysAndPrice(document);
+            const { days, price } = squadExtractResidencyDaysAndPrice(document);
             const daysDiv = document.createElement("div");
             if (days >= 0) {
                 const text = days === 0 ? 'N/A' : `≤ ${days}`;
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
                 daysDiv.classList.add("mazyar-days-at-this-club");
+                if (price) {
+                    daysDiv.innerHTML += ` <span style="margin-left: 25px;">Transfer Fee: <strong style="color: blue;">${price}</strong><span>`;
+                }
             } else if (mazyar.isDaysAtThisClubEnabledForOneClubPlayers()) {
                 const text = 'Entire Career';
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
@@ -4447,7 +4451,7 @@
                 const player = container.querySelector("div.playerContainer");
                 const playerId = getPlayerIdFromContainer(player);
                 await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
-                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
                 });
             }
         }
