@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.51
+// @version      2.52
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,6 +34,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.51": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
         "2.51": ["<b>[new]</b> show transfer fee in more places."],
         "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
         "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
@@ -1719,7 +1720,7 @@
                     const container = document.getElementById('players_container');
                     if (container && !container.injecting) {
                         container.injecting = true;
-                        mazyar.squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addDaysAtThisClubToAllPlayers(container);
                         mazyar.addPlayerComment();
                     }
                 }
@@ -1729,7 +1730,7 @@
                     const container = document.getElementById('players_container');
                     if (container && !container.injecting) {
                         container.injecting = true;
-                        mazyar.squadAddDaysAtThisClubToAllPlayers(container);
+                        mazyar.addDaysAtThisClubToAllPlayers(container);
                         mazyar.addPlayerComment();
                     }
                 };
@@ -3546,6 +3547,13 @@
         observer.observe(target, config);
     }
 
+    /* *********************** Shortlist ********************************** */
+
+    function shortlistAddDays() {
+        const container = document.querySelector('div#shortlist_window div#players_container');
+        mazyar.addDaysAtThisClubToAllPlayers(container);
+    }
+
     /* *********************** Class ********************************** */
 
     class Mazyar {
@@ -4158,7 +4166,7 @@
             const playerId = getPlayerIdFromContainer(player);
             await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                 if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
-                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                 }
                 if (this.#mustMarkMaxedSkills()) {
                     this.#colorizeMaxedSkills(player, profile?.maxed);
@@ -4409,7 +4417,7 @@
             }
         }
 
-        async #squadAddDaysAtThisClubForSinglePlayer(player, profile, addPrice = false) {
+        async #squadAddDaysAtThisClubForSinglePlayer(player, profile, addPrice = true) {
             if (player.daysInjected) {
                 return;
             }
@@ -4430,15 +4438,15 @@
             player.querySelector("div.mainContent")?.appendChild(daysDiv);
         }
 
-        async squadAddDaysAtThisClubToAllPlayers(container) {
+        async addDaysAtThisClubToAllPlayers(container) {
             if (this.isDaysAtThisClubEnabledForPlayerProfiles()) {
                 const jobs = [];
-                const players = container.querySelectorAll("div.playerContainer");
+                const players = container?.querySelectorAll("div.playerContainer");
                 for (const player of players) {
                     jobs.push((async (player) => {
                         const playerId = getPlayerIdFromContainer(player);
                         await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
-                            this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
+                            this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                         });
                     })(player));
                 }
@@ -4451,7 +4459,7 @@
                 const player = container.querySelector("div.playerContainer");
                 const playerId = getPlayerIdFromContainer(player);
                 await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
-                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile, true);
+                    this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                 });
             }
         }
@@ -5922,6 +5930,8 @@
             trainingAddDays();
         } else if (uri.search("/?p=rank&sub=userrank") > -1) {
             rankingInjectSquadValue();
+        } else if (uri.search("/?p=shortlist") > -1) {
+            shortlistAddDays();
         }
     }
 
