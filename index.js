@@ -34,7 +34,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.51": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
+        "2.52": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
         "2.51": ["<b>[new]</b> show transfer fee in more places."],
         "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
         "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
