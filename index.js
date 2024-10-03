@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.52
+// @version      2.53
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,6 +34,10 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.53": [
+            "<b>[new]</b> show transfer fee in tactic page.",
+            "<b>[fix]</b> Squad Summary: top players table in mobile view.",
+        ],
         "2.52": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
         "2.51": ["<b>[new]</b> show transfer fee in more places."],
         "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
@@ -1672,8 +1676,9 @@
         const div = document.createElement("div");
         div.classList.add("mazyar-flex-container");
         div.appendChild(topPlayers);
-
-        table.parentNode.insertBefore(div, table);
+        div.style.marginTop = "10px";
+        const target = table.parentNode.parentNode;
+        target.parentNode.insertBefore(div, target);
     }
 
     function squadInjectInformation(table) {
@@ -3488,6 +3493,24 @@
         }
     }
 
+    /* *********************** Tactic ********************************** */
+
+    function tacticAddDays() {
+        const cssSelector = '#lightboxContent_player_profile #players_container';
+        const callback = () => {
+            const profile = document.querySelector(cssSelector);
+            if (profile && !profile.daysInjected) {
+                profile.daysInjected = true;
+                mazyar.trainingAddDaysAtThisClubToPlayerProfile(profile);
+                mazyar.addPlayerComment();
+            }
+        }
+        const target = document.body;
+        const config = { childList: true, subtree: true };
+        const observer = new MutationObserver(callback);
+        observer.observe(target, config);
+    }
+
     /* *********************** Training Report ********************************** */
 
     function trainingOpenPlayerTrainingCamp(player) {
@@ -3539,6 +3562,7 @@
             if (profile && !profile.daysInjected) {
                 profile.daysInjected = true;
                 mazyar.trainingAddDaysAtThisClubToPlayerProfile(profile);
+                mazyar.addPlayerComment();
             }
         }
         const target = document.body;
@@ -3552,6 +3576,7 @@
     function shortlistAddDays() {
         const container = document.querySelector('div#shortlist_window div#players_container');
         mazyar.addDaysAtThisClubToAllPlayers(container);
+        mazyar.addPlayerComment();
     }
 
     /* *********************** Class ********************************** */
@@ -5932,6 +5957,8 @@
             rankingInjectSquadValue();
         } else if (uri.search("/?p=shortlist") > -1) {
             shortlistAddDays();
+        } else if (uri.search("/?p=tactics") > -1) {
+            tacticAddDays();
         }
     }
 
