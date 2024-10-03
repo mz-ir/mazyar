@@ -34,7 +34,10 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
-        "2.53": ["<b>[new]</b> show transfer fee in tactic page."],
+        "2.53": [
+            "<b>[new]</b> show transfer fee in tactic page.",
+            "<b>[fix]</b> Squad Summary: top players table in mobile view.",
+        ],
         "2.52": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
         "2.51": ["<b>[new]</b> show transfer fee in more places."],
         "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
@@ -1673,8 +1676,9 @@
         const div = document.createElement("div");
         div.classList.add("mazyar-flex-container");
         div.appendChild(topPlayers);
-
-        table.parentNode.insertBefore(div, table);
+        div.style.marginTop = "10px";
+        const target = table.parentNode.parentNode;
+        target.parentNode.insertBefore(div, target);
     }
 
     function squadInjectInformation(table) {
