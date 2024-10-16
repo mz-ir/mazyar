@@ -337,6 +337,12 @@
         border: 1px solid black;
         text-align: center;
     }
+
+    @media only screen and (max-device-width: 1020px) {
+        .mazyar-responsive-block {
+            display: block !important;
+        }
+    }
     `;
 
     /* ********************** Constants ******************************** */
@@ -2567,6 +2573,9 @@
     }
 
     function fixtureChangeTeamNames(section) {
+        section.querySelectorAll("dl.flex-wrap > dd.teams-wrapper.flex-grow-1").forEach((el) => {
+            el.classList.add("mazyar-responsive-block");
+        });
         section.querySelectorAll("dd.score-cell-wrapper").forEach((el) => {
             el.style.alignSelf = "center";
         });
