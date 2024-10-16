@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.53
+// @version      2.54
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -34,6 +34,7 @@
 
     const currentVersion = GM_info.script.version;
     const changelogs = {
+        "2.54": ["<b>[new]</b> Fixtures: add full name of the teams."],
         "2.53": [
             "<b>[new]</b> show transfer fee in tactic page.",
             "<b>[fix]</b> Squad Summary: top players table in mobile view.",
@@ -335,6 +336,12 @@
         border-radius: 5px;
         border: 1px solid black;
         text-align: center;
+    }
+
+    @media only screen and (max-device-width: 1020px) {
+        .mazyar-responsive-block {
+            display: block !important;
+        }
     }
     `;
 
@@ -2562,6 +2569,41 @@
                     }
                 }
             }
+        }
+    }
+
+    function fixtureChangeTeamNames(section) {
+        section.querySelectorAll("dl.flex-wrap > dd.teams-wrapper.flex-grow-1").forEach((el) => {
+            el.classList.add("mazyar-responsive-block");
+        });
+        section.querySelectorAll("dd.score-cell-wrapper").forEach((el) => {
+            el.style.alignSelf = "center";
+        });
+        section.querySelectorAll("dd:is(.home-team-column, .away-team-column)").forEach((el) => {
+            const fullName = el.querySelector("span.full-name");
+            if (fullName?.parentNode.tagName === 'STRONG') {
+                el.innerHTML += '<br><strong>' + fullName.innerText + '</strong>';
+            } else {
+                el.innerHTML += '<br>' + fullName.innerText;
+            }
+        })
+    }
+
+    function fixtureChangeNames() {
+        const callback = () => {
+            const section = document.querySelector("dl#fixtures-results-list.fixtures");
+            if (section && !section.injecting) {
+                section.injecting = true;
+                console.log("injecting");
+                fixtureChangeTeamNames(section);
+            }
+        };
+        callback();
+        const target = document.getElementById('fixtures-results-list-wrapper');
+        if (target) {
+            const observer = new MutationObserver(callback);
+            const config = { childList: true, subtree: true };
+            observer.observe(target, config);
         }
     }
 
@@ -5922,8 +5964,13 @@
             squadInjectInformationToProfiles();
         } else if (uri.search("mid=") > -1) {
             matchInjectTeamValues();
-        } else if (uri.search("/?p=match") > -1 && !uri.search("&sub=result") > -1) {
-            matchInjectInProgressResults();
+        } else if (uri.search("/?p=match") > -1) {
+            if (uri.search("&sub=result") < 0) {
+                matchInjectInProgressResults();
+            }
+            if (uri.endsWith("&sub=scheduled") > -1) {
+                fixtureChangeNames();
+            }
         } else if (uri.search("/?p=league") > -1) {
             tableInjectTopPlayersToOfficialLeague();
             scheduleInjectColoringToOfficialLeague();
