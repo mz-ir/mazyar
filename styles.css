@@ -1,6 +1,6 @@
 /* ==UserStyle==
 @name           UsStyleTest
-@version        0.3
+@version        0.4
 @namespace      http://tampermonkey.net/
 @license        MIT
 @description    test
@@ -8,4 +8,5 @@
 
 .mazyar-test {
     color: red;
+    display: flex;
 }
