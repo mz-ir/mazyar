@@ -1,0 +1,11 @@
+/* ==UserStyle==
+@name           UsStyleTest
+@version        0.1
+@namespace      tamper
+@license        MIT
+@description    test
+==/UserStyle== */
+
+.us-test {
+    color: red;
+}
