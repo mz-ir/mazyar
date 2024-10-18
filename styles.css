@@ -1,11 +1,11 @@
 /* ==UserStyle==
 @name           UsStyleTest
 @version        0.1
-@namespace      tamper
+@namespace      http://tampermonkey.net/
 @license        MIT
 @description    test
 ==/UserStyle== */
 
-.us-test {
+.mazyar-test {
     color: red;
 }
