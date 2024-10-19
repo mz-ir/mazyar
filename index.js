@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      2.54
+// @version      3.0
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -11,10 +11,14 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @grant        GM_deleteValue
+// @grant        GM_getResourceText
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
+// @require      https://update.greasyfork.org/scripts/513035/1466953/MazyarConstants.js
+// @require      https://update.greasyfork.org/scripts/513041/1466977/MazyarTools.js
+// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
@@ -26,1353 +30,12 @@
 (async function () {
     "use strict";
 
-    const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
-
     let mazyar = null;
-
-    /* *********************** Changelogs ********************************** */
-
-    const currentVersion = GM_info.script.version;
-    const changelogs = {
-        "2.54": ["<b>[new]</b> Fixtures: add full name of the teams."],
-        "2.53": [
-            "<b>[new]</b> show transfer fee in tactic page.",
-            "<b>[fix]</b> Squad Summary: top players table in mobile view.",
-        ],
-        "2.52": ["<b>[new]</b> show residency days and transfer fee in shortlist."],
-        "2.51": ["<b>[new]</b> show transfer fee in more places."],
-        "2.50": ["<b>[new]</b> Players Profile: add transfer fee."],
-        "2.49": ["<b>[fix]</b> Transfer Market: wrong camp status in test domain"],
-        "2.48": ["<b>[fix]</b> download and update urls for userscript were missing."],
-        "2.47": ["<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."],
-        "2.46": [
-            "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
-            "<b>[fix]</b> clean install was broken."
-        ],
-        "2.45": ["<b>[new]</b> Market: add optional feature to show training camp status of players. It is disabled by default. To enable it, please select 'Check if player is sent to camp' option from <b>MZY Settings</b>."],
-        "2.44": ["<b>[fix]</b> Tables: fix not adding top players to friendly league tables."],
-        "2.43": ["<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."],
-        "2.42": ["<b>[improve]</b> Squad Summary: add share and market icon for your own players too."],
-        "2.41": ["<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."],
-        "2.40": ["<b>[fix]</b> Transfer: change Fee font color to blue."],
-        "2.39": ["<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."],
-        "2.38": ["<b>[fix]</b> Transfer Filters: delete icon was missing in 'MZY Transfer Filters' modal."],
-        "2.37": ["<b>[new]</b> support Managerzone Test Site (test.managerzone.com). It is not fully tested. Please report any issues you encounter in Test site too."],
-        "2.36": [
-            "<b>[new]</b> Deadline Alert: add 'Timeout' option in <b>MZY Settings</b> to set deadline timeout. Its value must be between 1 and 360 minutes.",
-            "<b>[new]</b> Deadline Alert: add 'Sound Notification' option to play a bell sound when deadline of at least one of monitored players is less than timeout.",
-            "<b>[fix]</b> Deadline Alert: trash icon was missing in 'MZY Transfer Deadlines' modal when 'van.mz.playerAdvanced' script is enabled.",
-            "<b>[fix]</b> MZY Settings: 'Mark maxed skills' option was missing."
-        ],
-        "2.35": ["<b>[new]</b> Days at this club: add to player profiles in training report. It is optional and disabled by default. You can enable it from MZY Settings."],
-        "2.34": ["<b>[new]</b> <b>(Experimental)</b> Transfer: add deadline alert."],
-        "2.33": ["<b>[fix]</b> Federation Front Page: add top players when current federation is changed."],
-        "2.32": ["<b>[improve]</b> Federation: first team member sort"],
-        "2.31": ["<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."],
-        "2.30": ["<b>[fix]</b> Transfer Filters: reset selected H & L checkboxes when Transfer filter is not enabled."],
-        "2.29": ["<b>[fix]</b> Hide Players: fixed an issue about hide icon when transfer scout filters are used."],
-        "2.28": ["<b>[fix]</b> Days at this club: after v2.27, it was broken in players page."],
-        "2.27": ["<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player. To remove players from hide list, use 'MZY Hide' button."],
-        "2.26": [
-            "<b>[improve]</b> Days at this club: it is optional. It is disabled by default. You can enable it from MZY Settings.",
-            "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
-            "<b>[improve]</b> Local Database: it deletes outdated local data to reduce the size of database.",
-            "<b>[improve]</b> Transfer: it uses less ajax requests now.",
-        ],
-        "2.25": ["<b>[new]</b> Training Report: click on player's camp package icon to open its camp report."],
-        "2.24": ["<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."],
-        "2.23": [
-            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
-            "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
-            "<b>[fix]</b> Player Comment: change color of comment icon to lightskyblue when player has no comment. (previous color was the same as loyal players background)",
-        ],
-        "2.22": ["<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."],
-        "2.21": ["<b>[new]</b> Club Page: adds total trophy count."],
-        "2.20": ["<b>[new]</b> Player Profile: add 'Days at this club' counter."],
-        "2.19": ["<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
-            "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."],
-        "2.18": ["<b>[new]</b> show changelog after script update.",
-            "<b>[improve]</b> change icon style of player's comment."],
-        "2.17": ["<b>[fix]</b> fixed total skill balls"],
-    }
-
-    /* *********************** Styles ********************************** */
-
-    const styles = `
-    #mazyar-modal {
-        display: none;
-        position: fixed;
-        z-index: 9999;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.4);
-    }
-
-    #mazyar-modal-content {
-        width: fit-content;
-        background-color: beige;
-        border-radius: 5px;
-        max-height: 100%;
-    }
-
-    .mazyar-notebook-plain {
-        z-index: 9990;
-        position: absolute;
-        left: 0;
-        top: 0;
-        flex-wrap: nowrap;
-    }
-
-    .mazyar-notebook-modal {
-        position: fixed;
-        top: 0;
-        left: 0;
-        background-color: beige;
-        border-radius: 5px;
-        min-width: 200px;
-        min-height: 250px;
-        max-width: 95vw;
-        max-height: 99vh;
-        flex-wrap: nowrap;
-    }
-
-    .mazyar-notebook-textarea {
-        padding: 5px;
-        min-width: 180px;
-        resize: none;
-        width: 90%;
-        flex: 1;
-    }
-
-    .mazyar-scrollable-vertical {
-        overflow-x: clip;
-        overflow-y: auto;
-    }
-
-    .mazyar-resizable {
-        resize: both;
-    }
-
-    .mazyar-flex-container {
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-        max-height: 100%;
-    }
-
-    .mazyar-flex-container-row {
-        display: flex;
-        flex-direction: row;
-        justify-content: center;
-        align-items: center;
-        flex-wrap: wrap;
-    }
-
-    .mazyar-donut {
-        width: 1.7em;
-        height: 1.7em;
-        margin-right: 5px;
-        border-radius: 50%;
-        text-align: center;
-        font-size: 1.2em;
-        padding: 3px;
-        background-color: yellow;
-        color: yellow;
-    }
-
-    .mazyar-final-donut {
-        border: rgb(213, 232, 44) solid 2px;
-        color: inherit;
-        padding:0;
-    }
-
-    .mazyar-loading-donut {
-        border-bottom-color: rgb(213, 232, 44);
-        animation: 1.5s mazyar-donut-spin infinite linear;
-    }
-
-    @keyframes mazyar-donut-spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    table.mazyar-table {
-        border-spacing: 0;
-        width: auto;
-    }
-
-    table.mazyar-table tbody td, table.mazyar-table thead th {
-        padding: 0.3em 0.5em;
-        vertical-align: middle;
-    }
-
-    @media only screen and (max-device-width: 1020px) {
-        thead.responsive-show.mazyar-responsive-show {
-            display: table-header-group !important;
-        }
-        tbody tr.responsive-show.mazyar-responsive-show {
-          display: table-row !important;
-      }
-    }
-
-    a.mazyar-in-progress-result {
-        animation: mazyar-change-result-background 3s infinite;
-    }
-
-    @keyframes mazyar-change-result-background {
-        0%   {background-color: inherit;}
-        50%  {background-color: lightgreen;}
-        100%  {background-color: inherit;}
-    }
-
-    .mazyar-deadline-throb-lightgreen {
-        animation: mazyar-throb-deadline-icon 3s infinite;
-    }
-
-    @keyframes mazyar-throb-deadline-icon {
-        0%   {color: yellow;}
-        50%  {color: crimson;}
-        100%  {color: yellow;}
-    }
-
-    .mazyar-deadline-monitor-throb {
-        animation: mazyar-throb-deadline-monitor 3s infinite;
-    }
-
-    @keyframes mazyar-throb-deadline-monitor {
-        0%   {background-color: inherit;}
-        50%  {background-color: yellow;}
-        100%  {background-color: inherit;}
-    }
-
-    span.mazyar-icon-delete {
-        display: inline-block;
-        cursor: pointer;
-        background-image: url("nocache-869/img/player/discard.png");
-        width: 21px;
-        height: 20px;
-    }
-
-    button.mazyar-button {
-        cursor: pointer;
-    }
-
-    div.mazyar-transfer-control-area {
-        width: 50%;
-    }
-
-    .mazyar-dim-50 {
-        opacity: 50%;
-    }
-
-    .mazyar-dim-60 {
-        opacity: 60%;
-    }
-
-    .mazyar-hide {
-        display: none;
-    }
-
-    .mazyar-scout-h {
-        font-weight: bold;
-    }
-
-    .mazyar-scout-1 {
-        color: red;
-    }
-
-    .mazyar-scout-2 {
-        color: darkgoldenrod;
-    }
-
-    .mazyar-scout-3 {
-        color: blue;
-    }
-
-    .mazyar-scout-4 {
-        color: fuchsia;
-    }
-
-    .mazyar-player-comment-icon-www {
-        vertical-align: top;
-    }
-
-    .mazyar-player-comment-icon-www span.player_icon_wrapper {
-        text-align: center;
-    }
-
-    .mazyar-player-comment-icon-inactive {
-        color: lightskyblue;
-    }
-
-    .mazyar-player-comment-icon-active {
-        color: blue;
-    }
-
-    .mazyar-player-comment-textarea {
-        margin: 0.5rem;
-        min-width: 220px;
-        min-height: 100px;
-    }
-
-    .mazyar-days-at-this-club {
-        margin: 5px;
-        padding: 3px;
-        background-color: azure;
-        border-radius: 5px;
-        border: 1px solid black;
-        text-align: center;
-    }
-
-    .mazyar-days-at-this-club-entire {
-        margin: 5px;
-        padding: 3px;
-        background-color: greenyellow;
-        border-radius: 5px;
-        border: 1px solid black;
-        text-align: center;
-    }
-
-    @media only screen and (max-device-width: 1020px) {
-        .mazyar-responsive-block {
-            display: block !important;
-        }
-    }
-    `;
 
     /* ********************** Constants ******************************** */
 
-    const TRANSFER_INTERVALS = {
-        always: {
-            value: "0",
-            label: "always",
-        },
-        onceMinute: {
-            value: "1",
-            label: "once a minute",
-        },
-        onceHour: {
-            value: "2",
-            label: "once an hour",
-        },
-        onceDay: {
-            value: "3",
-            label: "once a day",
-        },
-        never: {
-            value: "4",
-            label: "never",
-        },
-    };
-
-    const deadlineAlertSound =
-        "data:audio/mpeg;base64,//OExAAAAAAAAAAAAFhpbmcAAAAPAAAAKAAADbAAAQEfHy4uLjMzOTk5Pz9CQkJISE9PT2ZmbW1tc"
-        + "3N2dnZ6eoCAgImJlJSUo6OoqKiurrOzs7m5v7+/xMTKysrNzdHR0dXV2dnZ3Nzg4ODk5Ofn5+vr7+/v8/P09PT4+P7+/v//AAAAC"
-        + "kxBTUUzLjEwMARIAAAAAAAAAAAVCCQCzCEAAZoAAA2wXtypYQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//MUxAAAAAP8AUAAAACAS"
-        + "QCQRgCASLq7//PExAsjqwbDH4dpIB1CMEAD6dTAceIh3ZSwkBKkv/gDUEnGWPf6boppjjHOHIAuAsH0EGMjxmOcpE8OeRA5gmYKe"
-        + "CRoflaB40QTHmHMOl8RgYoXMFb3/SOjwUaLL7HAtYywQgSgviYEoaEv/+ipSKZcVTMDRMe5THoShocHAPApjgHgX///Wp//5fNwu"
-        + "g2EuseMh+mJdpVnl7fQKJA0AAMYlm5M3efLtmZ5pmpiPi+lPeGNDVo8maLthyIjQOnQUKcHBPHPC86JxSY1y6Sw0DATakZLSWQIZ"
-        + "YrmIrUZwslwgRZJ4umKZVMiKmpDSdZIgIBAhGatZYC1Qad7A3THKNEBeA2MjtLpeOEy8bhJn18nSyH7D0ntaktEyNiZI4eiqY/0r"
-        + "M9ev67OOoMGn//2MgAZP//KICzT1ZkAcAABn2BbgANQeBkFvylb//5MjaS/orSRpfqp7X5xHv//0SZJEBsJ1NH+y1f//rMP/Q9PS"
-        + "/WuqqizrYvGxSFbDjHaBBgs//OExO8p2wbjH5iYJOJ4qtwAAAd9gqwA9A7N6hlx3f+r/3X3TQsZD0l/+v9Y6gWlEMNm/6///zpn/"
-        + "6f////uxsMqBiwYUAn2Az3CwB8FkFDf/6cw4y2nY4bOvdP/6hugHgOmr/3dL//+r//////1qGuBiuQGmggAAcDXgDv+Bjf///+kg"
-        + "MUn//+cCbu//t//+pf//////RckRrGsX2oAAe4DfcOQAHqcv9fkAZ/czPTqellTejNNGFToMr//UZgJ//M0xPoSaqa7H8WYAWMG/"
-        + "+v//6lf/////+pZEAHgTqoCCS0j+oDQP7J9Z/WgggdSUibTXdaisMiHVLL5RFjRIJ5fJFCmuQia//M0xOsOAqqqXhAoNIjQjPrPZ"
-        + "tFdxg1xmTp2p1L9loLFCAD1Fbn2/TVe3//rX//////9h1hQxQa/b/YDeAGgAbtBQEACJhTQ//M0xO4LYqKkXAKm9bUQ42ig/jRkF"
-        + "GZrOMIGC5Uy5EcPBywwRQCBzKjyEcTDDAixkUZIQOi5NK44/C80mmu3+all2fQkIUl+//MkxPsJ4qa0ngCa1JahVCjRgAozJgDMA"
-        + "DFqTAkDYJjBnxYEAm4GADplB4wwhBKn//M0xPYNEqKmXgHanFFkGsGPGjp43yQxM06JcvIrQ+ymjPH5fNiEEwM7kzJIfjzAGoI3p"
-        + "Jx8CiROuscgABwRW9uTOUAYgIky//NExPwUwqaaXGsnKAZAVClUdJKAsGRoAo1NgctjDQLeMvpImtYyhIBIWl+y1A4UFfQwYSOBB"
-        + "2wQhH1NY0OHIgtYEIlcnRD5aili8Qh1QNoLjuAo6DhsYZKimsAqNyKF//OkxPxF4r6SXtY1yOh5Ibl8ELEVQSAMJyWB0vRoAJmRa"
-        + "djNIAg6X9rrqYbUqwACcACOKgICPYPFjrprgWaVimlY1hv/Q9/rak6Ojdf/Wyklo//9JLRBSDdH7KU6P0bfo+pKjrbUl/baLmzJc"
-        + "dCUUxFiSk1Ke1W0ucxEp0lH4CBHgS2HCIAfDygAfu3m0N//+NDP/9BFT///rH4DXzA+3+rf//1f//////TLgucLoi3oKuAAAMH4t"
-        + "wAcPx1Dt////d/WpPf//6A6wgwi3/V///U3/r////6KKRdJcJgEDNUAB4H41wA+MHfXtVs3/s6e79///TLgBEldf/Z///1t///+v"
-        + "9/61GZIBjhxagAB/gAOB5QAdxon18ix/////fqT//NExPcWaqLW/kNZHXV///Y3AVROK+rfu3//W///////sfJYMjDEertpfgd8w"
-        + "JQAm4tHEMMSAc3UyVhQDjgIr6DEEHtN76ziJmkpTE2keNzhVQLpsYLJsyQTL5F5MIUN//M0xPALiqa2niglJP7/0CYIIFYFMpk+n"
-        + "/X//qdWgimhQ3Qp7skymNzA0mCBoX01WW3QroHSkSwFHjIn15mIeoCQeFVAB/4y//MkxPwLWqauPggmGLeAVAP5OT0hhleGHOcFi"
-        + "RHPH/hue6ablgXIlIcVqxnx7UeG//MkxPEK2qasngCk8OjfX/4zZwQDHQS1a02UyClKYcwgh4gAyhU6ygHJAsb2Bvcc//M0xOgLo"
-        + "qaqXgBiiMGYIoeJguglEKFN1K/GZSLyOvDAAnAQUEoFQToRQ0Of///oMpBkNi+bm+sjD//84Mgaf/dhYAbnil3e//NUxPQZ+qqeX"
-        + "0OYAIu5vYnYhYa3/hgUkTQAAbuDis9Wrqkaa0nWrVZfTbyuBdVBAYa4thFy0MsiUiSFmg3QYjY+i1I0L1B6pRLBsYECGuXSDEWJ8"
-        + "mVlhFjInjcZkbw7gxidcxJJAmtaisRtFFSY5A7kbpKDEY+k//NkxPciswbDHZiYALnQacNMNyVK5FzE1dFSJiYjicnnyRMhBUiJ4"
-        + "umubGJkmXVHUCmVRzjL/qXW31LQe51ILsHK//qFv//zMFgbqpiAgAAAi2g8gAGDweFyK1e1f//izCfb6m7f9TPq3WWTZ1Kb6/+iT"
-        + "IfqARgypBTX/t//9ZgNd2/rUr////1E0MsDdxEc//OExO8qiwbjH5iIBLXgADug8APN6h3CZv///0evsmeZbt//1JkwBR5JJ/q1f"
-        + "//zhKf/////+s4NcEEyfUoADa8GwAfCYHif/r9+6PW93Z0BsoHGa739f1oEPADIiCv+p///zIa7f9v////RSNSBAIgQM1UADUYDb"
-        + "8OQAEwxD8wNP1CnjSf9Jbf9TKSOo2QSSL5QJl1s3qfo/uaA8hPo/60av//pkx//////7JmAmZk6/G//E3AF6vW/xXAiV21P//M0x"
-        + "PcRGqa3H8WQATzz36up5+nn0lSILaN16NRv5kAD88l/6///yse///6000EKqy+9mXb2UakuJCoAD4ULfcH8AGIQif4h//M0xO0L2"
-        + "qap/BAmGAvjGjs/WtkUdlooUlIsnZ9svkk6ls7qd2R/6hugVhw8//b/+ikkk5iPD//r3U/UlMS6zJLWpJKroF8X//M0xPgNSqagf"
-        + "gKk4CBsw8PVHAtgA+DeGjf///+hglki///0x0Adjk2/1UF///5gO7//////qWZD5CRy6pUQwH/AHzxCf/////M0xP0PKqaiXgBmb"
-        + "P6mLX///SBHjD/mMp1//+UFn/////+k04lAOAoDqgwHA9wA+JQd////+gUC6h///ogjgm2+1f///UZf//M0xPsPEp6sfgKavP///"
-        + "+3+mOgWUaUCBwBoAPkoPP////qW5SHf///0gFWXH////+o9//////+gvB1VABkBgPsAPjgAKd3///M0xPkTCqaqXgBibP//1NF3/"
-        + "//KwLhNv1N///1mX//////2L5MdEOBLSB8Ihf////+oHjZ///6zAIG/9////O///////j5K//M0xOcK0qakHgKm8MeVIOAMyB8aD"
-        + "P////6KEn///WAzlf////qMv//////zo7Ug4HoQHyYz////+g8GW///zAD1O/7f//9S//MkxPYJ2qK0PgRU+P//////+VOqCQcCw"
-        + "ID5dHr///9/Uw1C7///0gGSMP9v///J//MkxPEJqqKsXgHk5P//////x2oAQDgCBAfEIFv///1N8qobf///QA4mf////9f///Mkx"
-        + "O0JIqKwXgRU+P/////MagFwOBvIB8zGA/////Wohf//84FOh/p///1J//////MkxOsJcqK4ngHa8P//oCoDBwLQwPhQsf////xXO"
-        + "///6gEF93/p///6ajDAD5MG//MkxOgIkqKsPgHg8H////6GCz///nASdX/////9dRwH8uDah////7IJic///8vg//MkxOgH8p6wP"
-        + "gHa8MBn7/////9SAD0AoVepE/8XwqrChgzJftMv/NjGih/1PRZI//MkxOsICqK0PgHa8MieM/YCokdCCEqCkwFm4UeF46akNIKKG"
-        + "HJb/b/IqYF0EhE3//MkxO0IYqKoXgSE+P//pkxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO4IUp6sfgHa8Kqqq"
-        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO8IIp64fgNE+Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
-        + "qqqqqqq//MkxPEGUW60XgCU4Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPoFmW6oOAHa8Kqqqqqqqqqqq"
-        + "qqq//MkxO4GKW6gGUBoAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//M0xPgQMcqoeYCgAKqqqqqqqqqqqqqqq"
-        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPIAAAP8AYAAAKqqqqqqqqqqqqqq";
-
-    /* *********************** Utils ********************************** */
-
-    function parseMzDate(dateString) {
-        const [day, month, year] = dateString.split('-').map(Number);
-        return new Date(year, month - 1, day);
-    }
-
-    function parseMzDateTime(dateTimeString) {
-        const [date, time] = dateTimeString.split(' ');
-        const [day, month, year] = date.split('-').map(Number);
-        const [hours, minutes] = time.split(':').map(Number);
-        return new Date(year, month - 1, day, hours, minutes);
-    }
-
-    function generateUuidV4() {
-        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function (c) {
-            const r = (Math.random() * 16) | 0,
-                v = c == "x" ? r : (r & 0x3) | 0x8;
-            return v.toString(16);
-        });
-    }
-
-    function filterHitsIsValid(hits) {
-        return typeof hits === "number" && hits >= 0;
-    }
-
-    function hasDuplicates(array) {
-        return new Set(array).size !== array.length;
-    }
-
-    function getSportType(doc = document) {
-        const zone = doc.querySelector("a#shortcut_link_thezone");
-        if (zone) {
-            return zone.href.indexOf("hockey") > -1 ? "hockey" : "soccer";
-        }
-        return "soccer";
-    }
-
-    function getClubCurrency(doc) {
-        const players = doc.getElementById("playerAltViewTable")?.querySelectorAll("tbody tr");
-        if (players && players.length > 0) {
-            const parts = players[0].querySelector("td:nth-child(3)")?.innerText.split(" ");
-            return parts[parts.length - 1].trim();
-        }
-        return "";
-    }
-
-    function getNationalCurrency(doc) {
-        // works for both domestic and foreign countries
-        const playerNode = doc.getElementById("thePlayers_0")?.querySelector("table tbody tr:nth-child(6)");
-        if (playerNode) {
-            const parts = playerNode.innerText.split(" ");
-            return parts[parts.length - 1].trim();
-        }
-        return "";
-    }
-
-    function extractTeamId(link) {
-        const regex = /tid=(\d+)/;
-        const match = regex.exec(link);
-        return match ? match[1] : null;
-    }
-
-    function extractPlayerID(link) {
-        const regex = /pid=(\d+)/;
-        const match = regex.exec(link);
-        return match ? match[1] : null;
-    }
-
-    function extractMatchID(link) {
-        const regex = /mid=(\d+)/;
-        const match = regex.exec(link);
-        return match ? match[1] : null;
-    }
-
-    function extractPlayerIDFromTransferMonitor(link) {
-        const regex = /u=(\d+)/;
-        const match = regex.exec(link);
-        return match ? match[1] : null;
-    }
-
-    function getPlayerIdFromContainer(player) {
-        return player?.querySelector("h2 span.player_id_span")?.innerText;
-    }
-
-    function isMatchInProgress(resultText) {
-        const scoreRegex = /\b(X|0|[1-9]\d*) - (X|0|[1-9]\d*)\b/;
-        return !scoreRegex.test(resultText);
-    }
-
-    function getSquadSummaryLink(tid) {
-        return `https://${location.hostname}/?p=players&sub=alt&tid=${tid}`;
-    }
-
-    function formatBigNumber(n, sep = " ") {
-        if (n) {
-            const numberString = n.toString();
-            let formattedParts = [];
-            for (let i = numberString.length - 1; i >= 0; i -= 3) {
-                let part = numberString.substring(Math.max(i - 2, 0), i + 1);
-                formattedParts.unshift(part);
-            }
-            return formattedParts.join(sep);
-        }
-        return "0";
-    }
-
-    function formatAverageAge(age, fractionDigits = 1) {
-        if (age) {
-            return age.toFixed(fractionDigits);
-        }
-        return "0.0";
-    }
-
-    function formatFileSize(b) {
-        const s = 1024;
-        let u = 0;
-        while (b >= s || -b >= s) {
-            b /= s;
-            u++;
-        }
-        return (u ? b.toFixed(1) + " " : b) + " KMGTPEZY"[u] + "B";
-    }
-
-    function getClubPlayers(doc, currency) {
-        const players = [];
-        const playerNodes = doc.querySelectorAll("table#playerAltViewTable tr");
-        for (const playerNode of playerNodes) {
-            const age = playerNode.querySelector("td:nth-child(5)")?.innerText.replace(/\s/g, "");
-            if (age) {
-                const value = playerNode.querySelector("td:nth-child(3)")?.innerText.replaceAll(currency, "").replace(/\s/g, "");
-                const shirtNumber = playerNode.querySelector("td:nth-child(0)")?.innerText.replace(/\s/g, "");
-                const pid = playerNode.querySelector("a")?.href;
-                players.push({
-                    shirtNumber,
-                    age: parseInt(age, 10),
-                    value: parseInt(value, 10),
-                    id: extractPlayerID(pid),
-                });
-            }
-        }
-        return players;
-    }
-
-    function getNumberOfFlags(infoTable) {
-        const images = infoTable.getElementsByTagName("img");
-        return images ? [...images].filter((img) => img.src.indexOf("/flags/") > -1).length : 0;
-    }
-
-    function isDomesticPlayer(infoTable) {
-        return getNumberOfFlags(infoTable) === 1;
-    }
-
-    function getNationalPlayers(doc, currency) {
-        const players = [];
-        const playerNodes = doc.querySelectorAll("div.playerContainer");
-        for (const playerNode of playerNodes) {
-            const id = extractPlayerID(playerNode.querySelector("h2 a")?.href);
-            const infoTable = playerNode.querySelector("div.dg_playerview_info table");
-            const age = infoTable.querySelector("tbody tr:nth-child(1) td strong").innerText;
-            const selector = isDomesticPlayer(infoTable) ? "tbody tr:nth-child(5) td span" : "tbody tr:nth-child(6) td span";
-            const value = infoTable.querySelector(selector)?.innerText.replaceAll(currency, "").replace(/\s/g, "");
-            players.push({
-                age: parseInt(age, 10),
-                value: parseInt(value, 10),
-                id,
-            });
-        }
-        return players;
-    }
-
-    function getNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
-        return players.filter((player) => player.age <= ageHigh && player.age >= ageLow).length;
-    }
-
-    function filterPlayers(players, count = 0, ageLow = 0, ageHigh = 99) {
-        if (players.length === 0) {
-            return { values: 0, avgAge: 0.0 };
-        }
-
-        const n = count === 0 ? players.length : count;
-        const filtered = players
-            .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-            .sort((a, b) => b.value - a.value)
-            .slice(0, n);
-        if (filtered.length === 0) {
-            return { values: 0, avgAge: 0.0 };
-        }
-        const values = filtered.map((player) => player.value).reduce((a, b) => a + b, 0);
-        const avgAge = filtered.map((player) => player.age).reduce((a, b) => a + b, 0) / filtered.length;
-        return { values, avgAge };
-    }
-
-    async function getNationalPlayersAndCurrency(tid, sport) {
-        const url = `https://${location.hostname}/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
-        let players = [];
-        let currency = '';
-        await fetch(url)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(content, "text/html");
-                currency = getNationalCurrency(doc);
-                players = getNationalPlayers(doc, currency);
-            })
-            .catch((error) => {
-                console.warn(error);
-            });
-        return { players, currency };
-    }
-
-    async function getClubPlayersAndCurrency(tid) {
-        const url = getSquadSummaryLink(tid);
-        let players = [];
-        let currency = '';
-        await fetch(url)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(content, "text/html");
-                currency = getClubCurrency(doc);
-                players = getClubPlayers(doc, currency);
-            })
-            .catch((error) => {
-                console.warn(error);
-            });
-        return { players, currency };
-    }
-
-    async function getPlayersAndCurrency(tid, sport) {
-        const url = getSquadSummaryLink(tid);
-        const isNational = await fetch(url, { method: "HEAD" })
-            .then((resp) => (resp.url.search("p=national_teams") > -1));
-        return isNational ? await getNationalPlayersAndCurrency(tid, sport) : await getClubPlayersAndCurrency(tid);
-    }
-
-    function getClubTopPlyers(doc) {
-        const currency = getClubCurrency(doc);
-        const players = getClubPlayers(doc, currency);
-        const sport = getSportType(doc);
-        const count = sport === "soccer" ? 11 : 21;
-        return players ? filterPlayers(players, count) : { values: 0, avgAge: 0 };
-    }
-
-    async function fetchPlayersProfileSummary(teamId) {
-        const url = `https://${location.hostname}/?p=players&tid=${teamId}`;
-        return await fetch(url)
-            .then((resp) => {
-                return resp.text();
-            }).then((content) => {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(content, "text/html");
-                const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
-                const info = {};
-                for (const player of players) {
-                    const playerId = player.querySelector("span.player_id_span")?.innerText;
-                    const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
-                    info[playerId] = {
-                        detail: player,
-                        shared: !!player.querySelector("i.special_player.fa-share-alt"),
-                        market: !!inMarket,
-                        marketLink: inMarket?.href,
-                    }
-                }
-                return info;
-            }).catch((error) => {
-                console.warn(error);
-                return null;
-            });
-    }
-
-    function squadGetPlayersInfo(players, sport = "soccer") {
-        if (!players) {
-            return [];
-        }
-        const rows = [];
-        if (sport === "hockey") {
-            {
-                const all = filterPlayers(players);
-                const top21 = filterPlayers(players, 21);
-                rows.push({
-                    title: "All",
-                    count: players.length,
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top21: top21.values,
-                    top21Age: top21.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 23);
-                const top21 = filterPlayers(players, 21, 0, 23);
-                rows.push({
-                    title: "U23",
-                    count: getNumberOfPlayers(players, 0, 23),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top21: top21.values,
-                    top21Age: top21.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 21);
-                const top21 = filterPlayers(players, 21, 0, 21);
-                rows.push({
-                    title: "U21",
-                    count: getNumberOfPlayers(players, 0, 21),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top21: top21.values,
-                    top21Age: top21.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 18);
-                const top21 = filterPlayers(players, 21, 0, 18);
-                rows.push({
-                    title: "U18",
-                    count: getNumberOfPlayers(players, 0, 18),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top21: top21.values,
-                    top21Age: top21.avgAge,
-                });
-            }
-        } else {
-            {
-                const all = filterPlayers(players);
-                const top16 = filterPlayers(players, 16);
-                const top11 = filterPlayers(players, 11);
-                rows.push({
-                    title: "All",
-                    count: players.length,
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top16: top16.values,
-                    top16Age: top16.avgAge,
-                    top11: top11.values,
-                    top11Age: top11.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 23);
-                const top16 = filterPlayers(players, 16, 0, 23);
-                const top11 = filterPlayers(players, 11, 0, 23);
-                rows.push({
-                    title: "U23",
-                    count: getNumberOfPlayers(players, 0, 23),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top16: top16.values,
-                    top16Age: top16.avgAge,
-                    top11: top11.values,
-                    top11Age: top11.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 21);
-                const top16 = filterPlayers(players, 16, 0, 21);
-                const top11 = filterPlayers(players, 11, 0, 21);
-                rows.push({
-                    title: "U21",
-                    count: getNumberOfPlayers(players, 0, 21),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top16: top16.values,
-                    top16Age: top16.avgAge,
-                    top11: top11.values,
-                    top11Age: top11.avgAge,
-                });
-            }
-            {
-                const all = filterPlayers(players, 0, 0, 18);
-                const top16 = filterPlayers(players, 16, 0, 18);
-                const top11 = filterPlayers(players, 11, 0, 18);
-                rows.push({
-                    title: "U18",
-                    count: getNumberOfPlayers(players, 0, 18),
-                    all: all.values,
-                    allAge: all.avgAge,
-                    top16: top16.values,
-                    top16Age: top16.avgAge,
-                    top11: top11.values,
-                    top11Age: top11.avgAge,
-                });
-            }
-        }
-        return rows;
-    }
-
-    async function fetchDocument(url) {
-        return await fetch(url)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                return parser.parseFromString(content, "text/html");
-            })
-            .catch((error) => {
-                console.warn(error);
-                return null;
-            });
-    }
-
-    async function fetchJson(url) {
-        return await fetch(url)
-            .then((resp) => resp.json())
-            .catch((error) => {
-                console.warn(error);
-                return null;
-            });
-    }
-
-    async function fetchPlayerProfileDocument(playerId) {
-        const url = `https://${location.hostname}/?p=players&pid=${playerId}`;
-        return await fetchDocument(url);
-    }
-
-    async function fetchTransferMonitorData(sport = "soccer") {
-        const url = `https://${location.hostname}/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
-        return await fetchJson(url);
-    }
-
-    async function fetchSquadSummaryDocument(teamId) {
-        const url = getSquadSummaryLink(teamId);
-        return await fetchDocument(url);
-    }
-
-    /* *********************** DOM Utils ********************************** */
-
-    function makeElementDraggable(element, dragHandleElement, dragEndCallback = null) {
-        let deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
-
-        dragHandleElement.style.cursor = "move";
-        dragHandleElement.onmousedown = dragMouseDown;
-
-        function dragMouseDown(e) {
-            e = e || window.event;
-            e.preventDefault();
-            // get the mouse cursor position at startup:
-            lastX = e.clientX;
-            lastY = e.clientY;
-            document.onmouseup = closeDragElement;
-            // call a function whenever the cursor moves:
-            document.onmousemove = elementDrag;
-        }
-
-        function elementDrag(e) {
-            e = e || window.event;
-            e.preventDefault();
-
-            // calculate the new cursor position:
-            deltaX = lastX - e.clientX;
-            deltaY = lastY - e.clientY;
-            lastX = e.clientX;
-            lastY = e.clientY;
-
-            // set the element's new position:
-            let newTop = Math.max(0, element.offsetTop - deltaY);
-            let newLeft = Math.max(0, element.offsetLeft - deltaX);
-
-            const { right, bottom, width, height } = element.getBoundingClientRect();
-            if (right > window.innerWidth) {
-                newLeft = window.innerWidth - width;
-            }
-            if (bottom > window.innerHeight) {
-                newTop = window.innerHeight - height;
-            }
-
-            element.style.top = newTop + "px";
-            element.style.left = newLeft + "px";
-        }
-
-        function closeDragElement() {
-            // stop moving when mouse button is released:
-            document.onmouseup = null;
-            document.onmousemove = null;
-            if (dragEndCallback) {
-                dragEndCallback();
-            }
-        }
-    }
-
-    function getMzButtonColorClass(color) {
-        if (color) {
-            if (color === "red") {
-                return "button_red";
-            } else if (color === "blue") {
-                return "button_blue";
-            } else if (color === "grey") {
-                return "buttondiv_disabled";
-            }
-        }
-        // green or other values
-        return "button_account";
-    }
-
-    function createMzStyledButton(title, color = "", floatDirection = null) {
-        const div = document.createElement("div");
-        div.style.margin = "0.3rem";
-        if (floatDirection) {
-            // floatDirection: floatRight, floatLeft
-            div.classList.add(floatDirection);
-        }
-
-        const button = document.createElement("div");
-        button.classList.add("mzbtn", "buttondiv", getMzButtonColorClass(color));
-        button.innerHTML = `<span class="buttonClassMiddle"><span style="white-space: nowrap">${title}</span></span><span class="buttonClassRight">&nbsp;</span>`;
-
-        div.appendChild(button);
-        return div;
-    }
-
-    function createMzStyledTitle(text = "") {
-        const div = document.createElement("div");
-        div.classList.add("win_bg");
-
-        const title = document.createElement("h3");
-        title.innerText = text;
-        title.style.margin = "0.4rem auto";
-        title.style.padding = "0 0.6rem";
-
-        div.appendChild(title);
-        return div;
-    }
-
-    function createSuggestionList(items) {
-        const datalist = document.createElement("datalist");
-        datalist.id = generateUuidV4();
-        for (const item of items) {
-            const option = document.createElement("option");
-            option.value = item.toString();
-            datalist.appendChild(option);
-        }
-        return datalist;
-    }
-
-    function createMenuTextInput(title = "input", placeholder = "example", datalistId = "") {
-        const div = document.createElement("div");
-        div.classList.add("mazyar-flex-container-row");
-        div.style.justifyItems = "space-between";
-        div.innerHTML = `
-            <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
-            <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
-        `;
-        return div;
-    }
-
-    function createSubMenuTextInput(title = "input", placeholder = "example", initialValue = 0, style = {
-        margin: "0.1rem 2.2rem",
-        inputSize: "5px"
-    }) {
-        const div = document.createElement("div");
-        div.classList.add("mazyar-flex-container-row");
-        div.style.justifyItems = "space-between";
-        div.style.margin = style?.margin ?? "0.1rem 2.2rem";
-        div.innerHTML = `
-            <label style="margin-left: 0.5rem;">${title}: </label>
-            <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">
-        `;
-        return div;
-    }
-
-    function createMenuCheckBox(
-        label,
-        initialValue = true,
-        style = {
-            alignSelf: "flex-start",
-            margin: "0.3rem 0.7rem",
-        }
-    ) {
-        const id = generateUuidV4();
-
-        const div = document.createElement("div");
-        div.style.alignSelf = style?.alignSelf ?? "flex-start";
-        div.style.margin = style?.margin ?? "0.3rem 0.7rem";
-
-        const checkbox = document.createElement("input");
-        checkbox.id = id;
-        checkbox.type = "checkbox";
-        checkbox.checked = initialValue;
-
-        const labelElement = document.createElement("label");
-        labelElement.htmlFor = id;
-        labelElement.innerHTML = label;
-
-        div.appendChild(checkbox);
-        div.appendChild(labelElement);
-        return div;
-    }
-
-    function createMenuGroup(title = "") {
-        const group = document.createElement("div");
-        group.classList.add("mazyar-flex-container");
-        group.style.alignSelf = "flex-start";
-        group.style.alignItems = "flex-start";
-        group.style.margin = "0.2rem 0.6rem";
-        const header = document.createElement("h4");
-        header.innerText = title;
-        header.style.margin = "0.3rem 0rem";
-        group.appendChild(header);
-        return group;
-    }
-
-    function appendOptionList(parent, options, selected) {
-        // options = a object full of 'key: {value, label}'
-        for (const key in options) {
-            if (options.hasOwnProperty(key)) {
-                const child = document.createElement("option");
-                child.value = options[key].value;
-                child.innerText = options[key].label;
-                if (child.value === selected) {
-                    child.selected = true;
-                }
-                parent.appendChild(child);
-            }
-        }
-    }
-
-    function createMenuDropDown(label, options, initialValue) {
-        // options = a object full of 'key: {value, label}'
-        // initialValue = one of the options.value
-
-        const div = document.createElement("div");
-        const labelElement = document.createElement("label");
-        const dropdown = document.createElement("select");
-
-        div.style.alignSelf = "flex-start";
-        div.style.margin = "0.3rem 0.7rem";
-
-        labelElement.innerText = label;
-        labelElement.style.paddingRight = "0.5rem";
-
-        appendOptionList(dropdown, options, initialValue);
-
-        div.appendChild(labelElement);
-        div.appendChild(dropdown);
-        return div;
-    }
-
-    function createDeleteIcon(title) {
-        const icon = document.createElement("span");
-        icon.classList.add("mazyar-icon-delete");
-        if (title) {
-            icon.title = title;
-        }
-        return icon;
-    }
-
-    function createAddToDeadlineIcon(title, color) {
-        const icon = createLegalIcon();
-        icon.style.verticalAlign = "unset";
-        icon.style.borderRadius = "50%";
-        icon.style.border = "solid 1px";
-        icon.style.padding = "3px";
-
-        const span = document.createElement("span");
-        span.style.color = color;
-        span.classList.add("floatRight");
-        if (title) {
-            span.title = title;
-        }
-        span.appendChild(icon);
-        return span;
-    }
-
-    function createDeleteButtonWithTrashIcon(title = "Delete") {
-        const icon = createDeleteIcon();
-
-        const text = document.createElement("span");
-        text.innerText = title;
-
-        const button = document.createElement("button");
-        button.classList.add("mazyar-flex-container-row", "mazyar-button");
-        button.style.margin = "0.6rem 0 0";
-
-        button.appendChild(icon);
-        button.appendChild(text);
-        return button;
-    }
-
-    function filtersViewCreateTableHeader() {
-        const tr = document.createElement("tr");
-
-        const name = document.createElement("th");
-        name.classList.add("header");
-        name.innerText = "Name";
-        name.title = "Filter' name";
-        name.style.textAlign = "left";
-        name.style.textDecoration = "none";
-        name.style.width = "11rem";
-
-        const totalHits = document.createElement("th");
-        totalHits.classList.add("header");
-        totalHits.innerText = "Total";
-        totalHits.title = "Total hits founds for this filter";
-        totalHits.style.textAlign = "center";
-        totalHits.style.textDecoration = "none";
-
-        const scoutHits = document.createElement("th");
-        scoutHits.classList.add("header");
-        scoutHits.innerText = "Scout";
-        scoutHits.title = "Hits found after applying scout filters";
-        scoutHits.style.textAlign = "center";
-        scoutHits.style.textDecoration = "none";
-
-        const tools = document.createElement("th");
-        tools.classList.add("header");
-        tools.innerHTML = " ";
-        tools.style.textAlign = "center";
-        tools.style.textDecoration = "none";
-
-        tr.appendChild(tools);
-        tr.appendChild(name);
-        tr.appendChild(totalHits);
-        tr.appendChild(scoutHits);
-
-        const thead = document.createElement("thead");
-        thead.appendChild(tr);
-        return thead;
-    }
-
-    function startSpinning(element) {
-        element.classList.add("fa-spin");
-    }
-
-    function stopSpinning(element) {
-        element.classList.remove("fa-spin");
-    }
-
-    function filtersViewCreateTableBody(filters = []) {
-        const tbody = document.createElement("tbody");
-
-        for (const filter of filters) {
-            const tr = document.createElement("tr");
-
-            const filterName = filter.name.length > 32 ? filter.name.substring(0, 29) + "..." : filter.name;
-
-            const name = document.createElement("td");
-            name.innerHTML = `<a target="_blank" href="https://${location.hostname}/?p=transfer&mzy_filter_name=${filter.name}">${filterName}</a>`;
-            name.title = filter.name.length > 32 ? `Filter's full name: ${filter.name}` : "Filter's name";
-
-            const total = document.createElement("td");
-            const scout = document.createElement("td");
-            total.style.textAlign = "center";
-            scout.style.textAlign = "center";
-
-            mazyar.getFilterHitsFromIndexedDb(filter.id).then(({ totalHits, scoutHits }) => {
-                total.innerText = filterHitsIsValid(totalHits) ? totalHits.toString() : "n/a";
-                if (filter.scout) {
-                    scout.innerHTML = `<a style="cursor: pointer;">${filterHitsIsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
-                } else {
-                    scout.innerHTML = "X";
-                }
-            });
-
-            if (filter.scout) {
-                scout.onclick = () => {
-                    const info = { name: filter.name, scout: filter.scout, count: scout.innerText };
-                    mazyar.displayFilterResults(filter.id, info);
-                };
-            }
-
-            const del = createDeleteIcon("Delete the filter permanently.");
-            del.style.verticalAlign = "bottom";
-            del.onclick = () => {
-                mazyar.deleteFilter(filter.id);
-                tbody.removeChild(tr);
-                if (tbody.children.length === 0) {
-                    tbody.parentNode.dispatchEvent(new Event("destroy"));
-                }
-            };
-
-            const refresh = createRefreshIcon("Refresh filter hits.");
-            refresh.style.fontSize = "1.1rem";
-            refresh.onclick = async () => {
-                startSpinning(refresh);
-                total.replaceChildren(createLoadingIcon());
-                scout.replaceChildren(createLoadingIcon());
-                const { totalHits, scoutHits } = await mazyar.refreshFilterHits(filter.id);
-                total.innerText = filterHitsIsValid(totalHits) ? totalHits.toString() : "n/a";
-                if (filter.scout) {
-                    scout.innerHTML = `<a style="cursor: pointer;">${filterHitsIsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
-                } else {
-                    scout.innerHTML = "X";
-                }
-                stopSpinning(refresh);
-            };
-
-            const tools = document.createElement("td");
-            tools.appendChild(del);
-            tools.appendChild(refresh);
-
-            tr.appendChild(tools);
-            tr.appendChild(name);
-            tr.appendChild(total);
-            tr.appendChild(scout);
-            tbody.appendChild(tr);
-        }
-        return tbody;
-    }
-
-    function filtersViewCreateTable(filters) {
-        const table = document.createElement("table");
-        const thead = filtersViewCreateTableHeader();
-        const tbody = filtersViewCreateTableBody(filters);
-
-        table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
-        table.style.margin = "0.5rem";
-
-        table.appendChild(thead);
-        table.appendChild(tbody);
-        return table;
-    }
-
-    function createIconFromFontAwesomeClass(classes = [], title = "") {
-        const icon = document.createElement("i");
-        icon.classList.add(...classes);
-        icon.setAttribute("aria-hidden", "true");
-        icon.style.cursor = "pointer";
-        if (title) {
-            icon.title = title;
-        }
-        return icon;
-    }
-
-    function createMoveIcon(title) {
-        return createIconFromFontAwesomeClass(["fa-solid", "fa-up-down-left-right"], title);
-    }
-
-    function createSharedIcon(title) {
-        return createIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
-    }
-
-    function createMarketIcon(title) {
-        return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
-    }
-
-    function createCogIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa", "fa-cog"], title);
-    }
-
-    function createCommentIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
-    }
-
-    function createSearchIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa", "fa-search"], title);
-    }
-
-    function createNoteIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa-solid", "fa-note-sticky"], title);
-    }
-
-    function createRefreshIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa", "fa-refresh"], title);
-    }
-
-    function createLegalIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fa", "fa-legal"], title);
-    }
-
-    function createTrashIcon(title = "") {
-        return createIconFromFontAwesomeClass(["fas", "fa-trash"], title);
-    }
-
-    function createLoadingIcon(title = "") {
-        const icon = createIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
-        icon.style.cursor = "unset";
-        return icon;
-    }
-
-    function createLoadingIcon2(title = "") {
-        const icon = createIconFromFontAwesomeClass(["fa-solid", "fa-loader", "fa-pulse", "fa-fw"], title);
-        icon.style.cursor = "unset";
-        return icon;
-    }
-
-    function createToolbar() {
-        const toolbar = document.createElement("div");
-        const logo = document.createElement("span");
-        const menu = createCogIcon("Settings");
-        const note = createNoteIcon("Notebook");
-        const separator = document.createElement("span");
-        const transfer = document.createElement("div");
-        const transferIcon = createSearchIcon("Transfer");
-        const transferCount = document.createElement("span");
-
-        toolbar.classList.add("mazyar-flex-container");
-        toolbar.style.position = "fixed";
-        toolbar.style.zIndex = "9998";
-        toolbar.style.top = "40%";
-        toolbar.style.right = "5px";
-        toolbar.style.background = "black";
-        toolbar.style.color = "white";
-        toolbar.style.textAlign = "center";
-
-        logo.innerText = "MZY";
-        logo.style.fontSize = "0.6rem";
-        logo.style.fontWeight = "bold";
-        logo.style.margin = "2px";
-        logo.style.padding = "1px";
-
-        menu.style.fontSize = "large";
-        transferIcon.style.fontSize = "large";
-        note.style.fontSize = "large";
-        note.style.marginTop = "5px";
-
-        separator.innerText = "-------";
-        separator.style.textAlign = "center";
-        separator.style.fontSize = "0.6rem";
-        separator.style.fontWeight = "bolder";
-        separator.style.margin = "0";
-        separator.style.padding = "0";
-
-        transfer.classList.add("mazyar-flex-container");
-        transfer.style.cursor = "pointer";
-
-        transferCount.id = "mazyar-transfer-filter-hits";
-        transferCount.innerText = "0";
-        transferCount.style.fontSize = "0.6rem";
-        transferCount.style.fontWeight = "bold";
-        transferCount.style.margin = "1px 0";
-        transferCount.style.padding = "1px";
-
-        transfer.appendChild(transferIcon);
-        transfer.appendChild(transferCount);
-
-        toolbar.appendChild(logo);
-        toolbar.appendChild(menu);
-        toolbar.appendChild(note);
-        toolbar.appendChild(separator);
-        toolbar.appendChild(transfer);
-
-        return { toolbar, menu, transfer, note };
-    }
-
-    function createDeadlineIndicator() {
-        const div = document.createElement("div");
-        const transferIcon = createLegalIcon();
-
-        div.classList.add("mazyar-flex-container");
-        div.style.position = "fixed";
-        div.style.zIndex = "9997";
-        div.style.top = "48%";
-        div.style.right = "35px";
-        div.style.color = "white";
-        div.style.textAlign = "center";
-
-        transferIcon.style.fontSize = "2rem";
-
-        div.appendChild(transferIcon);
-
-        return div;
-    }
+    const CURRENT_VERSION = GM_info.script.version;
+    const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
 
@@ -1392,7 +55,7 @@
     function squadAddIconsBodyToSummaryTable(player, info) {
         const td = document.createElement("td");
         if (info.shared) {
-            const icon = createSharedIcon("Click to see player profile.");
+            const icon = mazyarCreateSharedIcon("Click to see player profile.");
             icon.style.fontSize = "13px";
             icon.classList.add("special_player");
             icon.addEventListener("click", () => {
@@ -1401,7 +64,7 @@
             td.appendChild(icon);
         }
         if (info.market) {
-            const icon = createMarketIcon("Player is in Transfer Market.");
+            const icon = mazyarCreateMarketIcon("Player is in Transfer Market.");
             icon.style.fontSize = "13px";
             icon.classList.add("special_player");
             const link = document.createElement("a");
@@ -1421,8 +84,8 @@
         text.innerHTML = `<b>MZY:</b> fetching players' info ...`;
         table.parentNode.insertBefore(text, table);
 
-        const teamId = extractTeamId(document.baseURI);
-        const playersInfo = await fetchPlayersProfileSummary(teamId);
+        const teamId = mazyarExtractTeamId(document.baseURI);
+        const playersInfo = await mazyarExtractPlayersProfileDetails(teamId);
         if (!playersInfo) {
             text.innerHTML = `<b>MZY:</b> fetching players' info ...<span style="color: red;"> failed</span>.`;
             return;
@@ -1431,7 +94,7 @@
         squadAddIconsHeaderToSummaryTable(table, ownView);
         for (const player of players) {
             const name = player.querySelector("a");
-            const playerId = extractPlayerID(name?.href);
+            const playerId = mazyarExtractPlayerIdFromProfileLink(name?.href);
             squadAddIconsBodyToSummaryTable(player, playersInfo[playerId]);
         }
     }
@@ -1446,7 +109,7 @@
         const history = transfers?.querySelector("tbody");
         if (history?.children.length > 1) {
             const arrived = history?.lastChild?.querySelector("td")?.innerText;
-            const days = Math.floor((new Date() - parseMzDate(arrived)) / 86_400_000);
+            const days = Math.floor((new Date() - mazyarParseMzDate(arrived)) / 86_400_000);
             const price = history.lastChild?.querySelector("td:last-child")?.innerText;
             const currency = transfers?.querySelector("thead tr td:last-child")?.innerText?.match(/.*\((.*)\)/)?.[1];
             return { days, price: price + ' ' + currency };
@@ -1530,7 +193,7 @@
     }
 
     function squadAddTotalSkillBallsToSummaryTable(table) {
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const players = table?.querySelectorAll("tbody tr");
         if (players?.[0]?.children?.length > 6) {
             squadAddTotalSkillBallsHeaderToSummaryTable(table);
@@ -1553,12 +216,12 @@
         dl.classList.add("hitlist-compact-list", "columns");
 
         dl.appendChild(squadCreateCompactElement("Count", row.count));
-        dl.appendChild(squadCreateCompactElement("Total", `${formatBigNumber(row.all)} ${currency}`));
+        dl.appendChild(squadCreateCompactElement("Total", `${mazyarFormatBigNumber(row.all)} ${currency}`));
         if (sport == "soccer") {
-            dl.appendChild(squadCreateCompactElement("Top 16", `${formatBigNumber(row.top16)} ${currency}`));
-            dl.appendChild(squadCreateCompactElement("Top 11", `${formatBigNumber(row.top11)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 16", `${mazyarFormatBigNumber(row.top16)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 11", `${mazyarFormatBigNumber(row.top11)} ${currency}`));
         } else {
-            dl.appendChild(squadCreateCompactElement("Top 21", `${formatBigNumber(row.top21)} ${currency}`));
+            dl.appendChild(squadCreateCompactElement("Top 21", `${mazyarFormatBigNumber(row.top21)} ${currency}`));
         }
         return dl;
     }
@@ -1634,7 +297,7 @@
             count.style.textAlign = "center";
 
             const all = document.createElement("td");
-            all.innerText = `${formatBigNumber(row.all)} ${currency}`;
+            all.innerText = `${mazyarFormatBigNumber(row.all)} ${currency}`;
             all.style.textAlign = "end";
 
             const tr = document.createElement("tr");
@@ -1645,18 +308,18 @@
 
             if (sport === "soccer") {
                 const top16 = document.createElement("td");
-                top16.innerText = `${formatBigNumber(row.top16)} ${currency}`;
+                top16.innerText = `${mazyarFormatBigNumber(row.top16)} ${currency}`;
                 top16.style.textAlign = "end";
 
                 const top11 = document.createElement("td");
-                top11.innerText = `${formatBigNumber(row.top11)} ${currency}`;
+                top11.innerText = `${mazyarFormatBigNumber(row.top11)} ${currency}`;
                 top11.style.textAlign = "end";
 
                 tr.appendChild(top16);
                 tr.appendChild(top11);
             } else {
                 const top21 = document.createElement("td");
-                top21.innerText = `${formatBigNumber(row.top21)} ${currency}`;
+                top21.innerText = `${mazyarFormatBigNumber(row.top21)} ${currency}`;
                 top21.style.textAlign = "end";
 
                 tr.appendChild(top21);
@@ -1673,10 +336,10 @@
     }
 
     function squadInjectTopPlayersTable(table) {
-        const sport = getSportType(document);
-        const currency = getClubCurrency(document);
-        const players = getClubPlayers(document, currency);
-        const summary = squadGetPlayersInfo(players, sport);
+        const sport = mazyarExtractSportType(document);
+        const currency = mazyarExtractClubCurrency(document);
+        const players = mazyarExtractClubPlayersDetails(document, currency);
+        const summary = mazyarExtractSquadSummaryDetails(players, sport);
         const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
         topPlayers.style.marginBottom = "10px";
 
@@ -1835,12 +498,12 @@
         const value = document.createElement("td");
         value.style.whiteSpace = "nowrap";
         value.style.textAlign = "center";
-        value.replaceChildren(createLoadingIcon2());
+        value.replaceChildren(mazyarCreateLoadingIcon2());
 
         const age = document.createElement("td");
         age.style.whiteSpace = "nowrap";
         age.style.textAlign = "center";
-        age.replaceChildren(createLoadingIcon2());
+        age.replaceChildren(mazyarCreateLoadingIcon2());
 
         team.appendChild(value);
         team.appendChild(age);
@@ -1849,13 +512,13 @@
         team.topPlayersAge = 0;
 
         const link = team.querySelector("td:nth-child(4) a");
-        const teamId = extractTeamId(link?.href);
-        const doc = await fetchSquadSummaryDocument(teamId);
+        const teamId = mazyarExtractTeamId(link?.href);
+        const doc = await mazyarFetchSquadSummaryDocument(teamId);
         if (doc) {
-            const currency = getClubCurrency(doc);
-            ({ values: team.topPlayersValue, avgAge: team.topPlayersAge } = getClubTopPlyers(doc));
-            value.innerHTML = `<strong>${formatBigNumber(team.topPlayersValue, ",")}</strong> ${currency}`;
-            age.innerHTML = `<strong>${formatAverageAge(team.topPlayersAge)}</strong>`;
+            const currency = mazyarExtractClubCurrency(doc);
+            ({ values: team.topPlayersValue, avgAge: team.topPlayersAge } = mazyarExtractClubTopPlyers(doc));
+            value.innerHTML = `<strong>${mazyarFormatBigNumber(team.topPlayersValue, ",")}</strong> ${currency}`;
+            age.innerHTML = `<strong>${mazyarFormatAverageAge(team.topPlayersAge)}</strong>`;
         }
     }
 
@@ -1908,8 +571,8 @@
                 const parser = new DOMParser();
                 return parser.parseFromString(content, "text/html");
             }).then((doc) => {
-                info.currency = getClubCurrency(doc);
-                ({ values: team.topPlayersValue, avgAge: info.averageAge } = getClubTopPlyers(doc));
+                info.currency = mazyarExtractClubCurrency(doc);
+                ({ values: team.topPlayersValue, avgAge: info.averageAge } = mazyarExtractClubTopPlyers(doc));
                 return true;
             })
             .catch((error) => {
@@ -1919,12 +582,12 @@
             });
 
         team.querySelector("td.value").innerHTML = successful
-            ? `${formatBigNumber(team.topPlayersValue, ",")} ${info.currency}`
+            ? `${mazyarFormatBigNumber(team.topPlayersValue, ",")} ${info.currency}`
             : 'N/A';
 
         if (!mobileView) {
             team.querySelector("td.age").innerHTML = successful
-                ? `<strong>${formatAverageAge(info.averageAge)}</strong>` :
+                ? `<strong>${mazyarFormatAverageAge(info.averageAge)}</strong>` :
                 'N/A';
         }
         return successful;
@@ -2069,8 +732,8 @@
             const name = row.querySelector("a.team-name");
             if (name?.href) {
                 // this is info row
-                row.teamId = extractTeamId(name.href);
-                row.url = getSquadSummaryLink(row.teamId);
+                row.teamId = mazyarExtractTeamId(name.href);
+                row.url = mazyarGetSquadSummaryLink(row.teamId);
                 clashAddRankElements(row, mobileView);
                 row.playedMatches = [];
             } else {
@@ -2109,15 +772,15 @@
                 return { teamId: null, teamName: null };
             });
         if (teamId) {
-            const squadUrl = getSquadSummaryLink(teamId);
+            const squadUrl = mazyarGetSquadSummaryLink(teamId);
             await fetch(squadUrl)
                 .then((resp) => resp.text())
                 .then((content) => {
                     const parser = new DOMParser();
                     return parser.parseFromString(content, "text/html");
                 }).then((doc) => {
-                    currency = getClubCurrency(doc);
-                    values = getClubTopPlyers(doc).values;
+                    currency = mazyarExtractClubCurrency(doc);
+                    values = mazyarExtractClubTopPlyers(doc).values;
                 })
                 .catch((error) => {
                     console.warn(error);
@@ -2136,7 +799,7 @@
         value.style.color = "blue";
         value.style.width = "100%";
         value.style.marginTop = "0.5em";
-        value.innerHTML = `<strong style="color:black;">Top${sport === "soccer" ? 11 : 21}: </strong>${formatBigNumber(values, ",")} ${currency}`;
+        value.innerHTML = `<strong style="color:black;">Top${sport === "soccer" ? 11 : 21}: </strong>${mazyarFormatBigNumber(values, ",")} ${currency}`;
         member.querySelector("td").appendChild(value);
 
         const separator = document.createElement("hr");
@@ -2161,7 +824,7 @@
     }
 
     async function federationSortTeamsByTopPlayers(target) {
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const jobs = [];
         const tbody = target?.querySelector(" tbody");
         for (const member of tbody.children) {
@@ -2198,7 +861,7 @@
             total.style.color = "blue";
             total.style.textAlign = "center";
             total.style.width = "100%";
-            total.innerHTML = `<td><strong style="color:black;">Total: </strong>${formatBigNumber(totalValue, ",")} ${members[0].currency}</td>`;
+            total.innerHTML = `<td><strong style="color:black;">Total: </strong>${mazyarFormatBigNumber(totalValue, ",")} ${members[0].currency}</td>`;
             tbody.appendChild(total);
         }
     }
@@ -2290,11 +953,11 @@
             age.style.textAlign = "center";
 
             if (sport === "soccer") {
-                top.innerText = `${formatBigNumber(row.top11)} ${currency}`;
-                age.innerText = `${formatAverageAge(row.top11Age)}`;
+                top.innerText = `${mazyarFormatBigNumber(row.top11)} ${currency}`;
+                age.innerText = `${mazyarFormatAverageAge(row.top11Age)}`;
             } else {
-                top.innerText = `${formatBigNumber(row.top21)} ${currency}`;
-                age.innerText = `${formatAverageAge(row.top21Age)}`;
+                top.innerText = `${mazyarFormatBigNumber(row.top21)} ${currency}`;
+                age.innerText = `${mazyarFormatAverageAge(row.top21Age)}`;
             }
 
             tr.appendChild(title);
@@ -2321,7 +984,7 @@
     }
 
     function matchInjectTopPlayersValues(players, team, currency, sport) {
-        const summary = squadGetPlayersInfo(players, sport);
+        const summary = mazyarExtractSquadSummaryDetails(players, sport);
         const table = matchCreateSummaryTable(summary, currency, sport);
 
         const div = document.createElement("div");
@@ -2341,7 +1004,7 @@
         for (const playerNode of lineupPlayers) {
             const pos = playerNode.querySelector("td:nth-child(2)");
             const order = Number(pos.querySelector("span").innerText);
-            const pid = extractPlayerID(playerNode.querySelector("a").href);
+            const pid = mazyarExtractPlayerIdFromProfileLink(playerNode.querySelector("a").href);
             const playerInfo = {
                 id: pid,
                 order,
@@ -2360,7 +1023,7 @@
             }
 
             const value = document.createElement("td");
-            value.innerText = `${playerInfo.value ? formatBigNumber(playerInfo.value, ",") : "N/A"}`;
+            value.innerText = `${playerInfo.value ? mazyarFormatBigNumber(playerInfo.value, ",") : "N/A"}`;
             playerNode.appendChild(value);
 
             const age = document.createElement("td");
@@ -2396,8 +1059,8 @@
         const div = document.createElement("div");
         div.innerHTML =
             `${sport === "soccer" ? "Starting " : ""}Lineup` +
-            `<br>Value: <b>${formatBigNumber(value, ",")}</b> ${currency}` +
-            `<br>Average Age: <b>${formatAverageAge(averageAge)}</b>` +
+            `<br>Value: <b>${mazyarFormatBigNumber(value, ",")}</b> ${currency}` +
+            `<br>Average Age: <b>${mazyarFormatAverageAge(averageAge)}</b>` +
             `<br><br>Note: <span style="background:lightgreen">YYY</span>` +
             ` are ${sport === "soccer" ? "starting " : "current"} players and ` +
             `<span style="background:#DD0000">NNN</span> are ex-players.` +
@@ -2413,20 +1076,20 @@
 
     async function matchAddTopPlayersValue(team, sport) {
         const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const { players, currency } = await getPlayersAndCurrency(tid, sport);
+        const tid = mazyarExtractTeamId(teamLink);
+        const { players, currency } = await mazyarFetchPlayersAndCurrency(tid, sport);
         matchInjectTopPlayersValues(players, team, currency, sport);
     }
 
     async function matchAddLineupValues(team, sport) {
         const teamLink = team.querySelector("a").href;
-        const tid = extractTeamId(teamLink);
-        const { players, currency } = await getPlayersAndCurrency(tid, sport);
+        const tid = mazyarExtractTeamId(teamLink);
+        const { players, currency } = await mazyarFetchPlayersAndCurrency(tid, sport);
         matchInjectLineupValues(players, team, currency, sport);
     }
 
     function matchInjectTeamValues() {
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const teams = document.querySelectorAll("div.team-table");
         for (const team of teams) {
             if (team.querySelector("table")) {
@@ -2518,19 +1181,19 @@
 
     function matchAddInProgressResults(section) {
         matchAttachChangeEventToFilterForm();
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const matches = matchGetPossiblyInProgressMatches(section);
         // when you visit someone else fixture, this return its id
-        let teamId = extractTeamId(document.baseURI);
+        let teamId = mazyarExtractTeamId(document.baseURI);
         for (const match of matches) {
             const result = match.querySelector("dd.teams-wrapper a.score-shown");
-            if (!isMatchInProgress(result.innerText)) {
+            if (!mazyarIsMatchInProgress(result.innerText)) {
                 match.updated = true;
                 continue;
             }
-            const mid = extractMatchID(result.href);
+            const mid = mazyarExtractMatchId(result.href);
             // this always returns your id
-            const visitorId = extractTeamId(result.href);
+            const visitorId = mazyarExtractTeamId(result.href);
             const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
             GM_xmlhttpRequest({
                 method: "GET",
@@ -2582,9 +1245,9 @@
         section.querySelectorAll("dd:is(.home-team-column, .away-team-column)").forEach((el) => {
             const fullName = el.querySelector("span.full-name");
             if (fullName?.parentNode.tagName === 'STRONG') {
-                el.innerHTML += '<br><strong>' + fullName.innerText + '</strong>';
+                el.innerHTML += `<br><strong class="mazyar-text-truncate" title="${fullName.innerText}">${fullName.innerText}</strong>`;
             } else {
-                el.innerHTML += '<br>' + fullName.innerText;
+                el.innerHTML += `<br><span class="mazyar-text-truncate" title="${fullName.innerText}">${fullName.innerText}</span>`;
             }
         })
     }
@@ -2594,7 +1257,6 @@
             const section = document.querySelector("dl#fixtures-results-list.fixtures");
             if (section && !section.injecting) {
                 section.injecting = true;
-                console.log("injecting");
                 fixtureChangeTeamNames(section);
             }
         };
@@ -2659,8 +1321,8 @@
 
     function tableGetSquadSummaryUrl(team) {
         const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
-        const tid = extractTeamId(teamLink);
-        return getSquadSummaryLink(tid);
+        const tid = mazyarExtractTeamId(teamLink);
+        return mazyarGetSquadSummaryLink(tid);
     }
 
     function tableModifyTeamInBodyForPcView(team, url) {
@@ -2669,7 +1331,7 @@
         const ageValue = document.createElement("td");
         team.appendChild(ageValue);
 
-        teamValue.replaceChildren(createLoadingIcon2());
+        teamValue.replaceChildren(mazyarCreateLoadingIcon2());
         teamValue.classList.add("mazyar-injected", "team-value");
         teamValue.title = "Click to see squad summary";
         teamValue.style.textAlign = "center";
@@ -2679,7 +1341,7 @@
             mazyar.displaySquadSummary(url);
         };
 
-        ageValue.replaceChildren(createLoadingIcon2());
+        ageValue.replaceChildren(mazyarCreateLoadingIcon2());
         ageValue.classList.add("mazyar-injected", "age-value");
         ageValue.style.textAlign = "center";
         ageValue.style.whiteSpace = "nowrap";
@@ -2704,7 +1366,7 @@
         secondRow.classList.add("responsive-show", "mazyar-responsive-show");
 
         value.colSpan = "6";
-        value.replaceChildren(createLoadingIcon2());
+        value.replaceChildren(mazyarCreateLoadingIcon2());
         value.classList.add("mazyar-injected", "team-value");
         value.title = "Click to see squad summary";
         value.style.textAlign = "center";
@@ -2716,7 +1378,7 @@
         };
 
         age.colSpan = "2";
-        age.replaceChildren(createLoadingIcon2());
+        age.replaceChildren(mazyarCreateLoadingIcon2());
         age.classList.add("mazyar-injected", "age-value");
         age.style.textAlign = "center";
         age.style.whiteSpace = "nowrap";
@@ -2741,32 +1403,32 @@
         tableModifyTeamInBodyForPcView(team, url);
         const pcView = team;
 
-        const tid = extractTeamId(url);
-        const { players, currency } = await getPlayersAndCurrency(tid, sport);
+        const tid = mazyarExtractTeamId(url);
+        const { players, currency } = await mazyarFetchPlayersAndCurrency(tid, sport);
 
         const playersOfSport = sport === "soccer" ? 11 : 21;
-        const all = filterPlayers(players, playersOfSport, 0, 99);
-        const u23 = filterPlayers(players, playersOfSport, 0, 23);
-        const u21 = filterPlayers(players, playersOfSport, 0, 21);
-        const u18 = filterPlayers(players, playersOfSport, 0, 18);
+        const all = mazyarFilterPlayers(players, playersOfSport, 0, 99);
+        const u23 = mazyarFilterPlayers(players, playersOfSport, 0, 23);
+        const u21 = mazyarFilterPlayers(players, playersOfSport, 0, 21);
+        const u18 = mazyarFilterPlayers(players, playersOfSport, 0, 18);
 
         for (const view of [pcView, mobileView]) {
             const valueElement = view.querySelector("td.team-value");
             // prettier-ignore
             valueElement.innerHTML =
-                `<span class="values-all" style="display:none">${formatBigNumber(all?.values)} ${currency}</span>` +
-                `<span class="values-u23" style="display:none">${formatBigNumber(u23?.values)} ${currency}</span>` +
-                `<span class="values-u21" style="display:none">${formatBigNumber(u21?.values)} ${currency}</span>` +
-                `<span class="values-u18" style="display:none">${formatBigNumber(u18?.values)} ${currency}</span>`;
+                `<span class="values-all" style="display:none">${mazyarFormatBigNumber(all?.values)} ${currency}</span>` +
+                `<span class="values-u23" style="display:none">${mazyarFormatBigNumber(u23?.values)} ${currency}</span>` +
+                `<span class="values-u21" style="display:none">${mazyarFormatBigNumber(u21?.values)} ${currency}</span>` +
+                `<span class="values-u18" style="display:none">${mazyarFormatBigNumber(u18?.values)} ${currency}</span>`;
             valueElement.style.textAlign = "right";
 
             const ageElement = view.querySelector("td.age-value");
             // prettier-ignore
             ageElement.innerHTML =
-                `<span class="values-all" style="display:none;">${formatAverageAge(all?.avgAge)}</span>` +
-                `<span class="values-u23" style="display:none;">${formatAverageAge(u23?.avgAge)}</span>` +
-                `<span class="values-u21" style="display:none;">${formatAverageAge(u21?.avgAge)}</span>` +
-                `<span class="values-u18" style="display:none;">${formatAverageAge(u18?.avgAge)}</span>`;
+                `<span class="values-all" style="display:none;">${mazyarFormatAverageAge(all?.avgAge)}</span>` +
+                `<span class="values-u23" style="display:none;">${mazyarFormatAverageAge(u23?.avgAge)}</span>` +
+                `<span class="values-u21" style="display:none;">${mazyarFormatAverageAge(u21?.avgAge)}</span>` +
+                `<span class="values-u18" style="display:none;">${mazyarFormatAverageAge(u18?.avgAge)}</span>`;
 
             tableDisplayAgeInfo(view, ageLimit);
         }
@@ -2841,11 +1503,11 @@
     }
 
     function tableInjectInProgressResults() {
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const matches = document.querySelectorAll("table.hitlist.marker td > a");
-        const inProgressMatches = [...matches].filter((match) => isMatchInProgress(match.innerText));
+        const inProgressMatches = [...matches].filter((match) => mazyarIsMatchInProgress(match.innerText));
         for (const match of inProgressMatches) {
-            const mid = extractMatchID(match.href);
+            const mid = mazyarExtractMatchId(match.href);
             const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
             GM_xmlhttpRequest({
                 method: "GET",
@@ -2867,7 +1529,7 @@
 
     function tableAddTopPlayersInfo(table) {
         const ageLimit = tableGetAgeLimit(document.baseURI);
-        const sport = getSportType(document);
+        const sport = mazyarExtractSportType(document);
         const mainHeader = table.querySelector("thead");
 
         // for mobile
@@ -3010,7 +1672,7 @@
     function scheduleHasDuplicateName(round) {
         const teams = round.querySelectorAll("td:nth-child(odd)");
         const names = [...teams].map((t) => t.innerText);
-        return hasDuplicates(names);
+        return mazyarHasDuplicates(names);
     }
 
     function scheduleWaitAndInjectColoring(timeout = 16000) {
@@ -3091,13 +1753,13 @@
     function transferInjectButtons(form) {
         const target = form.querySelector("div.buttons-wrapper.clearfix");
         if (target) {
-            const filterButton = createMzStyledButton("MZY Filters", "red", "floatLeft");
+            const filterButton = mazyarCreateMzStyledButton("MZY Filters", "red", "floatLeft");
             filterButton.style.margin = "0";
             filterButton.onclick = () => {
                 document.getElementById("mazyar-transfer-filter-hits")?.click();
             };
 
-            const saveButton = createMzStyledButton("MZY Save Filter", "blue", "floatLeft");
+            const saveButton = mazyarCreateMzStyledButton("MZY Save Filter", "blue", "floatLeft");
             saveButton.style.margin = "0";
             saveButton.onclick = () => {
                 const params = transferGetSearchParams();
@@ -3128,11 +1790,11 @@
         lows.style.marginRight = "2rem";
 
         const transferOptions = mazyar.getTransferOptions();
-        const H4 = createMenuCheckBox("H4", transferOptions.H4, { margin: "auto 4px auto 1px" });
-        const H3 = createMenuCheckBox("H3", transferOptions.H3, { margin: "auto 4px auto 1px" });
-        const L2 = createMenuCheckBox("L2", transferOptions.L2, { margin: "auto 4px auto 1px" });
-        const L1 = createMenuCheckBox("L1", transferOptions.L1, { margin: "auto 4px auto 1px" });
-        const hide = createMenuCheckBox("Hide Others", transferOptions.hide, { margin: "auto 4px auto 1px" });
+        const H4 = mazyarCreateMenuCheckBox("H4", transferOptions.H4, { margin: "auto 4px auto 1px" });
+        const H3 = mazyarCreateMenuCheckBox("H3", transferOptions.H3, { margin: "auto 4px auto 1px" });
+        const L2 = mazyarCreateMenuCheckBox("L2", transferOptions.L2, { margin: "auto 4px auto 1px" });
+        const L1 = mazyarCreateMenuCheckBox("L1", transferOptions.L1, { margin: "auto 4px auto 1px" });
+        const hide = mazyarCreateMenuCheckBox("Hide Others", transferOptions.hide, { margin: "auto 4px auto 1px" });
 
         H4.onclick = () => {
             mazyar.updateTransferOptions("H4", H4.querySelector("input[type=checkbox]").checked);
@@ -3341,7 +2003,7 @@
             tbody.innerHTML += `
             <td style="text-align:left;padding: 0; width: 100px;"><b>${team.name}</b></td>
             <td style="text-align:left;padding: 0;">[Rank: <b style="display:inline-block; width: 1.1rem; text-align:right; color: ${team.rankColor};">${team.rank ?? 'xx'}</b>]</td>
-            <td style="text-align:right;padding: 0 4px;">[Value: <b style="color: ${team.valueColor};">${formatBigNumber(team.value)}</b> ${team.currency}]</td>
+            <td style="text-align:right;padding: 0 4px;">[Value: <b style="color: ${team.valueColor};">${mazyarFormatBigNumber(team.value)}</b> ${team.currency}]</td>
             `;
         }
 
@@ -3358,7 +2020,7 @@
         const href = match.querySelector("td > a")?.href;
         const url = href.replace("&play=2d", "").replace("&type=2d", "");
 
-        const sport = getSportType();
+        const sport = mazyarExtractSportType();
         const resp = await fetch(url).catch((error) => {
             console.warn(error);
         });
@@ -3370,10 +2032,10 @@
             for (const team of teams) {
                 const link = team.querySelector("a");
                 const name = link.innerText;
-                const tid = extractTeamId(link.href);
-                const { players, currency } = await getPlayersAndCurrency(tid, sport);
+                const tid = mazyarExtractTeamId(link.href);
+                const { players, currency } = await mazyarFetchPlayersAndCurrency(tid, sport);
                 const playersOfSport = sport === "soccer" ? 11 : 21;
-                const all = filterPlayers(players, playersOfSport, 0, 99);
+                const all = mazyarFilterPlayers(players, playersOfSport, 0, 99);
                 results.push({
                     name,
                     value: all?.values,
@@ -3464,15 +2126,15 @@
         rows.forEach(row => {
             const salaryCell = row.insertCell(-1);
             salaryCell.style.textAlign = 'center';
-            salaryCell.replaceChildren(createLoadingIcon2());
+            salaryCell.replaceChildren(mazyarCreateLoadingIcon2());
 
             const bonusCell = row.insertCell(-1);
             bonusCell.style.textAlign = 'center';
-            bonusCell.replaceChildren(createLoadingIcon2());
+            bonusCell.replaceChildren(mazyarCreateLoadingIcon2());
 
             const weeksCell = row.insertCell(-1);
             weeksCell.style.textAlign = 'center';
-            weeksCell.replaceChildren(createLoadingIcon2());
+            weeksCell.replaceChildren(mazyarCreateLoadingIcon2());
         });
     }
 
@@ -3656,7 +2318,8 @@
                 display_in_transfer: false,
                 display_in_training: false,
                 display_for_one_clubs: false,
-            }
+            },
+            fixture_full_name: false,
         };
         #transferOptions = {
             hide: true,
@@ -3677,7 +2340,7 @@
             this.#fetchTransferOptions();
             this.#fetchFilters();
 
-            this.#sport = getSportType();
+            this.#sport = mazyarExtractSportType();
 
             this.#createNotebook();
             this.#addToolbar();
@@ -3701,6 +2364,7 @@
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
             this.#settings.player_comment = GM_getValue("player_comment", false);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
+            this.#settings.fixture_full_name = GM_getValue("fixture_full_name", false);
             this.#settings.deadline.enabled = GM_getValue("deadline", true);
             this.#settings.deadline.play_bell = GM_getValue("deadline_play_bell", false);
             this.#settings.deadline.timeout = GM_getValue("deadline_timeout", 30);
@@ -3719,6 +2383,7 @@
             GM_setValue("mz_predictor", this.#settings.mz_predictor);
             GM_setValue("player_comment", this.#settings.player_comment);
             GM_setValue("coach_salary", this.#settings.coach_salary);
+            GM_setValue("fixture_full_name", this.#settings.fixture_full_name);
             GM_setValue("deadline", this.#settings.deadline.enabled);
             GM_setValue("deadline_play_bell", this.#settings.deadline.play_bell);
             GM_setValue("deadline_timeout", this.#settings.deadline.timeout);
@@ -3783,6 +2448,10 @@
             return this.#settings.coach_salary;
         }
 
+        mustAddFullNamesToFixture() {
+            return this.#settings.fixture_full_name;
+        }
+
         #isTransferDeadlineAlertEnabled() {
             return this.#settings.deadline.enabled;
         }
@@ -3815,7 +2484,7 @@
             await this.#cleanOutdatedDataFromIndexedDb();
             const info = await navigator?.storage?.estimate();
             if (info) {
-                console.log("ManagerZone IndexedDB size: " + formatFileSize(info.usage));
+                console.log("ManagerZone IndexedDB size: " + mazyarFormatFileSize(info.usage));
             }
         }
 
@@ -4033,7 +2702,7 @@
         }
 
         async #extractPlayerProfile(playerId) {
-            const doc = await fetchPlayerProfileDocument(playerId);
+            const doc = await mazyarFetchPlayerProfileDocument(playerId);
             if (doc) {
                 const { days, price } = squadExtractResidencyDaysAndPrice(doc);
                 const camp = this.#isSentToCamp(doc);
@@ -4230,7 +2899,7 @@
         }
 
         async #updateProfileRelatedFieldsInTransfer(player) {
-            const playerId = getPlayerIdFromContainer(player);
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
             await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                 if (this.#isDaysAtThisClubEnabledForTransferMarket()) {
                     this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
@@ -4245,7 +2914,7 @@
         };
 
         async #hidePlayerAccordingToHideList(player) {
-            const playerId = getPlayerIdFromContainer(player);
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
             if (await this.#isPlayerInHideListInIndexDb(playerId)) {
                 player.style.display = 'none';
             }
@@ -4256,8 +2925,8 @@
                 return;
             }
             player.hideButtonInjected = true;
-            const playerId = getPlayerIdFromContainer(player);
-            const hideIcon = createDeleteIcon("Hide player from search result.");
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
+            const hideIcon = mazyarCreateDeleteIcon("Hide player from search result.");
             hideIcon.classList.add("floatRight");
             hideIcon.style.marginTop = "0.2rem";
             player.querySelector("h2.clearfix div")?.appendChild(hideIcon);
@@ -4316,7 +2985,7 @@
         #injectHideButtonToTransferMarket() {
             const target = document.querySelector("#searchform div.buttons-wrapper.clearfix");
             if (target) {
-                const hideButton = createMzStyledButton("MZY Hide", "red", "floatLeft");
+                const hideButton = mazyarCreateMzStyledButton("MZY Hide", "red", "floatLeft");
                 hideButton.style.margin = "0";
                 hideButton.onclick = () => {
                     this.#displayTransferHideMenu();
@@ -4395,7 +3064,7 @@
 
             for (const player of players) {
                 const row = monitorCreatePlayerRow(player, this.#settings.deadline.timeout);
-                const removeIcon = createAddToDeadlineIcon("Remove player from MZY Deadline Monitor", "red");
+                const removeIcon = mazyarCreateAddToDeadlineIcon("Remove player from MZY Deadline Monitor", "red");
                 removeIcon.style.fontSize = "11px";
                 row.querySelector("table.deadline-table tbody tr").appendChild(removeIcon);
                 tbody.appendChild(row);
@@ -4437,7 +3106,7 @@
         // -------------------------------- Player Options -------------------------------------
 
         async #addPlayerCommentIcon(player) {
-            const playerId = getPlayerIdFromContainer(player);
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
 
             const parent = document.createElement("span");
             parent.classList.add("player_icon_placeholder");
@@ -4450,7 +3119,7 @@
             iconSpan.classList.add("player_icon_wrapper");
             a.appendChild(iconSpan);
 
-            const commentIcon = createCommentIcon("MZY Comment");
+            const commentIcon = mazyarCreateCommentIcon("MZY Comment");
             commentIcon.style.fontSize = "1.2rem";
             iconSpan.appendChild(commentIcon);
 
@@ -4511,7 +3180,7 @@
                 const players = container?.querySelectorAll("div.playerContainer");
                 for (const player of players) {
                     jobs.push((async (player) => {
-                        const playerId = getPlayerIdFromContainer(player);
+                        const playerId = mazyarExtractPlayerIdFromContainer(player);
                         await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                             this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                         });
@@ -4524,7 +3193,7 @@
         async trainingAddDaysAtThisClubToPlayerProfile(container) {
             if (this.#isDaysAtThisClubEnabledForTraining()) {
                 const player = container.querySelector("div.playerContainer");
-                const playerId = getPlayerIdFromContainer(player);
+                const playerId = mazyarExtractPlayerIdFromContainer(player);
                 await this.#fetchOrExtractPlayerProfile(playerId).then((profile) => {
                     this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                 });
@@ -4635,7 +3304,7 @@
                     params,
                     scout,
                     interval,
-                    id: generateUuidV4(),
+                    id: mazyarGenerateUuidV4(),
                 };
                 filters.push(filter);
             }
@@ -4649,13 +3318,13 @@
 
         #itsTimeToCheckFilter(filter, lastCheck) {
             const passed = Date.now() - lastCheck;
-            if (filter.interval === TRANSFER_INTERVALS.never.value) {
+            if (filter.interval === MAZYAR_TRANSFER_INTERVALS.never.value) {
                 return false;
-            } else if (filter.interval === TRANSFER_INTERVALS.onceDay.value) {
+            } else if (filter.interval === MAZYAR_TRANSFER_INTERVALS.onceDay.value) {
                 return passed > 24 * 60 * 60 * 1000;
-            } else if (filter.interval === TRANSFER_INTERVALS.onceHour.value) {
+            } else if (filter.interval === MAZYAR_TRANSFER_INTERVALS.onceHour.value) {
                 return passed > 1 * 60 * 60 * 1000;
-            } else if (filter.interval === TRANSFER_INTERVALS.onceMinute.value) {
+            } else if (filter.interval === MAZYAR_TRANSFER_INTERVALS.onceMinute.value) {
                 return passed > 1 * 60 * 1000;
             }
             // 'always' or any invalid value means always
@@ -4747,7 +3416,7 @@
         }
 
         #addToolbar() {
-            const { toolbar, menu, transfer, note } = createToolbar();
+            const { toolbar, menu, transfer, note } = mazyarCreateToolbar();
             menu.addEventListener("click", () => {
                 this.#displaySettingsMenu();
             });
@@ -4785,7 +3454,7 @@
         }
 
         #displayLoading(title = "MZY") {
-            const header = createMzStyledTitle(title);
+            const header = mazyarCreateMzStyledTitle(title);
 
             const loading = document.createElement("p");
             loading.innerText = "Loading...";
@@ -4804,6 +3473,7 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
+                fixture_full_name: false,
                 deadline: {
                     enabled: false,
                     play_bell: false,
@@ -4823,11 +3493,11 @@
 
         #displayCleanMenu() {
             const div = document.createElement("div");
-            const title = createMzStyledTitle("MZY Settings");
+            const title = mazyarCreateMzStyledTitle("MZY Settings");
             const notice = document.createElement("div");
             const buttons = document.createElement("div");
-            const cancel = createMzStyledButton("Cancel", "red");
-            const clean = createMzStyledButton("Clean", "blue");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const clean = mazyarCreateMzStyledButton("Clean", "blue");
 
             div.classList.add("mazyar-flex-container");
 
@@ -4929,12 +3599,12 @@
             this.#notebook.element = document.createElement("div");
             const content = document.createElement("div");
 
-            const contentHeader = createMzStyledTitle("MZY Notebook");
+            const contentHeader = mazyarCreateMzStyledTitle("MZY Notebook");
             const text = document.createElement("textarea");
-            const hide = createMzStyledButton("Hide", "blue");
-            const save = createMzStyledButton("Save", "green");
+            const hide = mazyarCreateMzStyledButton("Hide", "blue");
+            const save = mazyarCreateMzStyledButton("Save", "green");
             const warning = document.createElement("div");
-            const discard = createMzStyledButton("Discard", "red");
+            const discard = mazyarCreateMzStyledButton("Discard", "red");
             const buttons = document.createElement("div");
 
             this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-notebook-plain", "mazyar-scrollable-vertical");
@@ -4957,7 +3627,7 @@
                 discard.style.display = "none";
             });
 
-            makeElementDraggable(content, contentHeader, () => {
+            mazyarMakeElementDraggable(content, contentHeader, () => {
                 this.#updateNotebookLocation(content);
                 this.#saveNotebookStyle();
             });
@@ -5016,9 +3686,9 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const enabled = createMenuCheckBox("Enable deadline alert", this.#settings.deadline.enabled, submenuStyle);
-            const playBell = createMenuCheckBox("Sound Notification", this.#settings.deadline.play_bell, { margin: "0.1rem 2.2rem" });
-            const timeout = createSubMenuTextInput("Timeout", "30", this.#settings.deadline.timeout);
+            const enabled = mazyarCreateMenuCheckBox("Enable deadline alert", this.#settings.deadline.enabled, submenuStyle);
+            const playBell = mazyarCreateMenuCheckBox("Sound Notification", this.#settings.deadline.play_bell, { margin: "0.1rem 2.2rem" });
+            const timeout = mazyarCreateSubMenuTextInput("Timeout", "30", this.#settings.deadline.timeout);
             const unit = document.createTextNode("minute(s)");
             timeout.appendChild(unit);
 
@@ -5055,47 +3725,49 @@
             const submenuStyle = { margin: "0.1rem 1.2rem" };
 
             const div = document.createElement("div");
-            const title = createMzStyledTitle(`MZY Settings (v${currentVersion})`);
+            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`);
 
-            const miscellaneousGroup = createMenuGroup("Miscellaneous:");
-            const playerComment = createMenuCheckBox("Enable player comment", this.#settings.player_comment, submenuStyle);
-            const inProgress = createMenuCheckBox("Display in progress results", this.#settings.in_progress_results, submenuStyle);
-            const tableInjection = createMenuCheckBox("Display teams' top players in tables", this.#settings.top_players_in_tables, submenuStyle);
-            const mzPredictor = createMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor, submenuStyle);
+            const miscellaneousGroup = mazyarCreateMenuGroup("Miscellaneous:");
+            const playerComment = mazyarCreateMenuCheckBox("Enable player comment", this.#settings.player_comment, submenuStyle);
+            const inProgress = mazyarCreateMenuCheckBox("Display in progress results", this.#settings.in_progress_results, submenuStyle);
+            const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.top_players_in_tables, submenuStyle);
+            const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor, submenuStyle);
+            const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.fixture_full_name, submenuStyle);
             mzPredictor.style.display = 'none';
             miscellaneousGroup.appendChild(playerComment);
             miscellaneousGroup.appendChild(inProgress);
             miscellaneousGroup.appendChild(tableInjection);
             miscellaneousGroup.appendChild(mzPredictor);
+            miscellaneousGroup.appendChild(fixtureFullName);
 
-            const coachesGroup = createMenuGroup("Coaches:");
-            const coachSalaries = createMenuCheckBox("Display salaries in search results", this.#settings.coach_salary, submenuStyle);
+            const coachesGroup = mazyarCreateMenuGroup("Coaches:");
+            const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.coach_salary, submenuStyle);
             coachesGroup.appendChild(coachSalaries);
 
-            const transferGroup = createMenuGroup("Transfer Market:");
-            const transferFilters = createMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
-            const transferMaxed = createMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
-            const transferCamp = createMenuCheckBox("Check if player is sent to camp", this.#settings.transfer_camp, submenuStyle);
+            const transferGroup = mazyarCreateMenuGroup("Transfer Market:");
+            const transferFilters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
+            const transferMaxed = mazyarCreateMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
+            const transferCamp = mazyarCreateMenuCheckBox("Check if player is sent to camp", this.#settings.transfer_camp, submenuStyle);
             const transferDeadline = this.#createDeadlineOptions(submenuStyle);
             transferGroup.appendChild(transferFilters);
             transferGroup.appendChild(transferMaxed);
             transferGroup.appendChild(transferCamp);
             transferGroup.appendChild(transferDeadline);
 
-            const daysGroup = createMenuGroup("Days at this club:");
-            const daysInProfiles = createMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
-            const daysInTransfer = createMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, submenuStyle);
-            const daysInTraining = createMenuCheckBox("Display in training report", this.#settings.days.display_in_training, submenuStyle);
-            const daysForOneClubs = createMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, submenuStyle);
+            const daysGroup = mazyarCreateMenuGroup("Days at this club:");
+            const daysInProfiles = mazyarCreateMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
+            const daysInTransfer = mazyarCreateMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, submenuStyle);
+            const daysInTraining = mazyarCreateMenuCheckBox("Display in training report", this.#settings.days.display_in_training, submenuStyle);
+            const daysForOneClubs = mazyarCreateMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, submenuStyle);
             daysGroup.appendChild(daysInProfiles);
             daysGroup.appendChild(daysInTransfer);
             daysGroup.appendChild(daysInTraining);
             daysGroup.appendChild(daysForOneClubs);
 
             const buttons = document.createElement("div");
-            const clean = createMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
-            const cancel = createMzStyledButton("Cancel", "red");
-            const save = createMzStyledButton("Save", "green");
+            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const save = mazyarCreateMzStyledButton("Save", "green");
 
             div.classList.add("mazyar-flex-container");
 
@@ -5121,6 +3793,7 @@
                     mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
+                    fixture_full_name: fixtureFullName.querySelector("input[type=checkbox]").checked,
                     days: {
                         display_in_profiles: daysInProfiles.querySelector("input[type=checkbox]").checked,
                         display_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
@@ -5176,17 +3849,17 @@
 
             const scoutText = this.#getSelectedScoutsOptionText();
 
-            const title = createMzStyledTitle("MZY Transfer Filter");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Filter");
             const div = document.createElement("div");
-            const datalist = createSuggestionList(filters.map((f) => f.name));
-            const filterName = createMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
-            const useScout = createMenuCheckBox(`Use scout reports too (${scoutText})`);
-            const checkInterval = createMenuDropDown("Check Interval", TRANSFER_INTERVALS, TRANSFER_INTERVALS.onceHour.value);
+            const datalist = mazyarCreateSuggestionList(filters.map((f) => f.name));
+            const filterName = mazyarCreateMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
+            const useScout = mazyarCreateMenuCheckBox(`Use scout reports too (${scoutText})`);
+            const checkInterval = mazyarCreateMenuDropDown("Check Interval", MAZYAR_TRANSFER_INTERVALS, MAZYAR_TRANSFER_INTERVALS.onceHour.value);
 
             const validation = document.createElement("div");
             const buttons = document.createElement("div");
-            const cancel = createMzStyledButton("Cancel", "red");
-            const save = createMzStyledButton("Save", "green");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const save = mazyarCreateMzStyledButton("Save", "green");
 
             div.classList.add("mazyar-flex-container");
 
@@ -5200,10 +3873,10 @@
                 const name = filterName.querySelector("input[type='text']").value;
                 if (name) {
                     validation.style.display = "none";
-                    save.classList.remove(getMzButtonColorClass("grey"));
+                    save.classList.remove(mazyarGetMzButtonColorClass("grey"));
                 } else {
                     validation.style.display = "unset";
-                    save.classList.add(getMzButtonColorClass("grey"));
+                    save.classList.add(mazyarGetMzButtonColorClass("grey"));
                 }
             };
 
@@ -5224,7 +3897,7 @@
                     this.#hideModal();
                 } else {
                     validation.style.display = "unset";
-                    save.classList.add(getMzButtonColorClass("grey"));
+                    save.classList.add(mazyarGetMzButtonColorClass("grey"));
                 }
             });
 
@@ -5249,7 +3922,7 @@
             const hits = document.getElementById("mazyar-transfer-filter-hits");
             if (hits) {
                 if (total < 0) {
-                    hits.replaceChildren(createLoadingIcon());
+                    hits.replaceChildren(mazyarCreateLoadingIcon());
                 } else {
                     hits.innerText = total > 100 ? "+100" : total.toString();
                     hits.style.color = total > 0 ? "cyan" : "white";
@@ -5264,7 +3937,7 @@
             for (const filter of filters) {
                 let { totalHits: hits, lastCheck } = await this.getFilterHitsFromIndexedDb(filter.id);
                 const needRefresh = this.#itsTimeToCheckFilter(filter, lastCheck);
-                if (!filterHitsIsValid(hits) || forced || needRefresh) {
+                if (!mazyarIsFilterHitsValid(hits) || forced || needRefresh) {
                     const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
                     if (totalHits >= 0) {
                         hits = filter.scout ? scoutHits : totalHits;
@@ -5285,13 +3958,13 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = createMzStyledTitle("MZY Transfer Hide List");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Hide List");
             await this.#countPlayersOfHideListInIndexDb();
             const body = document.createElement("div");
             const description = document.createElement("div");
             const dayClearDiv = document.createElement("div");
-            const daysInput = createMenuTextInput("Days", "0", "");
-            const clear = createMzStyledButton("Remove", "red", "floatRight");
+            const daysInput = mazyarCreateMenuTextInput("Days", "0", "");
+            const clear = mazyarCreateMzStyledButton("Remove", "red", "floatRight");
             const validation = document.createElement("div");
             const result = document.createElement("div");
             dayClearDiv.appendChild(daysInput);
@@ -5306,7 +3979,7 @@
             dayClearDiv.classList.add("mazyar-flex-container-row");
             daysInput.querySelector("input[type='text']").style.width = "2rem";
 
-            const close = createMzStyledButton("Close", "green");
+            const close = mazyarCreateMzStyledButton("Close", "green");
 
             description.innerHTML = `<p>There are <strong style="color:red;">${await this.#countPlayersOfHideListInIndexDb()}</strong> player(s) hidden from transfer market.</p>
             <p>You can remove players from hide list.</p>
@@ -5327,10 +4000,10 @@
                 const days = daysInput.querySelector("input[type='text']").value;
                 if (days.match(/^\d+$/)) {
                     validation.style.display = "none";
-                    clear.classList.remove(getMzButtonColorClass("grey"));
+                    clear.classList.remove(mazyarGetMzButtonColorClass("grey"));
                 } else {
                     validation.style.display = "unset";
-                    clear.classList.add(getMzButtonColorClass("grey"));
+                    clear.classList.add(mazyarGetMzButtonColorClass("grey"));
                 }
             });
 
@@ -5343,7 +4016,7 @@
                     description.querySelector("strong").innerText = await this.#countPlayersOfHideListInIndexDb();
                 } else {
                     validation.style.display = "unset";
-                    clear.classList.add(getMzButtonColorClass("grey"));
+                    clear.classList.add(mazyarGetMzButtonColorClass("grey"));
                 }
             });
 
@@ -5358,11 +4031,96 @@
             this.#replaceModalContent([div]);
         }
 
+        #filtersViewCreateTableBody(filters = []) {
+            const tbody = document.createElement("tbody");
+
+            for (const filter of filters) {
+                const tr = document.createElement("tr");
+
+                const filterName = filter.name.length > 32 ? filter.name.substring(0, 29) + "..." : filter.name;
+
+                const name = document.createElement("td");
+                name.innerHTML = `<a target="_blank" href="https://${location.hostname}/?p=transfer&mzy_filter_name=${filter.name}">${filterName}</a>`;
+                name.title = filter.name.length > 32 ? `Filter's full name: ${filter.name}` : "Filter's name";
+
+                const total = document.createElement("td");
+                const scout = document.createElement("td");
+                total.style.textAlign = "center";
+                scout.style.textAlign = "center";
+
+                this.getFilterHitsFromIndexedDb(filter.id).then(({ totalHits, scoutHits }) => {
+                    total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
+                    if (filter.scout) {
+                        scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                    } else {
+                        scout.innerHTML = "X";
+                    }
+                });
+
+                if (filter.scout) {
+                    scout.onclick = () => {
+                        const info = { name: filter.name, scout: filter.scout, count: scout.innerText };
+                        this.displayFilterResults(filter.id, info);
+                    };
+                }
+
+                const del = mazyarCreateDeleteIcon("Delete the filter permanently.");
+                del.style.verticalAlign = "bottom";
+                del.onclick = () => {
+                    this.deleteFilter(filter.id);
+                    tbody.removeChild(tr);
+                    if (tbody.children.length === 0) {
+                        tbody.parentNode.dispatchEvent(new Event("destroy"));
+                    }
+                };
+
+                const refresh = mazyarCreateRefreshIcon("Refresh filter hits.");
+                refresh.style.fontSize = "1.1rem";
+                refresh.onclick = async () => {
+                    mazyarStartSpinning(refresh);
+                    total.replaceChildren(mazyarCreateLoadingIcon());
+                    scout.replaceChildren(mazyarCreateLoadingIcon());
+                    const { totalHits, scoutHits } = await this.refreshFilterHits(filter.id);
+                    total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
+                    if (filter.scout) {
+                        scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                    } else {
+                        scout.innerHTML = "X";
+                    }
+                    mazyarStopSpinning(refresh);
+                };
+
+                const tools = document.createElement("td");
+                tools.appendChild(del);
+                tools.appendChild(refresh);
+
+                tr.appendChild(tools);
+                tr.appendChild(name);
+                tr.appendChild(total);
+                tr.appendChild(scout);
+                tbody.appendChild(tr);
+            }
+            return tbody;
+        }
+
+        #filtersViewCreateTable(filters) {
+            const table = document.createElement("table");
+            const thead = mazyarFiltersViewCreateTableHeader();
+            const tbody = this.#filtersViewCreateTableBody(filters);
+
+            table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
+            table.style.margin = "0.5rem";
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+            return table;
+        }
+
         async #displayTransferFilters() {
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = createMzStyledTitle("MZY Transfer Filters");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Filters");
 
             const filtersView = document.createElement("div");
             filtersView.classList.add("mazyar-flex-container");
@@ -5374,13 +4132,13 @@
 
             const filters = this.#getCurrentFilters();
             if (filters.length > 0) {
-                const deleteAll = createDeleteButtonWithTrashIcon("Delete all filters");
+                const deleteAll = mazyarCreateDeleteButtonWithTrashIcon("Delete all filters");
                 deleteAll.addEventListener("click", () => {
                     this.deleteAllFilters();
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
                 });
-                const table = filtersViewCreateTable(filters);
+                const table = this.#filtersViewCreateTable(filters);
                 table.addEventListener("destroy", () => {
                     // remove 'delete all' button if no filter is left
                     filtersView.style.display = "none";
@@ -5392,7 +4150,7 @@
                 noFilterView.style.display = "unset";
             }
 
-            const close = createMzStyledButton("Close", "green");
+            const close = mazyarCreateMzStyledButton("Close", "green");
             close.addEventListener("click", () => {
                 this.#hideModal();
             });
@@ -5412,16 +4170,16 @@
                 .then((content) => {
                     const parser = new DOMParser();
                     const doc = parser.parseFromString(content, "text/html");
-                    const sport = getSportType(doc);
-                    const currency = getClubCurrency(doc);
-                    const players = getClubPlayers(doc, currency);
-                    const summary = squadGetPlayersInfo(players, sport);
+                    const sport = mazyarExtractSportType(doc);
+                    const currency = mazyarExtractClubCurrency(doc);
+                    const players = mazyarExtractClubPlayersDetails(doc, currency);
+                    const summary = mazyarExtractSquadSummaryDetails(players, sport);
                     const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
                     topPlayers.style.margin = "2px 5px";
                     topPlayers.style.padding = "0";
 
-                    const header = createMzStyledTitle("MZY Squad Summary");
-                    const button = createMzStyledButton("Close", "red");
+                    const header = mazyarCreateMzStyledTitle("MZY Squad Summary");
+                    const button = mazyarCreateMzStyledButton("Close", "red");
                     button.addEventListener("click", () => {
                         this.#hideModal();
                     });
@@ -5436,7 +4194,7 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = createMzStyledTitle("MZY Transfer Deadlines");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Deadlines");
 
             const middle = document.createElement("div");
             middle.classList.add("mazyar-scrollable-vertical");
@@ -5468,7 +4226,7 @@
                     }
                 });
 
-                const trashIcon = createTrashIcon("Remove from deadline list");
+                const trashIcon = mazyarCreateTrashIcon("Remove from deadline list");
                 deleteButton.appendChild(trashIcon);
 
                 const name = document.createElement("td");
@@ -5488,7 +4246,7 @@
                 tbody.appendChild(row);
             }
 
-            const close = createMzStyledButton("Close", "green");
+            const close = mazyarCreateMzStyledButton("Close", "green");
             close.addEventListener("click", () => {
                 this.#hideModal();
             });
@@ -5501,7 +4259,7 @@
         }
 
         #addDeadlineIndicator() {
-            const deadline = createDeadlineIndicator();
+            const deadline = mazyarCreateDeadlineIndicator();
             deadline.id = "mazyar-deadline";
             deadline.style.display = "none";
             deadline.style.border = "1px solid black";
@@ -5515,7 +4273,7 @@
         }
 
         async #monitorFetchAndProcessYourBidsPlayers() {
-            const response = await fetchTransferMonitorData();
+            const response = await mazyarFetchTransferMonitorData();
             if (response) {
                 const yourBids = document.createElement("div");
                 yourBids.innerHTML = response.content;
@@ -5527,8 +4285,8 @@
                     const deadlineFull = sections[1].innerText?.trim();
                     return {
                         name: sections[0].innerText.trim(),
-                        pid: extractPlayerIDFromTransferMonitor(sections[0].querySelector(`a:not([class="player_icon"]`).href),
-                        deadline: 1 + Math.ceil((parseMzDateTime(deadlineFull) - new Date()) / 60_000),
+                        pid: mazyarExtractPlayerIdFromTransferMonitor(sections[0].querySelector(`a:not([class="player_icon"]`).href),
+                        deadline: 1 + Math.ceil((mazyarParseMzDateTime(deadlineFull) - new Date()) / 60_000),
                         deadlineFull,
                         latestBid: sections[2].querySelector(`td[align="right"]`).innerText,
                     }
@@ -5555,7 +4313,7 @@
                     const player = {
                         name: playerDiv.querySelector(".player_name")?.innerText,
                         pid,
-                        deadline: 1 + Math.ceil((parseMzDateTime(deadline.trim()) - new Date()) / 60_000),
+                        deadline: 1 + Math.ceil((mazyarParseMzDateTime(deadline.trim()) - new Date()) / 60_000),
                         deadlineFull: deadline.trim(),
                         latestBid,
                         source: "mzy",
@@ -5618,7 +4376,7 @@
 
         #playDeadlineAlert() {
             if (this.#settings.deadline.play_bell) {
-                const ding = new Audio(deadlineAlertSound);
+                const ding = new Audio(MAZYAR_DEADLINE_ALERT_SOUND);
                 ding.play();
             }
         }
@@ -5671,9 +4429,9 @@
                 return;
             }
             player.deadlineIconInjected = true;
-            const playerId = getPlayerIdFromContainer(player);
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
             let alreadyAdded = deadlines.find((player) => player.pid == playerId);
-            const addButton = createAddToDeadlineIcon("Deadline Monitor Add/Remove", alreadyAdded ? "red" : "green")
+            const addButton = mazyarCreateAddToDeadlineIcon("Deadline Monitor Add/Remove", alreadyAdded ? "red" : "green")
             player.querySelector("h2.clearfix div")?.appendChild(addButton);
 
             addButton.addEventListener("click", async () => {
@@ -5740,10 +4498,10 @@
         async displayFilterResults(filterId, filterInfo) {
             const div = document.createElement("div");
 
-            const header = createMzStyledTitle("MZY Filter Results");
+            const header = mazyarCreateMzStyledTitle("MZY Filter Results");
             const info = this.#createFilterInfo(filterInfo);
             const middle = document.createElement("div");
-            const close = createMzStyledButton("Close", "red");
+            const close = mazyarCreateMzStyledButton("Close", "red");
 
             div.classList.add("mazyar-flex-container");
 
@@ -5796,10 +4554,10 @@
 
         async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
-            const header = createMzStyledTitle("MZY Player Note");
+            const header = mazyarCreateMzStyledTitle("MZY Player Note");
             const text = document.createElement("textarea");
-            const cancel = createMzStyledButton("Cancel", "red");
-            const save = createMzStyledButton("Save", "green");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const save = mazyarCreateMzStyledButton("Save", "green");
             const buttons = document.createElement("div");
 
             buttons.classList.add("mazyar-flex-container-row");
@@ -5833,8 +4591,8 @@
             return v.split('.').map((i) => Number(i));
         }
 
-        #getVersionsOfChangelog(changelogs) {
-            return Object.keys(changelogs).map((v) => this.#getVersionNumbers(v));
+        #getVersionsOfChangelog(MAZYAR_CHANGELOG) {
+            return Object.keys(MAZYAR_CHANGELOG).map((v) => this.#getVersionNumbers(v));
         }
 
         #isVersionLesserThan(version = [0, 0], base = [0, 0]) {
@@ -5850,17 +4608,17 @@
         #showChangelog() {
             const previousVersion = GM_getValue("previous_version", "");
             if (!previousVersion) {
-                GM_setValue("previous_version", currentVersion);
+                GM_setValue("previous_version", CURRENT_VERSION);
                 return;
             }
             const previous = this.#getVersionNumbers(previousVersion);
-            const current = this.#getVersionNumbers(currentVersion);
+            const current = this.#getVersionNumbers(CURRENT_VERSION);
             if (!this.#isVersionLesserThan(previous, current)) {
                 return;
             }
 
             const headHTML = `<b>Mazyar</b> is updated<br>` +
-                `from <b style="color: red;">v${previousVersion}</b><span> to </span><b style="color: blue;">v${currentVersion}</b>`;
+                `from <b style="color: red;">v${previousVersion}</b><span> to </span><b style="color: blue;">v${CURRENT_VERSION}</b>`;
             const head = document.createElement("div");
             head.innerHTML = headHTML;
             head.style.textAlign = "center";
@@ -5873,7 +4631,7 @@
             changesTitle.style.textAlign = "left";
 
             let changesHTML = '';
-            const versions = this.#getVersionsOfChangelog(changelogs);
+            const versions = this.#getVersionsOfChangelog(MAZYAR_CHANGELOG);
             for (const version of versions) {
                 if (this.#isVersionGreaterThan(version, current)) {
                     continue;
@@ -5881,7 +4639,7 @@
                 if (this.#isVersionGreaterThan(version, previous)) {
                     const v = version.join('.');
                     changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
-                        + changelogs[v]?.join("</li><li>") + "</li></ul></div>";
+                        + MAZYAR_CHANGELOG[v]?.join("</li><li>") + "</li></ul></div>";
                 }
             }
             const changes = document.createElement("div");
@@ -5902,11 +4660,11 @@
             text.appendChild(changesTitle);
             text.appendChild(changes);
 
-            const header = createMzStyledTitle("MZY Notice");
-            const close = createMzStyledButton("close", "green");
+            const header = mazyarCreateMzStyledTitle("MZY Notice");
+            const close = mazyarCreateMzStyledButton("close", "green");
 
             close.addEventListener("click", () => {
-                GM_setValue("previous_version", currentVersion);
+                GM_setValue("previous_version", CURRENT_VERSION);
                 this.#hideModal();
             });
 
@@ -5920,8 +4678,8 @@
             player.style.backgroundColor = "wheat";
             player.appendChild(playerView);
 
-            const header = createMzStyledTitle("MZY Player View");
-            const close = createMzStyledButton("close", "green");
+            const header = mazyarCreateMzStyledTitle("MZY Player View");
+            const close = mazyarCreateMzStyledButton("close", "green");
 
             close.addEventListener("click", () => {
                 this.#hideModal();
@@ -5944,6 +4702,7 @@
     }
 
     async function inject() {
+        const styles = GM_getResourceText("MAZYAR_STYLES");
         GM_addStyle(styles);
 
         mazyar = new Mazyar();
@@ -5968,7 +4727,7 @@
             if (uri.search("&sub=result") < 0) {
                 matchInjectInProgressResults();
             }
-            if (uri.endsWith("&sub=scheduled") > -1) {
+            if (uri.endsWith("&sub=scheduled") > -1 && mazyar.mustAddFullNamesToFixture()) {
                 fixtureChangeNames();
             }
         } else if (uri.search("/?p=league") > -1) {
@@ -6018,5 +4777,4 @@
         // `DOMContentLoaded` has already fired
         inject();
     }
-
 })();
