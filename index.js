@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.2
+// @version      3.3
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513035/1467970/MazyarConstants.js
+// @require      https://update.greasyfork.org/scripts/513035/1468419/MazyarConstants.js
 // @require      https://update.greasyfork.org/scripts/513041/1467478/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
@@ -1235,6 +1235,14 @@
         }
     }
 
+    function fixtureCreateFullNameElement(name, tag) {
+        const element = document.createElement(tag);
+        element.classList.add("mazyar-text-truncate");
+        element.title = name;
+        element.innerText = name;
+        return element;
+    }
+
     function fixtureChangeTeamNames(section) {
         section.querySelectorAll("dl.flex-wrap > dd.teams-wrapper.flex-grow-1").forEach((el) => {
             el.classList.add("mazyar-responsive-block");
@@ -1244,11 +1252,10 @@
         });
         section.querySelectorAll("dd:is(.home-team-column, .away-team-column)").forEach((el) => {
             const fullName = el.querySelector("span.full-name");
-            if (fullName?.parentNode.tagName === 'STRONG') {
-                el.innerHTML += `<br><strong class="mazyar-text-truncate" title="${fullName.innerText}">${fullName.innerText}</strong>`;
-            } else {
-                el.innerHTML += `<br><span class="mazyar-text-truncate" title="${fullName.innerText}">${fullName.innerText}</span>`;
-            }
+            const tag = (fullName?.parentNode.tagName === 'STRONG') ? "strong" : "span";
+            const name = fixtureCreateFullNameElement(fullName.innerText, tag);
+            el.appendChild(document.createElement("br"));
+            el.appendChild(name);
         })
     }
 
