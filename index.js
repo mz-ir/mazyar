@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.0
+// @version      3.2
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,8 +16,8 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513035/1466953/MazyarConstants.js
-// @require      https://update.greasyfork.org/scripts/513041/1466977/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513035/1467970/MazyarConstants.js
+// @require      https://update.greasyfork.org/scripts/513041/1467478/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -2358,20 +2358,20 @@
         #fetchSettings() {
             this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
             this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
-            this.#settings.transfer = GM_getValue("enable_transfer_filters", false);
-            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", false);
-            this.#settings.transfer_camp = GM_getValue("display_camp_in_transfer", false);
+            this.#settings.transfer = GM_getValue("enable_transfer_filters", true);
+            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", true);
+            this.#settings.transfer_camp = GM_getValue("display_camp_in_transfer", true);
             this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
-            this.#settings.player_comment = GM_getValue("player_comment", false);
+            this.#settings.player_comment = GM_getValue("player_comment", true);
             this.#settings.coach_salary = GM_getValue("coach_salary", true);
-            this.#settings.fixture_full_name = GM_getValue("fixture_full_name", false);
+            this.#settings.fixture_full_name = GM_getValue("fixture_full_name", true);
             this.#settings.deadline.enabled = GM_getValue("deadline", true);
             this.#settings.deadline.play_bell = GM_getValue("deadline_play_bell", false);
             this.#settings.deadline.timeout = GM_getValue("deadline_timeout", 30);
-            this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", false);
+            this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", true);
             this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
-            this.#settings.days.display_in_training = GM_getValue("display_days_in_training", false);
-            this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", false);
+            this.#settings.days.display_in_training = GM_getValue("display_days_in_training", true);
+            this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", true);
         }
 
         #saveSettings() {
