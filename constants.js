@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarConstants
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Mazyar Constants
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
