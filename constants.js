@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarConstants
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Mazyar Constants
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -13,6 +13,9 @@
 // ==/UserScript==
 
 const MAZYAR_CHANGELOG = {
+    "3.3": [
+        "<b>[fix]</b> Fixtures: make it compatible with <b>ylOppTactsPreview (MODIFIED)</b> script.",
+    ],
     "3.2": [
         "<b>[fix]</b> bump version to overwrite the latest version in greasyfork",
     ],
