@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarConstants
 // @namespace    http://tampermonkey.net/
-// @version      0.3
+// @version      1.1
 // @description  Mazyar Constants
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -13,6 +13,12 @@
 // ==/UserScript==
 
 const MAZYAR_CHANGELOG = {
+    "3.2": [
+        "<b>[fix]</b> bump version to overwrite the latest version in greasyfork",
+    ],
+    "3.1": [
+        "<b>[fix]</b> required wrong version of scripts.",
+    ],
     "3.0": [
         "<b>[fix]</b> Fixtures: truncate full names if they are very long.",
         "<b>[new]</b> make displaying full names in fixture page optional. It is disabled by default. To enable it check 'Display team's full name in fixture' in MZY Settings.",
