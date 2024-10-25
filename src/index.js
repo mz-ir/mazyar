@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.3
+// @version      3.4
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,8 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513035/1468419/MazyarConstants.js
-// @require      https://update.greasyfork.org/scripts/513041/1467478/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1470916/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -36,6 +35,225 @@
 
     const CURRENT_VERSION = GM_info.script.version;
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
+
+    const MAZYAR_CHANGELOG = {
+        "3.4": [
+            "<b>[new]</b> MZY Settings is splitted to smaller sections.",
+        ],
+        "3.3": [
+            "<b>[fix]</b> Fixtures: make it compatible with <b>ylOppTactsPreview (MODIFIED)</b> script.",
+        ],
+        "3.2": [
+            "<b>[fix]</b> bump version to overwrite the latest version in greasyfork",
+        ],
+        "3.1": [
+            "<b>[fix]</b> required wrong version of scripts.",
+        ],
+        "3.0": [
+            "<b>[fix]</b> Fixtures: truncate full names if they are very long.",
+            "<b>[new]</b> make displaying full names in fixture page optional. It is disabled by default. To enable it check 'Display team's full name in fixture' in MZY Settings.",
+            "<b>[Refactor]</b> restructured the project to multiple files.",
+        ],
+        "2.54": [
+            "<b>[new]</b> Fixtures: add full name of the teams."
+        ],
+        "2.53": [
+            "<b>[new]</b> show transfer fee in tactic page.",
+            "<b>[fix]</b> Squad Summary: top players table in mobile view.",
+        ],
+        "2.52": [
+            "<b>[new]</b> show residency days and transfer fee in shortlist."
+        ],
+        "2.51": [
+            "<b>[new]</b> show transfer fee in more places."
+        ],
+        "2.50": [
+            "<b>[new]</b> Players Profile: add transfer fee."
+        ],
+        "2.49": [
+            "<b>[fix]</b> Transfer Market: wrong camp status in test domain"
+        ],
+        "2.48": [
+            "<b>[fix]</b> download and update urls for userscript were missing."
+        ],
+        "2.47": [
+            "<b>[fix]</b> some features were not compatible with test version of the site (test.managerzone.com)."
+        ],
+        "2.46": [
+            "<b>[new]</b> if 'deadline alert' is enabled from MZY Settings, it adds a section to Transfer Monitor to display players you added to monitor their deadline.</b>.",
+            "<b>[fix]</b> clean install was broken."
+        ],
+        "2.45": [
+            "<b>[new]</b> Market: add optional feature to show training camp status of players. It is disabled by default. To enable it, please select 'Check if player is sent to camp' option from <b>MZY Settings</b>."
+        ],
+        "2.44": [
+            "<b>[fix]</b> Tables: fix not adding top players to friendly league tables."
+        ],
+        "2.43": [
+            "<b>[new]</b> Manager Ranking: add value and average top players for each team. You can sort them by this two columns too."
+        ],
+        "2.42": [
+            "<b>[improve]</b> Squad Summary: add share and market icon for your own players too."
+        ],
+        "2.41": [
+            "<b>[new]</b> Notebook: add a note icon to MZY Toolbar to open/hide a notebook. It stores your note and you can stick it to a corner to be always be available and visible."
+        ],
+        "2.40": [
+            "<b>[fix]</b> Transfer: change Fee font color to blue."
+        ],
+        "2.39": [
+            "<b>[new]</b> Transfer: for non one-club players, the price that current club paid for the player is added next to 'Days at this club'."
+        ],
+        "2.38": [
+            "<b>[fix]</b> Transfer Filters: delete icon was missing in 'MZY Transfer Filters' modal."
+        ],
+        "2.37": [
+            "<b>[new]</b> support Managerzone Test Site (test.managerzone.com). It is not fully tested. Please report any issues you encounter in Test site too."
+        ],
+        "2.36": [
+            "<b>[new]</b> Deadline Alert: add 'Timeout' option in <b>MZY Settings</b> to set deadline timeout. Its value must be between 1 and 360 minutes.",
+            "<b>[new]</b> Deadline Alert: add 'Sound Notification' option to play a bell sound when deadline of at least one of monitored players is less than timeout.",
+            "<b>[fix]</b> Deadline Alert: trash icon was missing in 'MZY Transfer Deadlines' modal when 'van.mz.playerAdvanced' script is enabled.",
+            "<b>[fix]</b> MZY Settings: 'Mark maxed skills' option was missing."
+        ],
+        "2.35": [
+            "<b>[new]</b> Days at this club: add to player profiles in training report. It is optional and disabled by default. You can enable it from MZY Settings."
+        ],
+        "2.34": [
+            "<b>[new]</b> <b>(Experimental)</b> Transfer: add deadline alert."
+        ],
+        "2.33": [
+            "<b>[fix]</b> Federation Front Page: add top players when current federation is changed."
+        ],
+        "2.32": [
+            "<b>[improve]</b> Federation: first team member sort"
+        ],
+        "2.31": [
+            "<b>[new]</b> Clash: add average age of top players and teams senior league for each team. this feature is not supported in mobile view."
+        ],
+        "2.30": [
+            "<b>[fix]</b> Transfer Filters: reset selected H & L checkboxes when Transfer filter is not enabled."
+        ],
+        "2.29": [
+            "<b>[fix]</b> Hide Players: fixed an issue about hide icon when transfer scout filters are used."
+        ],
+        "2.28": [
+            "<b>[fix]</b> Days at this club: after v2.27, it was broken in players page."
+        ],
+        "2.27": [
+            "<b>[new]</b> Transfer Market: it adds a trash icon next to player ID in search result. click on the icon to <b>hide the player. To remove players from hide list, use 'MZY Hide' button."
+        ],
+        "2.26": [
+            "<b>[improve]</b> Days at this club: it is optional. It is disabled by default. You can enable it from MZY Settings.",
+            "<b>[improve]</b> Player Profile: it stores player profiles in local database to reduce number of requests.",
+            "<b>[improve]</b> Local Database: it deletes outdated local data to reduce the size of database.",
+            "<b>[improve]</b> Transfer: it uses less ajax requests now.",
+        ],
+        "2.25": [
+            "<b>[new]</b> Training Report: click on player's camp package icon to open its camp report."
+        ],
+        "2.24": [
+            "<b>[fix]</b> Player Profile: fix Days at this club for injured or suspended players."
+        ],
+        "2.23": [
+            "<b>[new]</b> Squad Profile: add 'days at this club' to each player profile.",
+            "<b>[fix]</b> Player Comment: show comment icon for players when selected tab changes.",
+            "<b>[fix]</b> Player Comment: change color of comment icon to lightskyblue when player has no comment. (previous color was the same as loyal players background)",
+        ],
+        "2.22": [
+            "<b>[new]</b> Hire Coaches: adds salary range of each coach. Thanks to <a href=\"https://www.managerzone.com/?p=profile&uid=8577497\">@douglaskampl</a> for suggesting the idea and sharing his implementation."
+        ],
+        "2.21": [
+            "<b>[new]</b> Club Page: adds total trophy count."
+        ],
+        "2.20": [
+            "<b>[new]</b> Player Profile: add 'Days at this club' counter."
+        ],
+        "2.19": [
+            "<b>[new]</b> Squad Summary: it marks players whose skills are shared. click on share icon to see the player in place.",
+            "<b>[new]</b> Squad Summary: it marks players that are in transfer market. click on transfer icon to see the player in market."
+        ],
+        "2.18": [
+            "<b>[new]</b> show changelog after script update.",
+            "<b>[improve]</b> change icon style of player's comment."
+        ],
+        "2.17": [
+            "<b>[fix]</b> fixed total skill balls"
+        ],
+    }
+
+    const MAZYAR_TRANSFER_INTERVALS = {
+        always: {
+            value: "0",
+            label: "always",
+        },
+        onceMinute: {
+            value: "1",
+            label: "once a minute",
+        },
+        onceHour: {
+            value: "2",
+            label: "once an hour",
+        },
+        onceDay: {
+            value: "3",
+            label: "once a day",
+        },
+        never: {
+            value: "4",
+            label: "never",
+        },
+    };
+
+    const MAZYAR_DEADLINE_ALERT_SOUND =
+        "data:audio/mpeg;base64,//OExAAAAAAAAAAAAFhpbmcAAAAPAAAAKAAADbAAAQEfHy4uLjMzOTk5Pz9CQkJISE9PT2ZmbW1tc"
+        + "3N2dnZ6eoCAgImJlJSUo6OoqKiurrOzs7m5v7+/xMTKysrNzdHR0dXV2dnZ3Nzg4ODk5Ofn5+vr7+/v8/P09PT4+P7+/v//AAAAC"
+        + "kxBTUUzLjEwMARIAAAAAAAAAAAVCCQCzCEAAZoAAA2wXtypYQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA//MUxAAAAAP8AUAAAACAS"
+        + "QCQRgCASLq7//PExAsjqwbDH4dpIB1CMEAD6dTAceIh3ZSwkBKkv/gDUEnGWPf6boppjjHOHIAuAsH0EGMjxmOcpE8OeRA5gmYKe"
+        + "CRoflaB40QTHmHMOl8RgYoXMFb3/SOjwUaLL7HAtYywQgSgviYEoaEv/+ipSKZcVTMDRMe5THoShocHAPApjgHgX///Wp//5fNwu"
+        + "g2EuseMh+mJdpVnl7fQKJA0AAMYlm5M3efLtmZ5pmpiPi+lPeGNDVo8maLthyIjQOnQUKcHBPHPC86JxSY1y6Sw0DATakZLSWQIZ"
+        + "YrmIrUZwslwgRZJ4umKZVMiKmpDSdZIgIBAhGatZYC1Qad7A3THKNEBeA2MjtLpeOEy8bhJn18nSyH7D0ntaktEyNiZI4eiqY/0r"
+        + "M9ev67OOoMGn//2MgAZP//KICzT1ZkAcAABn2BbgANQeBkFvylb//5MjaS/orSRpfqp7X5xHv//0SZJEBsJ1NH+y1f//rMP/Q9PS"
+        + "/WuqqizrYvGxSFbDjHaBBgs//OExO8p2wbjH5iYJOJ4qtwAAAd9gqwA9A7N6hlx3f+r/3X3TQsZD0l/+v9Y6gWlEMNm/6///zpn/"
+        + "6f////uxsMqBiwYUAn2Az3CwB8FkFDf/6cw4y2nY4bOvdP/6hugHgOmr/3dL//+r//////1qGuBiuQGmggAAcDXgDv+Bjf///+kg"
+        + "MUn//+cCbu//t//+pf//////RckRrGsX2oAAe4DfcOQAHqcv9fkAZ/czPTqellTejNNGFToMr//UZgJ//M0xPoSaqa7H8WYAWMG/"
+        + "+v//6lf/////+pZEAHgTqoCCS0j+oDQP7J9Z/WgggdSUibTXdaisMiHVLL5RFjRIJ5fJFCmuQia//M0xOsOAqqqXhAoNIjQjPrPZ"
+        + "tFdxg1xmTp2p1L9loLFCAD1Fbn2/TVe3//rX//////9h1hQxQa/b/YDeAGgAbtBQEACJhTQ//M0xO4LYqKkXAKm9bUQ42ig/jRkF"
+        + "GZrOMIGC5Uy5EcPBywwRQCBzKjyEcTDDAixkUZIQOi5NK44/C80mmu3+all2fQkIUl+//MkxPsJ4qa0ngCa1JahVCjRgAozJgDMA"
+        + "DFqTAkDYJjBnxYEAm4GADplB4wwhBKn//M0xPYNEqKmXgHanFFkGsGPGjp43yQxM06JcvIrQ+ymjPH5fNiEEwM7kzJIfjzAGoI3p"
+        + "Jx8CiROuscgABwRW9uTOUAYgIky//NExPwUwqaaXGsnKAZAVClUdJKAsGRoAo1NgctjDQLeMvpImtYyhIBIWl+y1A4UFfQwYSOBB"
+        + "2wQhH1NY0OHIgtYEIlcnRD5aili8Qh1QNoLjuAo6DhsYZKimsAqNyKF//OkxPxF4r6SXtY1yOh5Ibl8ELEVQSAMJyWB0vRoAJmRa"
+        + "djNIAg6X9rrqYbUqwACcACOKgICPYPFjrprgWaVimlY1hv/Q9/rak6Ojdf/Wyklo//9JLRBSDdH7KU6P0bfo+pKjrbUl/baLmzJc"
+        + "dCUUxFiSk1Ke1W0ucxEp0lH4CBHgS2HCIAfDygAfu3m0N//+NDP/9BFT///rH4DXzA+3+rf//1f//////TLgucLoi3oKuAAAMH4t"
+        + "wAcPx1Dt////d/WpPf//6A6wgwi3/V///U3/r////6KKRdJcJgEDNUAB4H41wA+MHfXtVs3/s6e79///TLgBEldf/Z///1t///+v"
+        + "9/61GZIBjhxagAB/gAOB5QAdxon18ix/////fqT//NExPcWaqLW/kNZHXV///Y3AVROK+rfu3//W///////sfJYMjDEertpfgd8w"
+        + "JQAm4tHEMMSAc3UyVhQDjgIr6DEEHtN76ziJmkpTE2keNzhVQLpsYLJsyQTL5F5MIUN//M0xPALiqa2niglJP7/0CYIIFYFMpk+n"
+        + "/X//qdWgimhQ3Qp7skymNzA0mCBoX01WW3QroHSkSwFHjIn15mIeoCQeFVAB/4y//MkxPwLWqauPggmGLeAVAP5OT0hhleGHOcFi"
+        + "RHPH/hue6ablgXIlIcVqxnx7UeG//MkxPEK2qasngCk8OjfX/4zZwQDHQS1a02UyClKYcwgh4gAyhU6ygHJAsb2Bvcc//M0xOgLo"
+        + "qaqXgBiiMGYIoeJguglEKFN1K/GZSLyOvDAAnAQUEoFQToRQ0Of///oMpBkNi+bm+sjD//84Mgaf/dhYAbnil3e//NUxPQZ+qqeX"
+        + "0OYAIu5vYnYhYa3/hgUkTQAAbuDis9Wrqkaa0nWrVZfTbyuBdVBAYa4thFy0MsiUiSFmg3QYjY+i1I0L1B6pRLBsYECGuXSDEWJ8"
+        + "mVlhFjInjcZkbw7gxidcxJJAmtaisRtFFSY5A7kbpKDEY+k//NkxPciswbDHZiYALnQacNMNyVK5FzE1dFSJiYjicnnyRMhBUiJ4"
+        + "umubGJkmXVHUCmVRzjL/qXW31LQe51ILsHK//qFv//zMFgbqpiAgAAAi2g8gAGDweFyK1e1f//izCfb6m7f9TPq3WWTZ1Kb6/+iT"
+        + "IfqARgypBTX/t//9ZgNd2/rUr////1E0MsDdxEc//OExO8qiwbjH5iIBLXgADug8APN6h3CZv///0evsmeZbt//1JkwBR5JJ/q1f"
+        + "//zhKf/////+s4NcEEyfUoADa8GwAfCYHif/r9+6PW93Z0BsoHGa739f1oEPADIiCv+p///zIa7f9v////RSNSBAIgQM1UADUYDb"
+        + "8OQAEwxD8wNP1CnjSf9Jbf9TKSOo2QSSL5QJl1s3qfo/uaA8hPo/60av//pkx//////7JmAmZk6/G//E3AF6vW/xXAiV21P//M0x"
+        + "PcRGqa3H8WQATzz36up5+nn0lSILaN16NRv5kAD88l/6///yse///6000EKqy+9mXb2UakuJCoAD4ULfcH8AGIQif4h//M0xO0L2"
+        + "qap/BAmGAvjGjs/WtkUdlooUlIsnZ9svkk6ls7qd2R/6hugVhw8//b/+ikkk5iPD//r3U/UlMS6zJLWpJKroF8X//M0xPgNSqagf"
+        + "gKk4CBsw8PVHAtgA+DeGjf///+hglki///0x0Adjk2/1UF///5gO7//////qWZD5CRy6pUQwH/AHzxCf/////M0xP0PKqaiXgBmb"
+        + "P6mLX///SBHjD/mMp1//+UFn/////+k04lAOAoDqgwHA9wA+JQd////+gUC6h///ogjgm2+1f///UZf//M0xPsPEp6sfgKavP///"
+        + "+3+mOgWUaUCBwBoAPkoPP////qW5SHf///0gFWXH////+o9//////+gvB1VABkBgPsAPjgAKd3///M0xPkTCqaqXgBibP//1NF3/"
+        + "//KwLhNv1N///1mX//////2L5MdEOBLSB8Ihf////+oHjZ///6zAIG/9////O///////j5K//M0xOcK0qakHgKm8MeVIOAMyB8aD"
+        + "P////6KEn///WAzlf////qMv//////zo7Ug4HoQHyYz////+g8GW///zAD1O/7f//9S//MkxPYJ2qK0PgRU+P//////+VOqCQcCw"
+        + "ID5dHr///9/Uw1C7///0gGSMP9v///J//MkxPEJqqKsXgHk5P//////x2oAQDgCBAfEIFv///1N8qobf///QA4mf////9f///Mkx"
+        + "O0JIqKwXgRU+P/////MagFwOBvIB8zGA/////Wohf//84FOh/p///1J//////MkxOsJcqK4ngHa8P//oCoDBwLQwPhQsf////xXO"
+        + "///6gEF93/p///6ajDAD5MG//MkxOgIkqKsPgHg8H////6GCz///nASdX/////9dRwH8uDah////7IJic///8vg//MkxOgH8p6wP"
+        + "gHa8MBn7/////9SAD0AoVepE/8XwqrChgzJftMv/NjGih/1PRZI//MkxOsICqK0PgHa8MieM/YCokdCCEqCkwFm4UeF46akNIKKG"
+        + "HJb/b/IqYF0EhE3//MkxO0IYqKoXgSE+P//pkxBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO4IUp6sfgHa8Kqqq"
+        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MkxO8IIp64fgNE+Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"
+        + "qqqqqqq//MkxPEGUW60XgCU4Kqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPoFmW6oOAHa8Kqqqqqqqqqqq"
+        + "qqq//MkxO4GKW6gGUBoAKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//M0xPgQMcqoeYCgAKqqqqqqqqqqqqqqq"
+        + "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//MUxPIAAAP8AYAAAKqqqqqqqqqqqqqq";
+
 
     /* *********************** Squad - Icons (Shared Skills & Transfer) ********************************** */
 
@@ -101,25 +319,9 @@
 
     /* *********************** Squad - Residency ********************************** */
 
-    function squadExtractResidencyDaysAndPrice(doc = document) {
-        if (!doc) {
-            return { days: 0, price: '' };
-        }
-        const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist");
-        const history = transfers?.querySelector("tbody");
-        if (history?.children.length > 1) {
-            const arrived = history?.lastChild?.querySelector("td")?.innerText;
-            const days = Math.floor((new Date() - mazyarParseMzDate(arrived)) / 86_400_000);
-            const price = history.lastChild?.querySelector("td:last-child")?.innerText;
-            const currency = transfers?.querySelector("thead tr td:last-child")?.innerText?.match(/.*\((.*)\)/)?.[1];
-            return { days, price: price + ' ' + currency };
-        }
-        return { days: -1, price: '' };
-    }
-
     function squadAddDaysAtThisClubToPlayerProfile() {
         if (mazyar.isDaysAtThisClubEnabledForPlayerProfiles()) {
-            const { days, price } = squadExtractResidencyDaysAndPrice(document);
+            const { days, price } = mazyarExtractResidencyDaysAndPrice(document);
             const daysDiv = document.createElement("div");
             if (days >= 0) {
                 const text = days === 0 ? 'N/A' : `≤ ${days}`;
@@ -513,7 +715,8 @@
 
         const link = team.querySelector("td:nth-child(4) a");
         const teamId = mazyarExtractTeamId(link?.href);
-        const doc = await mazyarFetchSquadSummaryDocument(teamId);
+        const url = mazyarGetSquadSummaryUrl(teamId);
+        const doc = await mazyarFetchHtml(url);
         if (doc) {
             const currency = mazyarExtractClubCurrency(doc);
             ({ values: team.topPlayersValue, avgAge: team.topPlayersAge } = mazyarExtractClubTopPlyers(doc));
@@ -539,21 +742,14 @@
 
     async function clashFetchAndTeamLeagueAndFlag(team) {
         const url = `https://${location.hostname}/?p=team&tid=${team.teamId}`;
-        await fetch(url)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                return parser.parseFromString(content, "text/html");
-            }).then((doc) => {
-                const leagueRow = doc.querySelector("#infoAboutTeam > dd:nth-child(6)");
-                const flag = leagueRow.querySelector("img");
-                const seriesName = leagueRow.querySelector("span:last-child");
-                team.querySelector("td.flag").appendChild(flag);
-                team.querySelector("td.league").appendChild(seriesName);
-            })
-            .catch((error) => {
-                console.warn(error);
-            });
+        const doc = await mazyarFetchHtml(url);
+        if (doc) {
+            const leagueRow = doc.querySelector("#infoAboutTeam > dd:nth-child(6)");
+            const flag = leagueRow.querySelector("img");
+            const seriesName = leagueRow.querySelector("span:last-child");
+            team.querySelector("td.flag").appendChild(flag);
+            team.querySelector("td.league").appendChild(seriesName);
+        }
     }
 
     async function clashFetchAndUpdateTeamsInfo(team, mobileView) {
@@ -565,21 +761,16 @@
             currency: "",
             averageAge: 0,
         };
-        const successful = await fetch(team.url)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                return parser.parseFromString(content, "text/html");
-            }).then((doc) => {
-                info.currency = mazyarExtractClubCurrency(doc);
-                ({ values: team.topPlayersValue, avgAge: info.averageAge } = mazyarExtractClubTopPlyers(doc));
-                return true;
-            })
-            .catch((error) => {
-                console.warn(error);
-                team.topPlayersAverageAge = 0;
-                return false;
-            });
+
+        const doc = await mazyarFetchHtml(url);
+        let successful = false;
+        if (doc) {
+            info.currency = mazyarExtractClubCurrency(doc);
+            ({ values: team.topPlayersValue, avgAge: info.averageAge } = mazyarExtractClubTopPlyers(doc));
+            successful = true;
+        } else {
+            team.topPlayersAverageAge = 0;
+        }
 
         team.querySelector("td.value").innerHTML = successful
             ? `${mazyarFormatBigNumber(team.topPlayersValue, ",")} ${info.currency}`
@@ -733,7 +924,7 @@
             if (name?.href) {
                 // this is info row
                 row.teamId = mazyarExtractTeamId(name.href);
-                row.url = mazyarGetSquadSummaryLink(row.teamId);
+                row.url = mazyarGetSquadSummaryUrl(row.teamId);
                 clashAddRankElements(row, mobileView);
                 row.playedMatches = [];
             } else {
@@ -756,43 +947,27 @@
     async function federationUpdateMemberInfo(member, username, sport) {
         let values = 0;
         let currency = "";
-        const teamXmlUrl = `https://${location.hostname}/xml/manager_data.php?username=${username}`;
-        const { teamId, teamName } = await fetch(teamXmlUrl)
-            .then((resp) => resp.text())
-            .then((content) => {
-                const parser = new DOMParser();
-                return parser.parseFromString(content, "text/xml");
-            }).then((doc) => {
-                const teamId = doc.querySelector(`Team[sport="${sport}"]`).getAttribute("teamId");
-                const teamName = doc.querySelector(`Team[sport="${sport}"]`).getAttribute("teamName");
-                return { teamId, teamName };
-            })
-            .catch((error) => {
-                console.warn(error);
-                return { teamId: null, teamName: null };
-            });
-        if (teamId) {
-            const squadUrl = mazyarGetSquadSummaryLink(teamId);
-            await fetch(squadUrl)
-                .then((resp) => resp.text())
-                .then((content) => {
-                    const parser = new DOMParser();
-                    return parser.parseFromString(content, "text/html");
-                }).then((doc) => {
-                    currency = mazyarExtractClubCurrency(doc);
-                    values = mazyarExtractClubTopPlyers(doc).values;
-                })
-                .catch((error) => {
-                    console.warn(error);
-                });
+        const url = `https://${location.hostname}/xml/manager_data.php?username=${username}`;
+        const doc = await mazyarFetchXml(url);
+        const team = {
+            id: doc?.querySelector(`Team[sport="${sport}"]`).getAttribute("teamId"),
+            name: doc?.querySelector(`Team[sport="${sport}"]`).getAttribute("teamName"),
+        }
+        if (team.id) {
+            const squadUrl = mazyarGetSquadSummaryUrl(team.id);
+            const doc = await mazyarFetchHtml(squadUrl);
+            if (doc) {
+                currency = mazyarExtractClubCurrency(doc);
+                values = mazyarExtractClubTopPlyers(doc).values;
+            }
         }
 
         const name = document.createElement("div");
         name.style.color = "blue";
         name.style.width = "100%";
         name.style.marginTop = "0.5em";
-        name.title = teamName;
-        name.innerHTML = `<strong style="color:black;">Team: </strong>${teamName.length > 20 ? teamName.substring(0, 16) + " >>>" : teamName}`;
+        name.title = team.name;
+        name.innerHTML = `<strong style="color:black;">Team: </strong>${team.name.length > 20 ? team.name.substring(0, 16) + " >>>" : team.name}`;
         member.querySelector("td").appendChild(name);
 
         const value = document.createElement("div");
@@ -1329,7 +1504,7 @@
     function tableGetSquadSummaryUrl(team) {
         const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
         const tid = mazyarExtractTeamId(teamLink);
-        return mazyarGetSquadSummaryLink(tid);
+        return mazyarGetSquadSummaryUrl(tid);
     }
 
     function tableModifyTeamInBodyForPcView(team, url) {
@@ -1858,129 +2033,13 @@
         }
     }
 
-    /* *********************** Monitor ********************************** */
-
-    function monitorCreateSectionSeparator() {
-        const tr = document.createElement("tr");
-        tr.style.height = "10px";
-        tr.innerHTML = '<td></td>';
-        return tr;
-    }
-
-    function monitorCreateRowSeparator(color) {
-        const tr = document.createElement("tr");
-        tr.classList.add("mazyar-monitor-player-row");
-        tr.style.height = "1px";
-        tr.style.backgroundColor = color;
-        tr.innerHTML = '<td></td>';
-        return tr;
-    }
-
-    function monitorAddRowSeparator() {
-        return [
-            monitorCreateRowSeparator("#999999"),
-            monitorCreateRowSeparator("#FFFFFF")
-        ];
-    }
-
-    function monitorCreateSection(title, id) {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-            <td><div id="${id}">
-            <table width="100%" cellpadding="0" cellspacing="0">
-            <tbody><tr>
-            <td style="background-image: url(img/subheader_right.gif);">
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tbody><tr>
-                    <td class="subheader" valign="bottom">${title}</td>
-                </tr></tbody>
-                </table>
-            </td>
-            </tr></tbody>
-            </table>
-            </div></td>`;
-        return tr;
-    }
-
-    function monitorClearPlayerRows(tbody) {
-        const players = tbody.querySelectorAll(".mazyar-monitor-player-row");
-        for (const player of players) {
-            tbody.removeChild(player);
-        }
-    }
-
-    function monitorCreatePlayerRow(
-        player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
-        timeout = 0) {
-        const tr = document.createElement("tr");
-        tr.classList.add("mazyar-monitor-player-row");
-        if (player.deadline <= timeout) {
-            tr.classList.add("mazyar-deadline-monitor-throb");
-        }
-        tr.innerHTML = `
-            <td valign="top" style="" width="100%">
-            <table width="100%" border="0">
-                <tbody>
-                <tr style="height: 25px;">
-                    <td colspan="2">
-                    <table cellpadding="0" cellspacing="0" width="100%" border="0">
-                        <tbody>
-                        <tr>
-                            <td width="220">
-                            <table>
-                                <tbody>
-                                <tr>
-                                    <td><img src="${player.flag}"></td>
-                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
-                                    <td></td>
-                                </tr>
-                                </tbody>
-                            </table>
-                            </td>
-                            <td>
-                            <table class="deadline-table">
-                                <tbody>
-                                <tr>
-                                    <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
-                                    <td>${player.deadlineFull}</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                            </td>
-                            <td align="right">
-                            <table border="0">
-                                <tbody>
-                                <tr>
-                                    <td>Latest bid:</td>
-                                    <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
-                                    <td>&nbsp;</td>
-                                </tr>
-                                </tbody>
-                            </table>
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    </td>
-                </tr>
-                </tbody>
-            </table>
-            </td>
-       `;
-        return tr;
-    }
-
     /* *********************** Predictor ********************************** */
 
     async function getNationalRankings() {
-        const rankings = [];
         const url = `https://${location.hostname}/?p=rank&sub=countryrank`;
-        const resp = await fetch(url).catch((error) => {
-            console.warn(error);
-        });
-        if (resp) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(await resp.text(), "text/html");
+        const doc = await mazyarFetchHtml(url);
+        const rankings = [];
+        if (doc) {
             const teams = doc.querySelectorAll("table#countryRankTable tbody tr");
             for (const team of teams) {
                 const columns = team.querySelectorAll("td");
@@ -2028,14 +2087,10 @@
         const url = href.replace("&play=2d", "").replace("&type=2d", "");
 
         const sport = mazyarExtractSportType();
-        const resp = await fetch(url).catch((error) => {
-            console.warn(error);
-        });
-        if (resp) {
-            const results = [];
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(await resp.text(), "text/html");
+        const doc = await mazyarFetchHtml(url);
+        if (doc) {
             const teams = doc.querySelectorAll("div.team-table");
+            const results = [];
             for (const team of teams) {
                 const link = team.querySelector("a");
                 const name = link.innerText;
@@ -2065,23 +2120,14 @@
 
     /* *********************** Club Page ********************************** */
 
-    function countTrophies(doc) {
-        const trophies = doc.querySelectorAll("div.trophy-wrapper:not(.icon)");
-        return [...trophies].map((el) => {
-            const text = el.innerText.trim();
-            return text ? Number(text) : 1;
-        }).reduce((a, b) => a + b, 0);
-    }
-
     async function getTrophiesCount(url) {
-        const resp = await fetch(url).catch((error) => {
-            console.warn(error);
-            return 'N/A';
-        });
-        if (resp?.status === 200) {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(await resp.text(), "text/html");
-            return countTrophies(doc);
+        const doc = await mazyarFetchHtml(url);
+        if (doc) {
+            const trophies = doc.querySelectorAll("div.trophy-wrapper:not(.icon)");
+            return [...trophies].map((el) => {
+                const text = el.innerText.trim();
+                return text ? Number(text) : 1;
+            }).reduce((a, b) => a + b, 0);
         }
         return 'N/A'
     }
@@ -2307,18 +2353,23 @@
             }
         }
         #settings = {
-            in_progress_results: true,
-            top_players_in_tables: true,
-            transfer: false,
-            transfer_maxed: false,
-            transfer_camp: false,
-            mz_predictor: false,
-            player_comment: false,
-            coach_salary: false,
-            deadline: {
-                enabled: false,
-                play_bell: false,
-                timeout: 30,// minutes,
+            miscellaneous: {
+                in_progress_results: true,
+                fixture_full_name: false,
+                top_players_in_tables: true,
+                mz_predictor: false,
+                player_comment: false,
+                coach_salary: false,
+            },
+            transfer: {
+                enable_filters: false,
+                display_maxed: false,
+                display_camp: false,
+                deadline: {
+                    enabled: false,
+                    play_bell: false,
+                    timeout: 30,// minutes,
+                },
             },
             days: {
                 display_in_profiles: false,
@@ -2326,7 +2377,6 @@
                 display_in_training: false,
                 display_for_one_clubs: false,
             },
-            fixture_full_name: false,
         };
         #transferOptions = {
             hide: true,
@@ -2341,8 +2391,8 @@
         #db;
         #deadlineLockAcquired;
 
-        constructor() {
-            this.#initializeIndexedDb("Mazyar");
+        constructor(db) {
+            this.#db = db;
             this.#fetchSettings();
             this.#fetchTransferOptions();
             this.#fetchFilters();
@@ -2363,46 +2413,54 @@
         // -------------------------------- Settings -------------------------------------
 
         #fetchSettings() {
-            this.#settings.in_progress_results = GM_getValue("display_in_progress_results", true);
-            this.#settings.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
-            this.#settings.transfer = GM_getValue("enable_transfer_filters", true);
-            this.#settings.transfer_maxed = GM_getValue("display_maxed_in_transfer", true);
-            this.#settings.transfer_camp = GM_getValue("display_camp_in_transfer", true);
-            this.#settings.mz_predictor = GM_getValue("mz_predictor", false);
-            this.#settings.player_comment = GM_getValue("player_comment", true);
-            this.#settings.coach_salary = GM_getValue("coach_salary", true);
-            this.#settings.fixture_full_name = GM_getValue("fixture_full_name", true);
-            this.#settings.deadline.enabled = GM_getValue("deadline", true);
-            this.#settings.deadline.play_bell = GM_getValue("deadline_play_bell", false);
-            this.#settings.deadline.timeout = GM_getValue("deadline_timeout", 30);
+            this.#settings.transfer.enable_filters = GM_getValue("enable_transfer_filters", true);
+            this.#settings.transfer.display_maxed = GM_getValue("display_maxed_in_transfer", true);
+            this.#settings.transfer.display_camp = GM_getValue("display_camp_in_transfer", true);
+            this.#settings.transfer.deadline.enabled = GM_getValue("deadline", true);
+            this.#settings.transfer.deadline.play_bell = GM_getValue("deadline_play_bell", false);
+            this.#settings.transfer.deadline.timeout = GM_getValue("deadline_timeout", 30);
+
             this.#settings.days.display_in_profiles = GM_getValue("display_days_in_profiles", true);
             this.#settings.days.display_in_transfer = GM_getValue("display_days_in_transfer", false);
             this.#settings.days.display_in_training = GM_getValue("display_days_in_training", true);
             this.#settings.days.display_for_one_clubs = GM_getValue("display_days_for_one_clubs", true);
+
+            this.#settings.miscellaneous.in_progress_results = GM_getValue("display_in_progress_results", true);
+            this.#settings.miscellaneous.top_players_in_tables = GM_getValue("display_top_players_in_tables", true);
+            this.#settings.miscellaneous.mz_predictor = GM_getValue("mz_predictor", false);
+            this.#settings.miscellaneous.player_comment = GM_getValue("player_comment", true);
+            this.#settings.miscellaneous.coach_salary = GM_getValue("coach_salary", true);
+            this.#settings.miscellaneous.fixture_full_name = GM_getValue("fixture_full_name", true);
         }
 
-        #saveSettings() {
-            GM_setValue("display_in_progress_results", this.#settings.in_progress_results);
-            GM_setValue("display_top_players_in_tables", this.#settings.top_players_in_tables);
-            GM_setValue("enable_transfer_filters", this.#settings.transfer);
-            GM_setValue("display_maxed_in_transfer", this.#settings.transfer_maxed);
-            GM_setValue("display_camp_in_transfer", this.#settings.transfer_camp);
-            GM_setValue("mz_predictor", this.#settings.mz_predictor);
-            GM_setValue("player_comment", this.#settings.player_comment);
-            GM_setValue("coach_salary", this.#settings.coach_salary);
-            GM_setValue("fixture_full_name", this.#settings.fixture_full_name);
-            GM_setValue("deadline", this.#settings.deadline.enabled);
-            GM_setValue("deadline_play_bell", this.#settings.deadline.play_bell);
-            GM_setValue("deadline_timeout", this.#settings.deadline.timeout);
+        #saveMiscellaneousSettings() {
+            GM_setValue("display_in_progress_results", this.#settings.miscellaneous.in_progress_results);
+            GM_setValue("display_top_players_in_tables", this.#settings.miscellaneous.top_players_in_tables);
+            GM_setValue("mz_predictor", this.#settings.miscellaneous.mz_predictor);
+            GM_setValue("player_comment", this.#settings.miscellaneous.player_comment);
+            GM_setValue("coach_salary", this.#settings.miscellaneous.coach_salary);
+            GM_setValue("fixture_full_name", this.#settings.miscellaneous.fixture_full_name);
+        }
+
+        #saveTransferSettings() {
+            GM_setValue("enable_transfer_filters", this.#settings.transfer.enable_filters);
+            GM_setValue("display_maxed_in_transfer", this.#settings.transfer.display_maxed);
+            GM_setValue("display_camp_in_transfer", this.#settings.transfer.display_camp);
+            GM_setValue("deadline", this.#settings.transfer.deadline.enabled);
+            GM_setValue("deadline_play_bell", this.#settings.transfer.deadline.play_bell);
+            GM_setValue("deadline_timeout", this.#settings.transfer.deadline.timeout);
+        }
+
+        #saveDaysSettings() {
             GM_setValue("display_days_in_profiles", this.#settings.days.display_in_profiles);
             GM_setValue("display_days_in_transfer", this.#settings.days.display_in_transfer);
             GM_setValue("display_days_in_training", this.#settings.days.display_in_training);
             GM_setValue("display_days_for_one_clubs", this.#settings.days.display_for_one_clubs);
         }
 
-        updateSettings(settings) {
-            this.#settings = settings;
-            this.#saveSettings();
+        #updateTransferSettings(settings) {
+            this.#settings.transfer = JSON.parse(JSON.stringify(settings));
+            this.#saveTransferSettings();
             this.#resetTransferOptions();
             if (this.isTransferFiltersEnabled()) {
                 this.#checkAllFilters(true);
@@ -2411,20 +2469,109 @@
             }
         }
 
-        mustDisplayInProgressResults() {
-            return this.#settings.in_progress_results;
+        #updateDaysSettings(settings) {
+            this.#settings.days = JSON.parse(JSON.stringify(settings));
+            this.#saveDaysSettings();
         }
 
-        mustDisplayTopPlayersInTables() {
-            return this.#settings.top_players_in_tables;
+        #updateMiscellaneousSettings(settings) {
+            this.#settings.miscellaneous = JSON.parse(JSON.stringify(settings));
+            this.#saveMiscellaneousSettings();
         }
+
+        async #cleanInstall() {
+            this.#updateMiscellaneousSettings({
+                in_progress_results: false,
+                top_players_in_tables: false,
+                mz_predictor: false,
+                player_comment: false,
+                coach_salary: false,
+                fixture_full_name: false,
+            });
+            this.#updateDaysSettings({
+                display_in_profiles: false,
+                display_in_transfer: false,
+                display_in_training: false,
+                display_for_one_clubs: false,
+            });
+            this.#updateTransferSettings({
+                enable_filters: false,
+                display_maxed: false,
+                display_camp: false,
+                deadline: {
+                    enabled: false,
+                    play_bell: false,
+                    timeout: 30,// minutes,
+                },
+            });
+            this.deleteAllFilters();
+            await this.#clearIndexedDb();
+            this.#resetTransferOptions();
+        }
+
+        // -------------------------------- Transfer Options -------------------------------------
+
+        #fetchTransferOptions() {
+            this.#transferOptions.hide = GM_getValue("transfer_options_hide", true);
+            this.#transferOptions.H4 = GM_getValue("transfer_options_H4", false);
+            this.#transferOptions.H3 = GM_getValue("transfer_options_H3", false);
+            this.#transferOptions.L2 = GM_getValue("transfer_options_L2", false);
+            this.#transferOptions.L1 = GM_getValue("transfer_options_L1", false);
+        }
+
+        #saveTransferOptions() {
+            GM_setValue("transfer_options_hide", this.#transferOptions.hide);
+            GM_setValue("transfer_options_H4", this.#transferOptions.H4);
+            GM_setValue("transfer_options_H3", this.#transferOptions.H3);
+            GM_setValue("transfer_options_L2", this.#transferOptions.L2);
+            GM_setValue("transfer_options_L1", this.#transferOptions.L1);
+        }
+
+        #transferOptionsMustHide() {
+            return this.#transferOptions.hide;
+        }
+
+        getTransferOptions() {
+            return this.#transferOptions;
+        }
+
+        updateTransferOptions(key, value) {
+            this.#transferOptions[key] = value;
+            this.#saveTransferOptions();
+        }
+
+        #resetTransferOptions() {
+            this.#transferOptions.hide = false;
+            this.#transferOptions.H4 = false;
+            this.#transferOptions.H3 = false;
+            this.#transferOptions.L2 = false;
+            this.#transferOptions.L1 = false;
+            this.#saveTransferOptions();
+        }
+
+        // -------------------------------- Settings Getters -------------------------------------
 
         isTransferFiltersEnabled() {
-            return this.#settings.transfer;
+            return this.#settings.transfer.enable_filters;
         }
 
+        #mustMarkMaxedSkills() {
+            return this.#settings.transfer.display_maxed;
+        }
         #isTransferCampEnabled() {
-            return this.#settings.transfer_camp;
+            return this.#settings.transfer.display_camp;
+        }
+
+        #isTransferDeadlineAlertEnabled() {
+            return this.#settings.transfer.deadline.enabled;
+        }
+
+        #getTransferDeadlineTimeout() {
+            return this.#settings.transfer.deadline.timeout
+        }
+
+        #mustPlayBellForDeadline() {
+            return this.#settings.transfer.deadline.play_bell;
         }
 
         isDaysAtThisClubEnabledForPlayerProfiles() {
@@ -2443,73 +2590,31 @@
             return this.#settings.days.display_for_one_clubs;
         }
 
+        mustDisplayInProgressResults() {
+            return this.#settings.miscellaneous.in_progress_results;
+        }
+
+        mustDisplayTopPlayersInTables() {
+            return this.#settings.miscellaneous.top_players_in_tables;
+        }
+
         mustHelpWithPredictor() {
-            return this.#settings.mz_predictor;
+            return this.#settings.miscellaneous.mz_predictor;
         }
 
         #mustAddPlayerComment() {
-            return this.#settings.player_comment;
+            return this.#settings.miscellaneous.player_comment;
         }
 
         mustAddCoachSalaries() {
-            return this.#settings.coach_salary;
+            return this.#settings.miscellaneous.coach_salary;
         }
 
         mustAddFullNamesToFixture() {
-            return this.#settings.fixture_full_name;
-        }
-
-        #isTransferDeadlineAlertEnabled() {
-            return this.#settings.deadline.enabled;
-        }
-
-        #mustMarkMaxedSkills() {
-            return this.#settings.transfer_maxed;
+            return this.#settings.miscellaneous.fixture_full_name;
         }
 
         // -------------------------------- Database -------------------------------------
-
-        async #initializeIndexedDb(name = "db") {
-            this.#db = new Dexie(name);
-            this.#db.version(1).stores({
-                comment: "[sport+pid]",
-                scout: "[sport+pid]",
-                hit: "[fid+pid],deadline",
-                filter: "&fid,totalHits,scoutHits,lastCheck",
-            });
-            this.#db.version(2).stores({
-                scout: "[sport+pid],ts",
-                player: "[sport+pid],ts,maxed,days,camp",
-                hide: "[sport+pid],ts",
-                deadline: "[sport+pid],ts,deadline,name,deadlineFull,latestBid,source,flag",
-            }).upgrade(trans => {
-                return trans.table("scout").toCollection().modify(report => {
-                    report.ts = 0;
-                });
-            });
-            this.#db.open();
-            await this.#cleanOutdatedDataFromIndexedDb();
-            const info = await navigator?.storage?.estimate();
-            if (info) {
-                console.log("ManagerZone IndexedDB size: " + mazyarFormatFileSize(info.usage));
-            }
-        }
-
-        async #cleanOutdatedDataFromIndexedDb() {
-            const scoutOutdate = Date.now() - 7 * 24 * 60 * 60 * 1000;
-            await this.#db.scout.where("ts").below(scoutOutdate).delete().then((deleteCount) => {
-                console.log("Deleted " + deleteCount + " outdated scout reports");
-            }).catch((error) => {
-                console.warn(error);
-            });
-
-            const startOfDay = Date.now() - Date.now() % (24 * 60 * 60 * 1000);
-            await this.#db.player.where("ts").below(startOfDay).delete().then((deleteCount) => {
-                console.log("Deleted " + deleteCount + " outdated player profile.");
-            }).catch((error) => {
-                console.warn(error);
-            });
-        }
 
         async #clearIndexedDb() {
             // TODO: clear comments?
@@ -2520,7 +2625,6 @@
             await this.#db.hide.clear();
             await this.#db.deadline.clear();
         }
-
 
         async #isPlayerInHideListInIndexDb(pid) {
             const player = await this.#db.hide.get({ pid, sport: this.#sport });
@@ -2674,21 +2778,6 @@
             await this.#db.hit.clear();
         }
 
-        #extractSkillNamesFromPlayerInfo(player) {
-            const skills = player?.querySelectorAll("table.player_skills > tbody > tr > td > span.clippable");
-            return [...skills].map((el) => el.innerText);
-        }
-
-        #extractStarsFromScoutReport(section) {
-            return section.querySelectorAll(".stars i.lit")?.length;
-        }
-
-        #extractSkillsFromScoutReport(section, skillList) {
-            const skills = section.querySelectorAll("div.flex-grow-1 ul li.blurred span");
-            return [...skills].map((el) => skillList.indexOf(el.innerText));
-        }
-
-
         async #fetchPlayerProfileFromIndexedDb(pid) {
             return await this.#db.player.get({ pid, sport: this.#sport });
         }
@@ -2701,100 +2790,21 @@
             }
         }
 
-        #isSentToCamp(doc) {
-            if (location.hostname.startsWith("test")) {
-                return !!doc.querySelector(`#thePlayers_0 span.player_icon_wrapper i.fa-traffic-cone.tc-status-icon:not(.tc-status-icon--disabled)`);
-            }
-            return !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
-        }
-
-        async #extractPlayerProfile(playerId) {
-            const doc = await mazyarFetchPlayerProfileDocument(playerId);
-            if (doc) {
-                const { days, price } = squadExtractResidencyDaysAndPrice(doc);
-                const camp = this.#isSentToCamp(doc);
-                const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
-                let i = 0;
-                const maxed = [];
-                for (const skill of skills) {
-                    if (skill.querySelector(".maxed")) {
-                        maxed.push(i);
-                    }
-                    i++;
-                }
-                return {
-                    pid: playerId,
-                    maxed,
-                    days,
-                    price,
-                    camp,
-                };
-            }
-            return null;
-        }
-
         async #fetchOrExtractPlayerProfile(playerId) {
             let profile = await this.#fetchPlayerProfileFromIndexedDb(playerId);
             if (!profile || (profile.days > 0 && !profile.price) || (profile.camp === undefined)) {
-                profile = await this.#extractPlayerProfile(playerId);
+                profile = await mazyarExtractPlayerProfile(playerId);
                 this.#setPlayerProfileInIndexedDb(profile);
             }
             return profile;
-        }
-
-        async #extractPlayerScoutReport(pid, skills) {
-            const url = `https://${location.hostname}/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${this.#sport}`;
-            const resp = await fetch(url).catch((error) => {
-                console.warn(error);
-            });
-            if (resp) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(await resp.text(), "text/html");
-                const report = doc.querySelectorAll(".paper-content.clearfix dl dd");
-                if (report.length == 3) {
-                    const high = this.#extractStarsFromScoutReport(report[0]);
-                    const highSkills = this.#extractSkillsFromScoutReport(report[0], skills);
-                    const low = this.#extractStarsFromScoutReport(report[1]);
-                    const lowSkills = this.#extractSkillsFromScoutReport(report[1], skills);
-                    const trainingSpeed = this.#extractStarsFromScoutReport(report[2]);
-                    return {
-                        pid,
-                        H: high,
-                        HS: highSkills,
-                        L: low,
-                        LS: lowSkills,
-                        S: trainingSpeed,
-                    };
-                }
-            }
-            return null;
-        }
-
-        #colorizeMaxedSkills(player, maxed = []) {
-            if (maxed) {
-                const playerSkills = player.querySelectorAll("table.player_skills tr td.skillval span");
-                for (const skill of maxed) {
-                    playerSkills[skill].classList.add("maxed");
-                }
-            }
-        }
-
-        #colorizeSkills(player, report) {
-            if (report) {
-                const playerSkills = player.querySelectorAll("table.player_skills tr td:nth-child(1)");
-                playerSkills[report.HS[0]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
-                playerSkills[report.HS[1]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
-                playerSkills[report.LS[0]]?.classList.add(`mazyar-scout-${report.L}`);
-                playerSkills[report.LS[1]]?.classList.add(`mazyar-scout-${report.L}`);
-            }
         }
 
         async #fetchOrExtractPlayerScoutReport(player) {
             const playerId = player.querySelector("h2 a")?.href?.match(/pid=(\d+)/)?.[1];
             let report = await this.#fetchScoutReportFromIndexedDb(playerId);
             if (!report) {
-                const skills = this.#extractSkillNamesFromPlayerInfo(player);
-                report = await this.#extractPlayerScoutReport(playerId, skills);
+                const skills = mazyarExtractSkillNamesFromPlayerInfo(player);
+                report = await mazyarExtractPlayerScoutReport(playerId, skills, this.#sport);
                 if (report) {
                     this.#setScoutReportInIndexedDb(report);
                 }
@@ -2812,7 +2822,6 @@
             const reports = await Promise.all(jobs);
             return reports.filter((report) => report != null);
         }
-
 
         #isQualifiedForTransferScoutFilter(report, lows = [], highs = []) {
             return highs.includes(report.H) && lows.includes(report.L);
@@ -2912,7 +2921,7 @@
                     this.#squadAddDaysAtThisClubForSinglePlayer(player, profile);
                 }
                 if (this.#mustMarkMaxedSkills()) {
-                    this.#colorizeMaxedSkills(player, profile?.maxed);
+                    mazyarColorizeMaxedSkills(player, profile?.maxed);
                 }
                 if (this.#isTransferCampEnabled()) {
                     this.#addCampIconToTransferProfile(player, profile?.camp);
@@ -2961,7 +2970,7 @@
                 if (this.#areTransferScoutOptionsSelected()) {
                     if (player.querySelector("span.scout_report > a")) {
                         jobs.push(this.#fetchOrExtractPlayerScoutReport(player).then((report) => {
-                            this.#colorizeSkills(player, report);
+                            mazyarColorizeSkills(player, report);
                             this.#applyTransferFilters(report, lows, highs);
                         }));
                     } else {
@@ -3062,15 +3071,16 @@
         }
 
         #monitorAddPlayers(tbody, players) {
-            monitorClearPlayerRows(tbody);
+            mazyarClearPlayerRowsInMonitor(tbody);
             if (players.length === 0) {
                 const warning = this.#monitorCreateNoPlayerWarning();
                 tbody.appendChild(warning);
                 return;
             }
 
+            const deadlineTimeout = this.#getTransferDeadlineTimeout();
             for (const player of players) {
-                const row = monitorCreatePlayerRow(player, this.#settings.deadline.timeout);
+                const row = mazyarCreatePlayerRowForMonitor(player, deadlineTimeout);
                 const removeIcon = mazyarCreateAddToDeadlineIcon("Remove player from MZY Deadline Monitor", "red");
                 removeIcon.style.fontSize = "11px";
                 row.querySelector("table.deadline-table tbody tr").appendChild(removeIcon);
@@ -3095,9 +3105,9 @@
             if (this.#isTransferDeadlineAlertEnabled()) {
                 const target = document.querySelector('div.baz.bazCenter >div > div.win_back > table');
                 if (target) {
-                    const monitor = monitorCreateSection("MZY Monitor", "mazyar-monitor-section");
+                    const monitor = mazyarCreateSectionForMonitor("MZY Monitor", "mazyar-monitor-section");
                     target.appendChild(monitor);
-                    target.appendChild(monitorCreateSectionSeparator());
+                    target.appendChild(mazyarCreateSectionSeparatorForMonitor());
 
                     const tbody = monitor.querySelector("td > div > table > tbody");
                     document.body.addEventListener("deadlines-updated", () => {
@@ -3207,46 +3217,6 @@
             }
         }
 
-        // -------------------------------- Transfer Options -------------------------------------
-
-        #fetchTransferOptions() {
-            this.#transferOptions.hide = GM_getValue("transfer_options_hide", true);
-            this.#transferOptions.H4 = GM_getValue("transfer_options_H4", false);
-            this.#transferOptions.H3 = GM_getValue("transfer_options_H3", false);
-            this.#transferOptions.L2 = GM_getValue("transfer_options_L2", false);
-            this.#transferOptions.L1 = GM_getValue("transfer_options_L1", false);
-        }
-
-        #saveTransferOptions() {
-            GM_setValue("transfer_options_hide", this.#transferOptions.hide);
-            GM_setValue("transfer_options_H4", this.#transferOptions.H4);
-            GM_setValue("transfer_options_H3", this.#transferOptions.H3);
-            GM_setValue("transfer_options_L2", this.#transferOptions.L2);
-            GM_setValue("transfer_options_L1", this.#transferOptions.L1);
-        }
-
-        #transferOptionsMustHide() {
-            return this.#transferOptions.hide;
-        }
-
-        getTransferOptions() {
-            return this.#transferOptions;
-        }
-
-        updateTransferOptions(key, value) {
-            this.#transferOptions[key] = value;
-            this.#saveTransferOptions();
-        }
-
-        #resetTransferOptions() {
-            this.#transferOptions.hide = false;
-            this.#transferOptions.H4 = false;
-            this.#transferOptions.H3 = false;
-            this.#transferOptions.L2 = false;
-            this.#transferOptions.L1 = false;
-            this.#saveTransferOptions();
-        }
-
         // -------------------------------- Filters -------------------------------------
 
         #fetchFilters() {
@@ -3348,11 +3318,8 @@
             let totalHits = -1;
             let scoutHits = -1;
             const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}${filter.params}&o=${offset}`;
-            const response = await fetch(url).catch((error) => {
-                console.warn(error);
-            });
-            if (response) {
-                const data = await response.json();
+            const data = await mazyarFetchJson(url);
+            if (data) {
                 totalHits = Number(data?.totalHits);
                 const searchResults = document.createElement("div");
                 searchResults.innerHTML = data.players;
@@ -3470,34 +3437,6 @@
             this.#replaceModalContent([header, loading]);
         }
 
-        async cleanInstall() {
-            this.updateSettings({
-                in_progress_results: false,
-                top_players_in_tables: false,
-                transfer: false,
-                transfer_maxed: false,
-                transfer_camp: false,
-                mz_predictor: false,
-                player_comment: false,
-                coach_salary: false,
-                fixture_full_name: false,
-                deadline: {
-                    enabled: false,
-                    play_bell: false,
-                    timeout: 30,// minutes,
-                },
-                days: {
-                    display_in_profiles: false,
-                    display_in_transfer: false,
-                    display_in_training: false,
-                    display_for_one_clubs: false,
-                }
-            });
-            this.deleteAllFilters();
-            await this.#clearIndexedDb();
-            this.#resetTransferOptions();
-        }
-
         #displayCleanMenu() {
             const div = document.createElement("div");
             const title = mazyarCreateMzStyledTitle("MZY Settings");
@@ -3514,7 +3453,7 @@
             notice.style.padding = "1rem";
 
             clean.addEventListener("click", async () => {
-                await this.cleanInstall();
+                await this.#cleanInstall();
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
@@ -3689,18 +3628,17 @@
 
         // ----------------------------------------------------------------------------------
 
-        #createDeadlineOptions(submenuStyle) {
+        #createDeadlineOptions(level1Style, level2Style) {
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
-
-            const enabled = mazyarCreateMenuCheckBox("Enable deadline alert", this.#settings.deadline.enabled, submenuStyle);
-            const playBell = mazyarCreateMenuCheckBox("Sound Notification", this.#settings.deadline.play_bell, { margin: "0.1rem 2.2rem" });
-            const timeout = mazyarCreateSubMenuTextInput("Timeout", "30", this.#settings.deadline.timeout);
+            const enabled = mazyarCreateMenuCheckBox("Enable deadline alert", this.#settings.transfer.deadline.enabled, level1Style);
+            const playBell = mazyarCreateMenuCheckBox("Sound Notification", this.#settings.transfer.deadline.play_bell, level2Style);
+            const timeout = mazyarCreateSubMenuTextInput("Timeout", "30", this.#settings.transfer.deadline.timeout);
             const unit = document.createTextNode("minute(s)");
             timeout.appendChild(unit);
 
-            timeout.style.display = this.#settings.deadline.enabled ? "unset" : "none";
-            playBell.style.display = this.#settings.deadline.enabled ? "unset" : "none";
+            timeout.style.display = this.#settings.transfer.deadline.enabled ? "unset" : "none";
+            playBell.style.display = this.#settings.transfer.deadline.enabled ? "unset" : "none";
 
             div.appendChild(enabled); // child node 0
             div.appendChild(timeout); // child node 1
@@ -3728,51 +3666,24 @@
             return div;
         }
 
-        #displaySettingsMenu() {
-            const submenuStyle = { margin: "0.1rem 1.2rem" };
+        #displayTransferSettingsMenu() {
+            const level1Style = { margin: "0.3rem 0.7rem" };
+            const level2Style = { margin: "0.3rem 1.2rem" };
 
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`);
+            const title = mazyarCreateMzStyledTitle(`MZY Transfer Settings`);
 
-            const miscellaneousGroup = mazyarCreateMenuGroup("Miscellaneous:");
-            const playerComment = mazyarCreateMenuCheckBox("Enable player comment", this.#settings.player_comment, submenuStyle);
-            const inProgress = mazyarCreateMenuCheckBox("Display in progress results", this.#settings.in_progress_results, submenuStyle);
-            const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.top_players_in_tables, submenuStyle);
-            const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.mz_predictor, submenuStyle);
-            const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.fixture_full_name, submenuStyle);
-            mzPredictor.style.display = 'none';
-            miscellaneousGroup.appendChild(playerComment);
-            miscellaneousGroup.appendChild(inProgress);
-            miscellaneousGroup.appendChild(tableInjection);
-            miscellaneousGroup.appendChild(mzPredictor);
-            miscellaneousGroup.appendChild(fixtureFullName);
-
-            const coachesGroup = mazyarCreateMenuGroup("Coaches:");
-            const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.coach_salary, submenuStyle);
-            coachesGroup.appendChild(coachSalaries);
-
-            const transferGroup = mazyarCreateMenuGroup("Transfer Market:");
-            const transferFilters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer, submenuStyle);
-            const transferMaxed = mazyarCreateMenuCheckBox("Mark maxed skills", this.#settings.transfer_maxed, submenuStyle);
-            const transferCamp = mazyarCreateMenuCheckBox("Check if player is sent to camp", this.#settings.transfer_camp, submenuStyle);
-            const transferDeadline = this.#createDeadlineOptions(submenuStyle);
-            transferGroup.appendChild(transferFilters);
-            transferGroup.appendChild(transferMaxed);
-            transferGroup.appendChild(transferCamp);
-            transferGroup.appendChild(transferDeadline);
-
-            const daysGroup = mazyarCreateMenuGroup("Days at this club:");
-            const daysInProfiles = mazyarCreateMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, submenuStyle);
-            const daysInTransfer = mazyarCreateMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, submenuStyle);
-            const daysInTraining = mazyarCreateMenuCheckBox("Display in training report", this.#settings.days.display_in_training, submenuStyle);
-            const daysForOneClubs = mazyarCreateMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, submenuStyle);
-            daysGroup.appendChild(daysInProfiles);
-            daysGroup.appendChild(daysInTransfer);
-            daysGroup.appendChild(daysInTraining);
-            daysGroup.appendChild(daysForOneClubs);
+            const group = document.createElement("div");
+            const filters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer.enable_filters, level1Style);
+            const maxed = mazyarCreateMenuCheckBox("Mark maxed skills", this.#settings.transfer.display_maxed, level1Style);
+            const camp = mazyarCreateMenuCheckBox("Check if player is sent to camp", this.#settings.transfer.display_camp, level1Style);
+            const deadline = this.#createDeadlineOptions(level1Style, level2Style);
+            group.appendChild(filters);
+            group.appendChild(maxed);
+            group.appendChild(camp);
+            group.appendChild(deadline);
 
             const buttons = document.createElement("div");
-            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
@@ -3782,34 +3693,167 @@
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
+                this.#displaySettingsMenu();
             });
 
             save.onclick = () => {
-                const deadlineTimeout = Number(transferDeadline.childNodes[1].querySelector("input[type=text]")?.value);
-                this.updateSettings({
-                    in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
-                    top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
-                    transfer: transferFilters.querySelector("input[type=checkbox]").checked,
-                    transfer_maxed: transferMaxed.querySelector("input[type=checkbox]").checked,
-                    transfer_camp: transferCamp.querySelector("input[type=checkbox]").checked,
+                const deadlineTimeout = Number(deadline.childNodes[1].querySelector("input[type=text]")?.value);
+                this.#updateTransferSettings({
+                    enable_filters: filters.querySelector("input[type=checkbox]").checked,
+                    display_maxed: maxed.querySelector("input[type=checkbox]").checked,
+                    display_camp: camp.querySelector("input[type=checkbox]").checked,
                     deadline: {
-                        enabled: transferDeadline.childNodes[0].querySelector("input[type=checkbox]")?.checked,
-                        play_bell: transferDeadline.childNodes[2].querySelector("input[type=checkbox]")?.checked,
+                        enabled: deadline.childNodes[0].querySelector("input[type=checkbox]")?.checked,
+                        play_bell: deadline.childNodes[2].querySelector("input[type=checkbox]")?.checked,
                         timeout: deadlineTimeout > 0 && deadlineTimeout <= 360 ? deadlineTimeout : 30,
                     },
+                });
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            };
+
+            div.appendChild(title);
+            div.appendChild(group);
+            buttons.appendChild(cancel);
+            buttons.appendChild(save);
+            div.appendChild(buttons);
+
+            this.#replaceModalContent([div]);
+        }
+
+        #displayDaysSettingsMenu() {
+            const level1Style = { margin: "0.3rem 0.7rem" };
+
+            const div = document.createElement("div");
+            const title = mazyarCreateMzStyledTitle(`MZY Days Settings`);
+
+            const group = document.createElement("div");
+            const daysInProfiles = mazyarCreateMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, level1Style);
+            const daysInTransfer = mazyarCreateMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, level1Style);
+            const daysInTraining = mazyarCreateMenuCheckBox("Display in training report", this.#settings.days.display_in_training, level1Style);
+            const daysForOneClubs = mazyarCreateMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, level1Style);
+            group.appendChild(daysInProfiles);
+            group.appendChild(daysInTransfer);
+            group.appendChild(daysInTraining);
+            group.appendChild(daysForOneClubs);
+
+            const buttons = document.createElement("div");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const save = mazyarCreateMzStyledButton("Save", "green");
+
+            div.classList.add("mazyar-flex-container");
+
+            buttons.classList.add("mazyar-flex-container-row");
+
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
+
+            save.onclick = () => {
+                this.#updateDaysSettings({
+                    display_in_profiles: daysInProfiles.querySelector("input[type=checkbox]").checked,
+                    display_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
+                    display_in_training: daysInTraining.querySelector("input[type=checkbox]").checked,
+                    display_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
+                });
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            };
+
+            div.appendChild(title);
+            div.appendChild(group);
+            buttons.appendChild(cancel);
+            buttons.appendChild(save);
+            div.appendChild(buttons);
+
+            this.#replaceModalContent([div]);
+        }
+
+        #displayMiscellaneousSettingsMenu() {
+            const level1Style = { margin: "0.3rem 0.7rem" };
+
+            const div = document.createElement("div");
+            const title = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`);
+
+            const group = document.createElement("div");
+            const playerComment = mazyarCreateMenuCheckBox("Enable player comment", this.#settings.miscellaneous.player_comment, level1Style);
+            const inProgress = mazyarCreateMenuCheckBox("Display in progress results", this.#settings.miscellaneous.in_progress_results, level1Style);
+            const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.miscellaneous.top_players_in_tables, level1Style);
+            const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.miscellaneous.mz_predictor, level1Style);
+            const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.miscellaneous.fixture_full_name, level1Style);
+            const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.miscellaneous.coach_salary, level1Style);
+            mzPredictor.style.display = 'none';
+            group.appendChild(playerComment);
+            group.appendChild(inProgress);
+            group.appendChild(tableInjection);
+            group.appendChild(fixtureFullName);
+            group.appendChild(coachSalaries);
+            group.appendChild(mzPredictor);
+
+            const buttons = document.createElement("div");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const save = mazyarCreateMzStyledButton("Save", "green");
+
+            div.classList.add("mazyar-flex-container");
+
+            buttons.classList.add("mazyar-flex-container-row");
+
+            cancel.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
+
+            save.onclick = () => {
+                this.#updateMiscellaneousSettings({
+                    in_progress_results: inProgress.querySelector("input[type=checkbox]").checked,
+                    top_players_in_tables: tableInjection.querySelector("input[type=checkbox]").checked,
                     mz_predictor: mzPredictor.querySelector("input[type=checkbox]").checked,
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                     fixture_full_name: fixtureFullName.querySelector("input[type=checkbox]").checked,
-                    days: {
-                        display_in_profiles: daysInProfiles.querySelector("input[type=checkbox]").checked,
-                        display_in_transfer: daysInTransfer.querySelector("input[type=checkbox]").checked,
-                        display_in_training: daysInTraining.querySelector("input[type=checkbox]").checked,
-                        display_for_one_clubs: daysForOneClubs.querySelector("input[type=checkbox]").checked,
-                    }
                 });
                 this.#hideModal();
+                this.#displaySettingsMenu();
             };
+
+            div.appendChild(title);
+            div.appendChild(group);
+            buttons.appendChild(cancel);
+            buttons.appendChild(save);
+            div.appendChild(buttons);
+
+            this.#replaceModalContent([div]);
+        }
+
+        #displaySettingsMenu() {
+            const div = document.createElement("div");
+            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`);
+
+            const transfer = mazyarCreateMzStyledButton(`Transfer Settings`, "green");
+            const days = mazyarCreateMzStyledButton(`Days Settings`, "green");
+            const miscellaneous = mazyarCreateMzStyledButton(`Miscellaneous Settings`, "green");
+
+            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
+
+            const close = mazyarCreateMzStyledButton("Close", "green");
+
+            div.classList.add("mazyar-flex-container");
+
+            transfer.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displayTransferSettingsMenu();
+            });
+
+            days.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displayDaysSettingsMenu();
+            });
+
+            miscellaneous.addEventListener("click", () => {
+                this.#hideModal();
+                this.#displayMiscellaneousSettingsMenu();
+            });
 
             clean.style.marginBottom = "0";
             clean.addEventListener("click", () => {
@@ -3817,15 +3861,16 @@
                 this.#displayCleanMenu();
             });
 
+            close.addEventListener("click", () => {
+                this.#hideModal();
+            });
+
             div.appendChild(title);
-            div.appendChild(transferGroup);
-            div.appendChild(daysGroup);
-            div.appendChild(coachesGroup);
-            div.appendChild(miscellaneousGroup);
+            div.appendChild(days);
+            div.appendChild(transfer);
+            div.appendChild(miscellaneous);
             div.appendChild(clean);
-            buttons.appendChild(cancel);
-            buttons.appendChild(save);
-            div.appendChild(buttons);
+            div.appendChild(close);
 
             this.#replaceModalContent([div]);
         }
@@ -3861,7 +3906,7 @@
             const datalist = mazyarCreateSuggestionList(filters.map((f) => f.name));
             const filterName = mazyarCreateMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
             const useScout = mazyarCreateMenuCheckBox(`Use scout reports too (${scoutText})`);
-            const checkInterval = mazyarCreateMenuDropDown("Check Interval", MAZYAR_TRANSFER_INTERVALS, MAZYAR_TRANSFER_INTERVALS.onceHour.value);
+            const checkInterval = mazyarCreateDropDownMenu("Check Interval", MAZYAR_TRANSFER_INTERVALS, MAZYAR_TRANSFER_INTERVALS.onceHour.value);
 
             const validation = document.createElement("div");
             const buttons = document.createElement("div");
@@ -4112,7 +4157,7 @@
 
         #filtersViewCreateTable(filters) {
             const table = document.createElement("table");
-            const thead = mazyarFiltersViewCreateTableHeader();
+            const thead = mazyarCreateTableHeaderForFiltersView();
             const tbody = this.#filtersViewCreateTableBody(filters);
 
             table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
@@ -4172,29 +4217,23 @@
 
         async displaySquadSummary(url) {
             this.#displayLoading("MZY Squad Summary");
-            await fetch(url)
-                .then((resp) => resp.text())
-                .then((content) => {
-                    const parser = new DOMParser();
-                    const doc = parser.parseFromString(content, "text/html");
-                    const sport = mazyarExtractSportType(doc);
-                    const currency = mazyarExtractClubCurrency(doc);
-                    const players = mazyarExtractClubPlayersDetails(doc, currency);
-                    const summary = mazyarExtractSquadSummaryDetails(players, sport);
-                    const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
-                    topPlayers.style.margin = "2px 5px";
-                    topPlayers.style.padding = "0";
+            const doc = await mazyarFetchHtml(url);
+            if (doc) {
+                const sport = mazyarExtractSportType(doc);
+                const currency = mazyarExtractClubCurrency(doc);
+                const players = mazyarExtractClubPlayersDetails(doc, currency);
+                const summary = mazyarExtractSquadSummaryDetails(players, sport);
+                const topPlayers = squadCreateTopPlayersTable(summary, currency, sport);
+                topPlayers.style.margin = "2px 5px";
+                topPlayers.style.padding = "0";
 
-                    const header = mazyarCreateMzStyledTitle("MZY Squad Summary");
-                    const button = mazyarCreateMzStyledButton("Close", "red");
-                    button.addEventListener("click", () => {
-                        this.#hideModal();
-                    });
-                    this.#replaceModalContent([header, topPlayers, button]);
-                })
-                .catch((error) => {
-                    console.warn(error);
+                const header = mazyarCreateMzStyledTitle("MZY Squad Summary");
+                const button = mazyarCreateMzStyledButton("Close", "red");
+                button.addEventListener("click", () => {
+                    this.#hideModal();
                 });
+                this.#replaceModalContent([header, topPlayers, button]);
+            }
         }
 
         async #displayTransferDeadlines() {
@@ -4220,6 +4259,7 @@
             const sortedBids = Object.values(this.#deadlines)?.sort((a, b) => a.deadline - b.deadline);
             const tbody = document.createElement("tbody");
             bids.appendChild(tbody);
+            const deadlineTimeout = this.#getTransferDeadlineTimeout();
             for (const bid of sortedBids) {
                 const row = document.createElement("tr");
 
@@ -4243,7 +4283,7 @@
                 const deadline = document.createElement("td");
                 deadline.innerHTML = `<strong>${bid.deadline}</strong> minutes`;
                 deadline.style.paddingRight = "15px";
-                if (bid.deadline <= this.#settings.deadline.timeout) {
+                if (bid.deadline <= deadlineTimeout) {
                     deadline.style.color = "red";
                 }
 
@@ -4280,7 +4320,8 @@
         }
 
         async #monitorFetchAndProcessYourBidsPlayers() {
-            const response = await mazyarFetchTransferMonitorData();
+            const url = `https://${location.hostname}/ajax.php?p=transfer&sub=your-bids&sport=${this.#sport}`;
+            const response = await mazyarFetchJson(url);
             if (response) {
                 const yourBids = document.createElement("div");
                 yourBids.innerHTML = response.content;
@@ -4304,12 +4345,7 @@
 
         async #updatePlayerDeadlineFromMarket(pid) {
             const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
-            const result = await fetch(url)
-                .then((resp) => resp.json())
-                .catch((err) => {
-                    console.warn(err);
-                    return null;
-                });
+            const result = await mazyarFetchJson(url);
             if (result) {
                 if (result.totalHits > 0) {
                     const parser = new DOMParser();
@@ -4382,15 +4418,16 @@
         }
 
         #playDeadlineAlert() {
-            if (this.#settings.deadline.play_bell) {
+            if (this.#mustPlayBellForDeadline()) {
                 const ding = new Audio(MAZYAR_DEADLINE_ALERT_SOUND);
                 ding.play();
             }
         }
 
         #deadlineUpdateIconStyle() {
+            const deadlineTimeout = this.#getTransferDeadlineTimeout();
             const deadlineIcon = document.getElementById("mazyar-deadline");
-            const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= this.#settings.deadline.timeout).length > 0;
+            const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= deadlineTimeout).length > 0;
             if (strobe && deadlineIcon) {
                 deadlineIcon.style.display = 'unset';
                 deadlineIcon.classList.add("mazyar-deadline-throb-lightgreen");
@@ -4484,7 +4521,7 @@
                 }
                 player.id = "";
                 this.#fetchOrExtractPlayerScoutReport(player).then(report => {
-                    this.#colorizeSkills(player, report);
+                    mazyarColorizeSkills(player, report);
                 });
                 const a = player.querySelector("h2>div>a.subheader");
                 if (a) {
@@ -4528,11 +4565,9 @@
             for (const player of players) {
                 const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${player.pid}`;
                 jobs.push(
-                    fetch(url)
-                        .then((resp) => resp.json())
-                        .then((content) => {
-                            return { playerId: player.pid, content };
-                        })
+                    mazyarFetchJson(url).then((content) => {
+                        return { playerId: player.pid, content };
+                    })
                 );
             }
             const searchResults = await Promise.all(jobs);
@@ -4701,6 +4736,51 @@
         }
     }
 
+    /* *********************** Database ********************************** */
+
+    async function initializeIndexedDb(name = "db") {
+        const db = new Dexie(name);
+        db.version(1).stores({
+            comment: "[sport+pid]",
+            scout: "[sport+pid]",
+            hit: "[fid+pid],deadline",
+            filter: "&fid,totalHits,scoutHits,lastCheck",
+        });
+        db.version(2).stores({
+            scout: "[sport+pid],ts",
+            player: "[sport+pid],ts,maxed,days,camp",
+            hide: "[sport+pid],ts",
+            deadline: "[sport+pid],ts,deadline,name,deadlineFull,latestBid,source,flag",
+        }).upgrade(trans => {
+            return trans.table("scout").toCollection().modify(report => {
+                report.ts = 0;
+            });
+        });
+        db.open();
+
+        // remove outdated data from db
+        const scoutOutdate = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        await db.scout.where("ts").below(scoutOutdate).delete().then((deleteCount) => {
+            console.log("Deleted " + deleteCount + " outdated scout reports");
+        }).catch((error) => {
+            console.warn(error);
+        });
+
+        // remove outdated data from db
+        const startOfDay = Date.now() - Date.now() % (24 * 60 * 60 * 1000);
+        await db.player.where("ts").below(startOfDay).delete().then((deleteCount) => {
+            console.log("Deleted " + deleteCount + " outdated player profile.");
+        }).catch((error) => {
+            console.warn(error);
+        });
+
+        const info = await navigator?.storage?.estimate();
+        if (info) {
+            console.log("ManagerZone IndexedDB size: " + mazyarFormatFileSize(info.usage));
+        }
+        return db;
+    }
+
     /* *********************** Inject ********************************** */
 
     function isVisitingTeamPage() {
@@ -4712,7 +4792,9 @@
         const styles = GM_getResourceText("MAZYAR_STYLES");
         GM_addStyle(styles);
 
-        mazyar = new Mazyar();
+        const db = await initializeIndexedDb("Mazyar");
+        mazyar = new Mazyar(db);
+
         if (mazyar.isTransferFiltersEnabled()) {
             mazyar.setInitialFiltersHitInToolbar();
         }

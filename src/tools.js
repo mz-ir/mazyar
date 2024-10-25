@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.0
+// @version      1.1
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -11,6 +11,40 @@
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
 // ==/UserScript==
+
+// --------------------------------------- Formatter -----------------------------
+
+function mazyarFormatBigNumber(n, sep = " ") {
+    if (n) {
+        const numberString = n.toString();
+        let formattedParts = [];
+        for (let i = numberString.length - 1; i >= 0; i -= 3) {
+            let part = numberString.substring(Math.max(i - 2, 0), i + 1);
+            formattedParts.unshift(part);
+        }
+        return formattedParts.join(sep);
+    }
+    return "0";
+}
+
+function mazyarFormatAverageAge(age, fractionDigits = 1) {
+    if (age) {
+        return age.toFixed(fractionDigits);
+    }
+    return "0.0";
+}
+
+function mazyarFormatFileSize(b) {
+    const s = 1024;
+    let u = 0;
+    while (b >= s || -b >= s) {
+        b /= s;
+        u++;
+    }
+    return (u ? b.toFixed(1) + " " : b) + " KMGTPEZY"[u] + "B";
+}
+
+// -------------------------------- Parser -------------------------------------
 
 function mazyarParseMzDate(dateString) {
     const [day, month, year] = dateString.split('-').map(Number);
@@ -100,38 +134,91 @@ function mazyarIsMatchInProgress(resultText) {
     return !scoreRegex.test(resultText);
 }
 
-function mazyarGetSquadSummaryLink(tid) {
-    return `https://${location.hostname}/?p=players&sub=alt&tid=${tid}`;
+function mazyarIsPlayerSentToCamp(doc) {
+    if (location.hostname.startsWith("test")) {
+        return !!doc.querySelector(`#thePlayers_0 span.player_icon_wrapper i.fa-traffic-cone.tc-status-icon:not(.tc-status-icon--disabled)`);
+    }
+    return !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
 }
 
-function mazyarFormatBigNumber(n, sep = " ") {
-    if (n) {
-        const numberString = n.toString();
-        let formattedParts = [];
-        for (let i = numberString.length - 1; i >= 0; i -= 3) {
-            let part = numberString.substring(Math.max(i - 2, 0), i + 1);
-            formattedParts.unshift(part);
+function mazyarExtractSkillNamesFromPlayerInfo(player) {
+    const skills = player?.querySelectorAll("table.player_skills > tbody > tr > td > span.clippable");
+    return [...skills].map((el) => el.innerText);
+}
+
+function mazyarExtractSkillsFromScoutReport(section, skillList) {
+    const skills = section.querySelectorAll("div.flex-grow-1 ul li.blurred span");
+    return [...skills].map((el) => skillList.indexOf(el.innerText));
+}
+
+function mazyarExtractStarsFromScoutReport(section) {
+    return section.querySelectorAll(".stars i.lit")?.length;
+}
+
+function mazyarExtractResidencyDaysAndPrice(doc = document) {
+    if (!doc) {
+        return { days: 0, price: '' };
+    }
+    const transfers = doc?.querySelector("div.baz > div > div.win_back > table.hitlist");
+    const history = transfers?.querySelector("tbody");
+    if (history?.children.length > 1) {
+        const arrived = history?.lastChild?.querySelector("td")?.innerText;
+        const days = Math.floor((new Date() - mazyarParseMzDate(arrived)) / 86_400_000);
+        const price = history.lastChild?.querySelector("td:last-child")?.innerText;
+        const currency = transfers?.querySelector("thead tr td:last-child")?.innerText?.match(/.*\((.*)\)/)?.[1];
+        return { days, price: price + ' ' + currency };
+    }
+    return { days: -1, price: '' };
+}
+
+async function mazyarExtractPlayerProfile(playerId) {
+    const url = `https://${location.hostname}/?p=players&pid=${playerId}`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const { days, price } = mazyarExtractResidencyDaysAndPrice(doc);
+        const camp = mazyarIsPlayerSentToCamp(doc);
+        const skills = doc.querySelectorAll("#thePlayers_0 table.player_skills tbody tr");
+        let i = 0;
+        const maxed = [];
+        for (const skill of skills) {
+            if (skill.querySelector(".maxed")) {
+                maxed.push(i);
+            }
+            i++;
         }
-        return formattedParts.join(sep);
+        return {
+            pid: playerId,
+            maxed,
+            days,
+            price,
+            camp,
+        };
     }
-    return "0";
+    return null;
 }
 
-function mazyarFormatAverageAge(age, fractionDigits = 1) {
-    if (age) {
-        return age.toFixed(fractionDigits);
+async function mazyarExtractPlayerScoutReport(pid, skills, sport = "soccer") {
+    const url = `https://${location.hostname}/ajax.php?p=players&sub=scout_report&pid=${pid}&sport=${sport}`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const report = doc.querySelectorAll(".paper-content.clearfix dl dd");
+        if (report.length == 3) {
+            const high = mazyarExtractStarsFromScoutReport(report[0]);
+            const highSkills = mazyarExtractSkillsFromScoutReport(report[0], skills);
+            const low = mazyarExtractStarsFromScoutReport(report[1]);
+            const lowSkills = mazyarExtractSkillsFromScoutReport(report[1], skills);
+            const trainingSpeed = mazyarExtractStarsFromScoutReport(report[2]);
+            return {
+                pid,
+                H: high,
+                HS: highSkills,
+                L: low,
+                LS: lowSkills,
+                S: trainingSpeed,
+            };
+        }
     }
-    return "0.0";
-}
-
-function mazyarFormatFileSize(b) {
-    const s = 1024;
-    let u = 0;
-    while (b >= s || -b >= s) {
-        b /= s;
-        u++;
-    }
-    return (u ? b.toFixed(1) + " " : b) + " KMGTPEZY"[u] + "B";
+    return null;
 }
 
 function mazyarExtractClubPlayersDetails(doc, currency) {
@@ -185,100 +272,45 @@ function mazyarGetNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
     return players.filter((player) => player.age <= ageHigh && player.age >= ageLow).length;
 }
 
-function mazyarFilterPlayers(players, count = 0, ageLow = 0, ageHigh = 99) {
-    if (players.length === 0) {
-        return { values: 0, avgAge: 0.0 };
-    }
+// ----------------------------------- Fetch ---------------------------------
 
-    const n = count === 0 ? players.length : count;
-    const filtered = players
-        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
-        .sort((a, b) => b.value - a.value)
-        .slice(0, n);
-    if (filtered.length === 0) {
-        return { values: 0, avgAge: 0.0 };
-    }
-    const values = filtered.map((player) => player.value).reduce((a, b) => a + b, 0);
-    const avgAge = filtered.map((player) => player.age).reduce((a, b) => a + b, 0) / filtered.length;
-    return { values, avgAge };
-}
-
-async function mazyarFetchNationalPlayersAndCurrency(tid, sport) {
-    const url = `https://${location.hostname}/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
-    let players = [];
-    let currency = '';
-    await fetch(url)
-        .then((resp) => resp.text())
-        .then((content) => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(content, "text/html");
-            currency = mazyarExtractNationalCurrency(doc);
-            players = mazyarExtractNationalPlayersDetails(doc, currency);
-        })
-        .catch((error) => {
-            console.warn(error);
-        });
-    return { players, currency };
-}
-
-async function mazyarFetchClubPlayersAndCurrency(tid) {
-    const url = mazyarGetSquadSummaryLink(tid);
-    let players = [];
-    let currency = '';
-    await fetch(url)
-        .then((resp) => resp.text())
-        .then((content) => {
-            const parser = new DOMParser();
-            const doc = parser.parseFromString(content, "text/html");
-            currency = mazyarExtractClubCurrency(doc);
-            players = mazyarExtractClubPlayersDetails(doc, currency);
-        })
-        .catch((error) => {
-            console.warn(error);
-        });
-    return { players, currency };
-}
-
-async function mazyarFetchPlayersAndCurrency(tid, sport) {
-    const url = mazyarGetSquadSummaryLink(tid);
-    const isNational = await fetch(url, { method: "HEAD" })
-        .then((resp) => (resp.url.search("p=national_teams") > -1));
-    return isNational ? await mazyarFetchNationalPlayersAndCurrency(tid, sport) : await mazyarFetchClubPlayersAndCurrency(tid);
-}
-
-function mazyarExtractClubTopPlyers(doc) {
-    const currency = mazyarExtractClubCurrency(doc);
-    const players = mazyarExtractClubPlayersDetails(doc, currency);
-    const sport = mazyarExtractSportType(doc);
-    const count = sport === "soccer" ? 11 : 21;
-    return players ? mazyarFilterPlayers(players, count) : { values: 0, avgAge: 0 };
-}
-
-async function mazyarExtractPlayersProfileDetails(teamId) {
-    const url = `https://${location.hostname}/?p=players&tid=${teamId}`;
+async function mazyarFetchHtml(url) {
     return await fetch(url)
-        .then((resp) => {
-            return resp.text();
-        }).then((content) => {
+        .then((resp) => resp.text())
+        .then((content) => {
             const parser = new DOMParser();
-            const doc = parser.parseFromString(content, "text/html");
-            const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
-            const info = {};
-            for (const player of players) {
-                const playerId = player.querySelector("span.player_id_span")?.innerText;
-                const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
-                info[playerId] = {
-                    detail: player,
-                    shared: !!player.querySelector("i.special_player.fa-share-alt"),
-                    market: !!inMarket,
-                    marketLink: inMarket?.href,
-                }
-            }
-            return info;
-        }).catch((error) => {
+            return parser.parseFromString(content, "text/html");
+        })
+        .catch((error) => {
             console.warn(error);
             return null;
         });
+}
+
+async function mazyarFetchXml(url) {
+    return await fetch(url)
+        .then((resp) => resp.text())
+        .then((content) => {
+            const parser = new DOMParser();
+            return parser.parseFromString(content, "text/xml");
+        })
+        .catch((error) => {
+            console.warn(error);
+            return null;
+        });
+}
+
+async function mazyarFetchJson(url) {
+    return await fetch(url)
+        .then((resp) => resp.json())
+        .catch((error) => {
+            console.warn(error);
+            return null;
+        });
+}
+
+function mazyarGetSquadSummaryUrl(tid) {
+    return `https://${location.hostname}/?p=players&sub=alt&tid=${tid}`;
 }
 
 function mazyarExtractSquadSummaryDetails(players, sport = "soccer") {
@@ -400,44 +432,201 @@ function mazyarExtractSquadSummaryDetails(players, sport = "soccer") {
     return rows;
 }
 
-async function mazyarFetchDocument(url) {
-    return await fetch(url)
-        .then((resp) => resp.text())
-        .then((content) => {
-            const parser = new DOMParser();
-            return parser.parseFromString(content, "text/html");
-        })
-        .catch((error) => {
-            console.warn(error);
-            return null;
-        });
+function mazyarFilterPlayers(players, count = 0, ageLow = 0, ageHigh = 99) {
+    if (players.length === 0) {
+        return { values: 0, avgAge: 0.0 };
+    }
+
+    const n = count === 0 ? players.length : count;
+    const filtered = players
+        .filter((player) => player.age <= ageHigh && player.age >= ageLow)
+        .sort((a, b) => b.value - a.value)
+        .slice(0, n);
+    if (filtered.length === 0) {
+        return { values: 0, avgAge: 0.0 };
+    }
+    const values = filtered.map((player) => player.value).reduce((a, b) => a + b, 0);
+    const avgAge = filtered.map((player) => player.age).reduce((a, b) => a + b, 0) / filtered.length;
+    return { values, avgAge };
 }
 
-async function mazyarFetchJson(url) {
-    return await fetch(url)
-        .then((resp) => resp.json())
-        .catch((error) => {
-            console.warn(error);
-            return null;
-        });
+async function mazyarFetchNationalPlayersAndCurrency(tid, sport) {
+    const url = `https://${location.hostname}/ajax.php?p=nationalTeams&sub=players&ntid=${tid}&sport=${sport}`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const currency = mazyarExtractNationalCurrency(doc);
+        const players = mazyarExtractNationalPlayersDetails(doc, currency);
+        return { players, currency };
+    }
+    return { players: [], currency: '' };
 }
 
-async function mazyarFetchPlayerProfileDocument(playerId) {
-    const url = `https://${location.hostname}/?p=players&pid=${playerId}`;
-    return await mazyarFetchDocument(url);
+async function mazyarFetchClubPlayersAndCurrency(tid) {
+    const url = mazyarGetSquadSummaryUrl(tid);
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const currency = mazyarExtractClubCurrency(doc);
+        const players = mazyarExtractClubPlayersDetails(doc, currency);
+        return { players, currency };
+    }
+    return { players: [], currency: '' };
 }
 
-async function mazyarFetchTransferMonitorData(sport = "soccer") {
-    const url = `https://${location.hostname}/ajax.php?p=transfer&sub=your-bids&sport=${sport}`;
-    return await mazyarFetchJson(url);
+async function mazyarFetchPlayersAndCurrency(tid, sport) {
+    const url = mazyarGetSquadSummaryUrl(tid);
+    const isNational = await fetch(url, { method: "HEAD" })
+        .then((resp) => (resp.url.search("p=national_teams") > -1));
+    return isNational ? await mazyarFetchNationalPlayersAndCurrency(tid, sport) : await mazyarFetchClubPlayersAndCurrency(tid);
 }
 
-async function mazyarFetchSquadSummaryDocument(teamId) {
-    const url = mazyarGetSquadSummaryLink(teamId);
-    return await mazyarFetchDocument(url);
+function mazyarExtractClubTopPlyers(doc) {
+    const currency = mazyarExtractClubCurrency(doc);
+    const players = mazyarExtractClubPlayersDetails(doc, currency);
+    const sport = mazyarExtractSportType(doc);
+    const count = sport === "soccer" ? 11 : 21;
+    return players ? mazyarFilterPlayers(players, count) : { values: 0, avgAge: 0 };
 }
 
-/* *********************** DOM Utils ********************************** */
+async function mazyarExtractPlayersProfileDetails(teamId) {
+    const url = `https://${location.hostname}/?p=players&tid=${teamId}`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const players = doc.getElementById("players_container")?.querySelectorAll("div.playerContainer");
+        const info = {};
+        for (const player of players) {
+            const playerId = player.querySelector("span.player_id_span")?.innerText;
+            const inMarket = [...player.querySelectorAll("a")].find((el) => el.href?.indexOf("p=transfer&sub") > -1);
+            info[playerId] = {
+                detail: player,
+                shared: !!player.querySelector("i.special_player.fa-share-alt"),
+                market: !!inMarket,
+                marketLink: inMarket?.href,
+            }
+        }
+        return info;
+    }
+    return null;
+}
+
+// -------------------------------------------- Icons ------------------------------------------
+
+function mazyarStartSpinning(element) {
+    element.classList.add("fa-spin");
+}
+
+function mazyarStopSpinning(element) {
+    element.classList.remove("fa-spin");
+}
+
+function mazyarCreateIconFromFontAwesomeClass(classes = [], title = "") {
+    const icon = document.createElement("i");
+    icon.classList.add(...classes);
+    icon.setAttribute("aria-hidden", "true");
+    icon.style.cursor = "pointer";
+    if (title) {
+        icon.title = title;
+    }
+    return icon;
+}
+
+function mazyarCreateMoveIcon(title) {
+    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-up-down-left-right"], title);
+}
+
+function mazyarCreateSharedIcon(title) {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
+}
+
+function mazyarCreateMarketIcon(title) {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+}
+
+function mazyarCreateCogIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-cog"], title);
+}
+
+function mazyarCreateCommentIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
+}
+
+function mazyarCreateSearchIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-search"], title);
+}
+
+function mazyarCreateNoteIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-note-sticky"], title);
+}
+
+function mazyarCreateRefreshIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-refresh"], title);
+}
+
+function mazyarCreateLegalIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
+}
+
+function mazyarCreateTrashIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fas", "fa-trash"], title);
+}
+
+function mazyarCreateLoadingIcon(title = "") {
+    const icon = mazyarCreateIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
+    icon.style.cursor = "unset";
+    return icon;
+}
+
+function mazyarCreateLoadingIcon2(title = "") {
+    const icon = mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-loader", "fa-pulse", "fa-fw"], title);
+    icon.style.cursor = "unset";
+    return icon;
+}
+
+function mazyarCreateDeadlineIndicator() {
+    const div = document.createElement("div");
+    const transferIcon = mazyarCreateLegalIcon();
+
+    div.classList.add("mazyar-flex-container");
+    div.style.position = "fixed";
+    div.style.zIndex = "9997";
+    div.style.top = "48%";
+    div.style.right = "35px";
+    div.style.color = "white";
+    div.style.textAlign = "center";
+
+    transferIcon.style.fontSize = "2rem";
+
+    div.appendChild(transferIcon);
+
+    return div;
+}
+
+function mazyarCreateDeleteIcon(title) {
+    const icon = document.createElement("span");
+    icon.classList.add("mazyar-icon-delete");
+    if (title) {
+        icon.title = title;
+    }
+    return icon;
+}
+
+function mazyarCreateAddToDeadlineIcon(title, color) {
+    const icon = mazyarCreateLegalIcon();
+    icon.style.verticalAlign = "unset";
+    icon.style.borderRadius = "50%";
+    icon.style.border = "solid 1px";
+    icon.style.padding = "3px";
+
+    const span = document.createElement("span");
+    span.style.color = color;
+    span.classList.add("floatRight");
+    if (title) {
+        span.title = title;
+    }
+    span.appendChild(icon);
+    return span;
+}
+
+// -------------------------------- DOM Utils ------------------------------
 
 function mazyarMakeElementDraggable(element, dragHandleElement, dragEndCallback = null) {
     let deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
@@ -489,6 +678,25 @@ function mazyarMakeElementDraggable(element, dragHandleElement, dragEndCallback 
         if (dragEndCallback) {
             dragEndCallback();
         }
+    }
+}
+
+function mazyarColorizeMaxedSkills(player, maxed = []) {
+    if (maxed) {
+        const playerSkills = player.querySelectorAll("table.player_skills tr td.skillval span");
+        for (const skill of maxed) {
+            playerSkills[skill]?.classList.add("maxed");
+        }
+    }
+}
+
+function mazyarColorizeSkills(player, report = { H: 4, L: 2, HS: [0, 1], LS: [2, 3] }) {
+    if (report) {
+        const playerSkills = player?.querySelectorAll("table.player_skills tr td:nth-child(1)");
+        playerSkills[report.HS[0]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+        playerSkills[report.HS[1]]?.classList.add("mazyar-scout-h", `mazyar-scout-${report.H}`);
+        playerSkills[report.LS[0]]?.classList.add(`mazyar-scout-${report.L}`);
+        playerSkills[report.LS[1]]?.classList.add(`mazyar-scout-${report.L}`);
     }
 }
 
@@ -628,7 +836,7 @@ function mazyarAppendOptionList(parent, options, selected) {
     }
 }
 
-function mazyarCreateMenuDropDown(label, options, initialValue) {
+function mazyarCreateDropDownMenu(label, options, initialValue) {
     // options = a object full of 'key: {value, label}'
     // initialValue = one of the options.value
 
@@ -649,32 +857,6 @@ function mazyarCreateMenuDropDown(label, options, initialValue) {
     return div;
 }
 
-function mazyarCreateDeleteIcon(title) {
-    const icon = document.createElement("span");
-    icon.classList.add("mazyar-icon-delete");
-    if (title) {
-        icon.title = title;
-    }
-    return icon;
-}
-
-function mazyarCreateAddToDeadlineIcon(title, color) {
-    const icon = mazyarCreateLegalIcon();
-    icon.style.verticalAlign = "unset";
-    icon.style.borderRadius = "50%";
-    icon.style.border = "solid 1px";
-    icon.style.padding = "3px";
-
-    const span = document.createElement("span");
-    span.style.color = color;
-    span.classList.add("floatRight");
-    if (title) {
-        span.title = title;
-    }
-    span.appendChild(icon);
-    return span;
-}
-
 function mazyarCreateDeleteButtonWithTrashIcon(title = "Delete") {
     const icon = mazyarCreateDeleteIcon();
 
@@ -690,7 +872,7 @@ function mazyarCreateDeleteButtonWithTrashIcon(title = "Delete") {
     return button;
 }
 
-function mazyarFiltersViewCreateTableHeader() {
+function mazyarCreateTableHeaderForFiltersView() {
     const tr = document.createElement("tr");
 
     const name = document.createElement("th");
@@ -729,77 +911,6 @@ function mazyarFiltersViewCreateTableHeader() {
     const thead = document.createElement("thead");
     thead.appendChild(tr);
     return thead;
-}
-
-function mazyarStartSpinning(element) {
-    element.classList.add("fa-spin");
-}
-
-function mazyarStopSpinning(element) {
-    element.classList.remove("fa-spin");
-}
-
-function mazyarCreateIconFromFontAwesomeClass(classes = [], title = "") {
-    const icon = document.createElement("i");
-    icon.classList.add(...classes);
-    icon.setAttribute("aria-hidden", "true");
-    icon.style.cursor = "pointer";
-    if (title) {
-        icon.title = title;
-    }
-    return icon;
-}
-
-function mazyarCreateMoveIcon(title) {
-    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-up-down-left-right"], title);
-}
-
-function mazyarCreateSharedIcon(title) {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-share-alt"], title);
-}
-
-function mazyarCreateMarketIcon(title) {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
-}
-
-function mazyarCreateCogIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-cog"], title);
-}
-
-function mazyarCreateCommentIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
-}
-
-function mazyarCreateSearchIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-search"], title);
-}
-
-function mazyarCreateNoteIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-note-sticky"], title);
-}
-
-function mazyarCreateRefreshIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-refresh"], title);
-}
-
-function mazyarCreateLegalIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
-}
-
-function mazyarCreateTrashIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fas", "fa-trash"], title);
-}
-
-function mazyarCreateLoadingIcon(title = "") {
-    const icon = mazyarCreateIconFromFontAwesomeClass(["fa", "fa-spinner", "fa-spin"], title);
-    icon.style.cursor = "unset";
-    return icon;
-}
-
-function mazyarCreateLoadingIcon2(title = "") {
-    const icon = mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-loader", "fa-pulse", "fa-fw"], title);
-    icon.style.cursor = "unset";
-    return icon;
 }
 
 function mazyarCreateToolbar() {
@@ -861,21 +972,115 @@ function mazyarCreateToolbar() {
     return { toolbar, menu, transfer, note };
 }
 
-function mazyarCreateDeadlineIndicator() {
-    const div = document.createElement("div");
-    const transferIcon = mazyarCreateLegalIcon();
 
-    div.classList.add("mazyar-flex-container");
-    div.style.position = "fixed";
-    div.style.zIndex = "9997";
-    div.style.top = "48%";
-    div.style.right = "35px";
-    div.style.color = "white";
-    div.style.textAlign = "center";
+/* *********************** Monitor ********************************** */
 
-    transferIcon.style.fontSize = "2rem";
+function mazyarCreateSectionSeparatorForMonitor() {
+    const tr = document.createElement("tr");
+    tr.style.height = "10px";
+    tr.innerHTML = '<td></td>';
+    return tr;
+}
 
-    div.appendChild(transferIcon);
+function mazyarCreateRowSeparatorForMonitor(color) {
+    const tr = document.createElement("tr");
+    tr.classList.add("mazyar-monitor-player-row");
+    tr.style.height = "1px";
+    tr.style.backgroundColor = color;
+    tr.innerHTML = '<td></td>';
+    return tr;
+}
 
-    return div;
+function monitorAddRowSeparator() {
+    return [
+        mazyarCreateRowSeparatorForMonitor("#999999"),
+        mazyarCreateRowSeparatorForMonitor("#FFFFFF")
+    ];
+}
+
+function mazyarCreateSectionForMonitor(title, id) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+            <td><div id="${id}">
+            <table width="100%" cellpadding="0" cellspacing="0">
+            <tbody><tr>
+            <td style="background-image: url(img/subheader_right.gif);">
+                <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                <tbody><tr>
+                    <td class="subheader" valign="bottom">${title}</td>
+                </tr></tbody>
+                </table>
+            </td>
+            </tr></tbody>
+            </table>
+            </div></td>`;
+    return tr;
+}
+
+function mazyarClearPlayerRowsInMonitor(tbody) {
+    const players = tbody.querySelectorAll(".mazyar-monitor-player-row");
+    for (const player of players) {
+        tbody.removeChild(player);
+    }
+}
+
+function mazyarCreatePlayerRowForMonitor(
+    player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
+    timeout = 0) {
+    const tr = document.createElement("tr");
+    tr.classList.add("mazyar-monitor-player-row");
+    if (player.deadline <= timeout) {
+        tr.classList.add("mazyar-deadline-monitor-throb");
+    }
+    tr.innerHTML = `
+            <td valign="top" style="" width="100%">
+            <table width="100%" border="0">
+                <tbody>
+                <tr style="height: 25px;">
+                    <td colspan="2">
+                    <table cellpadding="0" cellspacing="0" width="100%" border="0">
+                        <tbody>
+                        <tr>
+                            <td width="220">
+                            <table>
+                                <tbody>
+                                <tr>
+                                    <td><img src="${player.flag}"></td>
+                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
+                                    <td></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                            <td>
+                            <table class="deadline-table">
+                                <tbody>
+                                <tr>
+                                    <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
+                                    <td>${player.deadlineFull}</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                            <td align="right">
+                            <table border="0">
+                                <tbody>
+                                <tr>
+                                    <td>Latest bid:</td>
+                                    <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
+                                    <td>&nbsp;</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+            </td>
+       `;
+    return tr;
 }
