@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.4
+// @version      3.5
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.5": [
+            "<b>[fix]</b> Clash: fix crash.",
+        ],
         "3.4": [
             "<b>[new]</b> MZY Settings is splitted to smaller sections.",
         ],
@@ -762,7 +765,8 @@
             averageAge: 0,
         };
 
-        const doc = await mazyarFetchHtml(url);
+        const squadUrl = mazyarGetSquadSummaryUrl(team.id);
+        const doc = await mazyarFetchHtml(squadUrl);
         let successful = false;
         if (doc) {
             info.currency = mazyarExtractClubCurrency(doc);
