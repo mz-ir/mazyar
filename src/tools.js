@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.1
+// @version      1.2
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -488,6 +488,9 @@ function mazyarExtractClubTopPlyers(doc) {
 }
 
 async function mazyarExtractPlayersProfileDetails(teamId) {
+    if (!teamId) {
+        return null;
+    }
     const url = `https://${location.hostname}/?p=players&tid=${teamId}`;
     const doc = await mazyarFetchHtml(url);
     if (doc) {
@@ -501,6 +504,7 @@ async function mazyarExtractPlayersProfileDetails(teamId) {
                 shared: !!player.querySelector("i.special_player.fa-share-alt"),
                 market: !!inMarket,
                 marketLink: inMarket?.href,
+                name: player.querySelector("span.player_name").innerText,
             }
         }
         return info;
@@ -567,6 +571,10 @@ function mazyarCreateLegalIcon(title = "") {
 
 function mazyarCreateTrashIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fas", "fa-trash"], title);
+}
+
+function mazyarCreateSignalIcon(title = "") {
+    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-signal-stream"], title);
 }
 
 function mazyarCreateLoadingIcon(title = "") {
@@ -918,6 +926,7 @@ function mazyarCreateToolbar() {
     const logo = document.createElement("span");
     const menu = mazyarCreateCogIcon("Settings");
     const note = mazyarCreateNoteIcon("Notebook");
+    const live = mazyarCreateSignalIcon("In Progress Results");
     const separator = document.createElement("span");
     const transfer = document.createElement("div");
     const transferIcon = mazyarCreateSearchIcon("Transfer");
@@ -939,9 +948,15 @@ function mazyarCreateToolbar() {
     logo.style.padding = "1px";
 
     menu.style.fontSize = "large";
-    transferIcon.style.fontSize = "large";
+
     note.style.fontSize = "large";
     note.style.marginTop = "5px";
+
+    live.style.fontSize = "large";
+    live.style.marginTop = "5px";
+    live.id = "mazyar-in-progress-icon";
+
+    transferIcon.style.fontSize = "large";
 
     separator.innerText = "-------";
     separator.style.textAlign = "center";
@@ -966,10 +981,11 @@ function mazyarCreateToolbar() {
     toolbar.appendChild(logo);
     toolbar.appendChild(menu);
     toolbar.appendChild(note);
+    toolbar.appendChild(live);
     toolbar.appendChild(separator);
     toolbar.appendChild(transfer);
 
-    return { toolbar, menu, transfer, note };
+    return { toolbar, menu, transfer, note, live };
 }
 
 

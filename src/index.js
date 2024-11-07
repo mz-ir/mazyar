@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.6
+// @version      3.7
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1470916/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1479169/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -37,6 +37,10 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.7": [
+            `<b>[new]</b> MZY Settings: add <i class="fa-solid fa-signal-stream" style="color: green; font-size: large;"></i> icon in MZY Toolbar to toggle 'display in progress results' settings`,
+            `<b>[new]</b> Tables: add a section to league tables to display players that are in transfer market. You can disable it in Miscellaneous section of MZY Settings. (look for <b>Add transfer list in tables<b>`,
+        ],
         "3.6": [
             "<b>[fix]</b> Clash: squad values",
         ],
@@ -1733,6 +1737,42 @@
         }
     }
 
+    async function tableInjectTransferList(table) {
+        const parent = table.parentNode;
+
+        const div = document.createElement("div");
+        div.classList.add("mainContent");
+        div.style.padding = "5px";
+        div.innerText = "fetching...";
+        parent.insertBefore(div, table.nextSibling);
+
+        const header = document.createElement("h2");
+        header.classList.add("subheader", "clearfix");
+        header.style.marginTop = "5px";
+        header.innerText = "MZY Transfer List";
+        parent.insertBefore(header, div);
+
+        const teams = table.querySelectorAll("tbody tr.responsive-hide");
+        const jobs = []
+        for (const team of teams) {
+            const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
+            const tid = mazyarExtractTeamId(teamLink);
+            jobs.push(mazyarExtractPlayersProfileDetails(tid));
+        }
+        const teamsPlayers = await Promise.all(jobs);
+        div.innerText = '';
+        for (const teamPlayers of teamsPlayers) {
+            for (const player of Object.keys(teamPlayers)) {
+                if (teamPlayers[player].market) {
+                    div.innerHTML += `<a href="${teamPlayers[player]?.marketLink}">${teamPlayers[player]?.name}</a><br>`;
+                }
+            }
+        }
+        if (div.innerText === '') {
+            div.innerText = 'found no players in transfer market';
+        }
+    }
+
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
         const step = 500;
         const interval = setInterval(() => {
@@ -1746,6 +1786,9 @@
                     }
                     if (mazyar.mustDisplayInProgressResults()) {
                         tableInjectInProgressResults();
+                    }
+                    if (mazyar.mustAddTransferListToTable()) {
+                        tableInjectTransferList(table);
                     }
                 }
             } else {
@@ -2366,6 +2409,7 @@
                 mz_predictor: false,
                 player_comment: false,
                 coach_salary: false,
+                table_transfer_list: false,
             },
             transfer: {
                 enable_filters: false,
@@ -2437,6 +2481,7 @@
             this.#settings.miscellaneous.player_comment = GM_getValue("player_comment", true);
             this.#settings.miscellaneous.coach_salary = GM_getValue("coach_salary", true);
             this.#settings.miscellaneous.fixture_full_name = GM_getValue("fixture_full_name", true);
+            this.#settings.miscellaneous.table_transfer_list = GM_getValue("table_transfer_list", true);
         }
 
         #saveMiscellaneousSettings() {
@@ -2446,6 +2491,8 @@
             GM_setValue("player_comment", this.#settings.miscellaneous.player_comment);
             GM_setValue("coach_salary", this.#settings.miscellaneous.coach_salary);
             GM_setValue("fixture_full_name", this.#settings.miscellaneous.fixture_full_name);
+            GM_setValue("table_transfer_list", this.#settings.miscellaneous.table_transfer_list);
+            document.getElementById("mazyar-in-progress-icon").style.color = this.mustDisplayInProgressResults() ? "greenyellow" : "unset";
         }
 
         #saveTransferSettings() {
@@ -2485,6 +2532,16 @@
             this.#saveMiscellaneousSettings();
         }
 
+        #disableDisplayingInProgressResults() {
+            this.#settings.miscellaneous.in_progress_results = false;
+            GM_setValue("display_in_progress_results", this.#settings.miscellaneous.in_progress_results);
+        }
+
+        #enableDisplayingInProgressResults() {
+            this.#settings.miscellaneous.in_progress_results = true;
+            GM_setValue("display_in_progress_results", this.#settings.miscellaneous.in_progress_results);
+        }
+
         async #cleanInstall() {
             this.#updateMiscellaneousSettings({
                 in_progress_results: false,
@@ -2493,6 +2550,7 @@
                 player_comment: false,
                 coach_salary: false,
                 fixture_full_name: false,
+                table_transfer_list: false,
             });
             this.#updateDaysSettings({
                 display_in_profiles: false,
@@ -2618,6 +2676,10 @@
 
         mustAddFullNamesToFixture() {
             return this.#settings.miscellaneous.fixture_full_name;
+        }
+
+        mustAddTransferListToTable() {
+            return this.#settings.miscellaneous.table_transfer_list;
         }
 
         // -------------------------------- Database -------------------------------------
@@ -3396,7 +3458,7 @@
         }
 
         #addToolbar() {
-            const { toolbar, menu, transfer, note } = mazyarCreateToolbar();
+            const { toolbar, menu, transfer, note, live } = mazyarCreateToolbar();
             menu.addEventListener("click", () => {
                 this.#displaySettingsMenu();
             });
@@ -3412,7 +3474,44 @@
                     this.#saveNotebookStyle();
                 }
             });
+            live.style.color = this.mustDisplayInProgressResults() ? "greenyellow" : "unset";
+            live.addEventListener("click", () => {
+                if (this.mustDisplayInProgressResults()) {
+                    this.#disableDisplayingInProgressResults();
+                    live.style.color = "unset";
+                } else {
+                    this.#enableDisplayingInProgressResults();
+                    live.style.color = "greenyellow";
+                }
+                if (this.#couldInjectInProgressResults()) {
+                    location.reload();
+                }
+            });
+            document.addEventListener("focus", () => {
+                this.#updateInProgressIconDisplay(live);
+            });
             document.body?.appendChild(toolbar);
+        }
+
+        #couldInjectInProgressResults() {
+            const uri = document.baseURI;
+            return (uri.search("/?p=match") > -1 && (uri.search("&sub=result") < 0))
+                || (uri.search("/?p=cup&") > -1)
+                || (uri.search("/?p=private_cup&") > -1)
+                || (uri.search("/?p=friendlyseries") > -1)
+                || (uri.search("/?p=league") > -1);
+        }
+
+        #updateInProgressIconDisplay(icon) {
+            const last = this.mustDisplayInProgressResults();
+            this.#settings.miscellaneous.in_progress_results = GM_getValue("display_in_progress_results", true);
+            const current = this.mustDisplayInProgressResults();
+            if (last !== current) {
+                icon.style.color = current ? "greenyellow" : "unset";
+                if (this.#couldInjectInProgressResults()) {
+                    location.reload();
+                }
+            }
         }
 
         #displayModal() {
@@ -3788,6 +3887,7 @@
             const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.miscellaneous.top_players_in_tables, level1Style);
             const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.miscellaneous.mz_predictor, level1Style);
             const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.miscellaneous.fixture_full_name, level1Style);
+            const tableTransferList = mazyarCreateMenuCheckBox("Add transfer list in tables", this.#settings.miscellaneous.fixture_full_name, level1Style);
             const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.miscellaneous.coach_salary, level1Style);
             mzPredictor.style.display = 'none';
             group.appendChild(playerComment);
@@ -3796,6 +3896,7 @@
             group.appendChild(fixtureFullName);
             group.appendChild(coachSalaries);
             group.appendChild(mzPredictor);
+            group.appendChild(tableTransferList);
 
             const buttons = document.createElement("div");
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
@@ -3818,6 +3919,7 @@
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                     fixture_full_name: fixtureFullName.querySelector("input[type=checkbox]").checked,
+                    fixture_full_name: tableTransferList.querySelector("input[type=checkbox]").checked,
                 });
                 this.#hideModal();
                 this.#displaySettingsMenu();
@@ -4653,7 +4755,7 @@
                 (version[0] === base[0] && version[1] > base[1]);
         }
 
-        #showChangelog() {
+        #showChangelog(force = false) {
             const previousVersion = GM_getValue("previous_version", "");
             if (!previousVersion) {
                 GM_setValue("previous_version", CURRENT_VERSION);
@@ -4661,7 +4763,7 @@
             }
             const previous = this.#getVersionNumbers(previousVersion);
             const current = this.#getVersionNumbers(CURRENT_VERSION);
-            if (!this.#isVersionLesserThan(previous, current)) {
+            if (!force && !this.#isVersionLesserThan(previous, current)) {
                 return;
             }
 
@@ -4689,6 +4791,11 @@
                     changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
                         + MAZYAR_CHANGELOG[v]?.join("</li><li>") + "</li></ul></div>";
                 }
+            }
+            if (changesHTML === '' && force) {
+                const v = versions[0].join('.');
+                changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
+                    + MAZYAR_CHANGELOG[v]?.join("</li><li>") + "</li></ul></div>";
             }
             const changes = document.createElement("div");
             changes.innerHTML = changesHTML;
