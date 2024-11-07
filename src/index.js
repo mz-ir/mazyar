@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.7
+// @version      3.8
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,9 +37,12 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.8": [
+            "<b>[fix]</b> fixture: full names",
+        ],
         "3.7": [
             `<b>[new]</b> MZY Settings: add <i class="fa-solid fa-signal-stream" style="color: green; font-size: large;"></i> icon in MZY Toolbar to toggle 'display in progress results' settings`,
-            `<b>[new]</b> Tables: add a section to league tables to display players that are in transfer market. You can disable it in Miscellaneous section of MZY Settings. (look for <b>Add transfer list in tables<b>`,
+            `<b>[new]</b> Tables: add a section to league tables to display players that are in transfer market. You can disable it in Miscellaneous section of MZY Settings. (look for <b>Add transfer list in tables</b>`,
         ],
         "3.6": [
             "<b>[fix]</b> Clash: squad values",
@@ -3887,7 +3890,7 @@
             const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.miscellaneous.top_players_in_tables, level1Style);
             const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.miscellaneous.mz_predictor, level1Style);
             const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.miscellaneous.fixture_full_name, level1Style);
-            const tableTransferList = mazyarCreateMenuCheckBox("Add transfer list in tables", this.#settings.miscellaneous.fixture_full_name, level1Style);
+            const tableTransferList = mazyarCreateMenuCheckBox("Add transfer list in tables", this.#settings.miscellaneous.table_transfer_list, level1Style);
             const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.miscellaneous.coach_salary, level1Style);
             mzPredictor.style.display = 'none';
             group.appendChild(playerComment);
@@ -3919,7 +3922,7 @@
                     player_comment: playerComment.querySelector("input[type=checkbox]").checked,
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                     fixture_full_name: fixtureFullName.querySelector("input[type=checkbox]").checked,
-                    fixture_full_name: tableTransferList.querySelector("input[type=checkbox]").checked,
+                    table_transfer_list: tableTransferList.querySelector("input[type=checkbox]").checked,
                 });
                 this.#hideModal();
                 this.#displaySettingsMenu();
