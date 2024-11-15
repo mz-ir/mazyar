@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.10
+// @version      3.11
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.11": [
+            "<b>[new]</b> Training Report: add player's days left in the camp",
+        ],
         "3.10": [
             "<b>[fix]</b> Table Transfer List: fix undefined age",
         ],
@@ -2381,27 +2384,47 @@
         }, 300);
     }
 
-    function trainingInjectCampOpener(table) {
+    async function trainingInjectCampOpener(table) {
+        const column = 6;
+        const head = table.querySelector("thead tr");
+        const th = document.createElement("td");
+        th.style.textAlign = "right";
+        th.innerText = "Left";
+        head.insertBefore(th, head.children[column]);
+
         const players = table.querySelectorAll("tbody tr");
         for (const player of players) {
+            const pid = mazyarExtractPlayerIdFromProfileLink(player.querySelector(".player_link")?.href);
             const campIcon = player.querySelector("td.dailyReportRightColumn img.content_middle");
+            const td = document.createElement("td");
+            td.style.textAlign = "right";
             if (campIcon) {
                 campIcon.style.cursor = "pointer";
                 campIcon.addEventListener("click", () => {
                     trainingOpenPlayerTrainingCamp(player);
                 });
+                td.innerHTML = `<strong id="mazyar-pid-${pid}"></strong>`;
             }
+            player.insertBefore(td, player.children[column]);
         }
+        mazyarFetchTrainingCampDetail().then((detail) => {
+            if (detail) {
+                for (const pid of Object.keys(detail)) {
+                    const player = table.querySelector(`#mazyar-pid-${pid}`);
+                    if (player) {
+                        player.innerText = detail[pid].days ?? "n/a";
+                    }
+                }
+            }
+        })
     }
 
     function trainingAddCampOpenerToReport() {
         const callback = () => {
-            const tables = document.querySelectorAll('#training_report > table');
-            for (const table of tables) {
-                if (!table.injecting) {
-                    table.injecting = true;
-                    trainingInjectCampOpener(table);
-                }
+            const table = document.querySelector('#training_report > table');
+            if (!table.injecting) {
+                table.injecting = true;
+                trainingInjectCampOpener(table);
             }
         };
         const target = document.getElementById('training_report');
