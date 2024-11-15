@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.8
+// @version      3.9
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,8 +16,8 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1479169/MazyarTools.js
-// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/MazyarStyles.user.css
+// @require      https://update.greasyfork.org/scripts/513041/1484499/MazyarTools.js
+// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1484500/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
@@ -37,6 +37,11 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.9": [
+            "<b>[new]</b> MZY Modal: add close button in title",
+            "<b>[improve]</b> MZY Settings: update sections' styles",
+            "<b>[improve]</b> Table's Transfer List: add team name, player age, deadline, fee and latest bid.",
+        ],
         "3.8": [
             "<b>[fix]</b> fixture: full names",
         ],
@@ -1740,6 +1745,53 @@
         }
     }
 
+    async function tableCreateTransferList(teams) {
+        const sport = mazyarExtractSportType();
+        let rows = 0;
+        const table = document.createElement("table");
+        table.classList.add("nice_table");
+
+        const thead = document.createElement("thead");
+        table.appendChild(thead);
+        thead.innerHTML = `
+        <tr>
+            <th>Team</th>
+            <th>Player</th>
+            <th>Age</th>
+            <th>Deadline</th>
+            <th>Fee</th>
+            <th>Latest Bid</th>
+        </tr>`;
+
+        const tbody = document.createElement("tbody");
+        table.appendChild(tbody);
+        for (const teamPlayers of teams) {
+            for (const player of Object.keys(teamPlayers)) {
+                if (teamPlayers[player].market) {
+                    rows += 1;
+                    const tr = document.createElement("tr");
+                    tbody.appendChild(tr);
+                    tr.innerHTML = `
+                    <td>${teamPlayers.team.outerHTML}</td>
+                    <td><a href="${teamPlayers[player]?.marketLink}">${teamPlayers[player]?.name}</a></td>
+                    <td>${teamPlayers[player]?.age}</td>
+                    <td class="mazyar-deadline">${mazyarCreateLoadingIcon2().outerHTML}</td>
+                    <td class="mazyar-fee">${mazyarCreateLoadingIcon2().outerHTML}</td>
+                    <td class="mazyar-bid">${mazyarCreateLoadingIcon2().outerHTML}</td>`;
+                    console.log({ player })
+                    mazyarFetchPlayerMarketDetail(player, sport).then((detail) => {
+                        tr.querySelector(".mazyar-deadline").innerText = detail?.player?.deadlineFull ?? "passed";
+                        tr.querySelector(".mazyar-fee").innerText = detail?.player?.fee ?? "n/a";
+                        tr.querySelector(".mazyar-bid").innerText = detail?.player?.latestBid ?? "n/a";
+                    });
+
+                }
+            }
+        }
+
+        return rows > 0 ? table : document.createTextNode('No players in transfer market.');
+    }
+
     async function tableInjectTransferList(table) {
         const parent = table.parentNode;
 
@@ -1758,22 +1810,16 @@
         const teams = table.querySelectorAll("tbody tr.responsive-hide");
         const jobs = []
         for (const team of teams) {
-            const teamLink = team.querySelector("td:nth-child(2) a:last-child")?.href;
-            const tid = mazyarExtractTeamId(teamLink);
-            jobs.push(mazyarExtractPlayersProfileDetails(tid));
+            const teamLink = team.querySelector("td:nth-child(2) a:last-child");
+            const tid = mazyarExtractTeamId(teamLink?.href);
+            jobs.push(mazyarExtractPlayersProfileDetails(tid).then((detail) => {
+                detail.team = teamLink;
+                return detail;
+            }));
         }
         const teamsPlayers = await Promise.all(jobs);
-        div.innerText = '';
-        for (const teamPlayers of teamsPlayers) {
-            for (const player of Object.keys(teamPlayers)) {
-                if (teamPlayers[player].market) {
-                    div.innerHTML += `<a href="${teamPlayers[player]?.marketLink}">${teamPlayers[player]?.name}</a><br>`;
-                }
-            }
-        }
-        if (div.innerText === '') {
-            div.innerText = 'found no players in transfer market';
-        }
+        const result = await tableCreateTransferList(teamsPlayers);
+        div.replaceChildren(result);
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
@@ -3102,16 +3148,16 @@
             const texts = [];
             const options = this.getTransferOptions();
             if (options.H4) {
-                texts.push('<span class="mazyar-scout-4">H4<span>');
+                texts.push('<span class="mazyar-scout-4">H4</span>');
             }
             if (options.H3) {
-                texts.push('<span class="mazyar-scout-3">H3<span>');
+                texts.push('<span class="mazyar-scout-3">H3</span>');
             }
             if (options.L2) {
-                texts.push('<span class="mazyar-scout-2">L2<span>');
+                texts.push('<span class="mazyar-scout-2">L2</span>');
             }
             if (options.L1) {
-                texts.push('<span class="mazyar-scout-1">L1<span>');
+                texts.push('<span class="mazyar-scout-1">L1</span>');
             }
             return texts.join(", ");
         }
@@ -3119,16 +3165,16 @@
         #getSelectedScoutsOptionTextForFilter(scout) {
             const texts = [];
             if (scout.high.includes(4)) {
-                texts.push('<span class="mazyar-scout-4">H4<span>');
+                texts.push('<span class="mazyar-scout-4">H4</span>');
             }
             if (scout.high.includes(3)) {
-                texts.push('<span class="mazyar-scout-3">H3<span>');
+                texts.push('<span class="mazyar-scout-3">H3</span>');
             }
             if (scout.low.includes(2)) {
-                texts.push('<span class="mazyar-scout-2">L2<span>');
+                texts.push('<span class="mazyar-scout-2">L2</span>');
             }
             if (scout.low.includes(1)) {
-                texts.push('<span class="mazyar-scout-1">L1<span>');
+                texts.push('<span class="mazyar-scout-1">L1</span>');
             }
             return texts.join(", ");
         }
@@ -3536,18 +3582,27 @@
         }
 
         #displayLoading(title = "MZY") {
-            const header = mazyarCreateMzStyledTitle(title);
+            const header = mazyarCreateMzStyledTitle(title, () => {
+                this.#hideModal();
+            });
 
-            const loading = document.createElement("p");
-            loading.innerText = "Loading...";
-            loading.style.padding = "1rem";
+            const div = document.createElement("div");
+            div.style.margin = "1rem";
 
-            this.#replaceModalContent([header, loading]);
+            const loading = mazyarCreateLoadingIcon2();
+            loading.style.fontSize = "x-large";
+
+            div.appendChild(loading);
+
+            this.#replaceModalContent([header, div]);
         }
 
-        #displayCleanMenu() {
+        #displayCleanInstallMenu() {
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle("MZY Settings");
+            const title = mazyarCreateMzStyledTitle("MZY Settings - Clean", () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
             const notice = document.createElement("div");
             const buttons = document.createElement("div");
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
@@ -3653,7 +3708,10 @@
             this.#notebook.element = document.createElement("div");
             const content = document.createElement("div");
 
-            const contentHeader = mazyarCreateMzStyledTitle("MZY Notebook");
+            const contentHeader = mazyarCreateMzStyledTitle("MZY Notebook", () => {
+                this.#hideNotebook();
+                this.#saveNotebookStyle();
+            });
             const text = document.createElement("textarea");
             const hide = mazyarCreateMzStyledButton("Hide", "blue");
             const save = mazyarCreateMzStyledButton("Save", "green");
@@ -3779,7 +3837,10 @@
             const level2Style = { margin: "0.3rem 1.2rem" };
 
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Transfer Settings`);
+            const title = mazyarCreateMzStyledTitle(`MZY Transfer Settings`, () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
 
             const group = document.createElement("div");
             const filters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer.enable_filters, level1Style);
@@ -3833,7 +3894,10 @@
             const level1Style = { margin: "0.3rem 0.7rem" };
 
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Days Settings`);
+            const title = mazyarCreateMzStyledTitle(`MZY Days Settings`, () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
 
             const group = document.createElement("div");
             const daysInProfiles = mazyarCreateMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, level1Style);
@@ -3882,7 +3946,10 @@
             const level1Style = { margin: "0.3rem 0.7rem" };
 
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`);
+            const title = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`, () => {
+                this.#hideModal();
+                this.#displaySettingsMenu();
+            });
 
             const group = document.createElement("div");
             const playerComment = mazyarCreateMenuCheckBox("Enable player comment", this.#settings.miscellaneous.player_comment, level1Style);
@@ -3939,15 +4006,15 @@
 
         #displaySettingsMenu() {
             const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`);
+            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`, () => {
+                this.#hideModal();
+            });
 
-            const transfer = mazyarCreateMzStyledButton(`Transfer Settings`, "green");
-            const days = mazyarCreateMzStyledButton(`Days Settings`, "green");
-            const miscellaneous = mazyarCreateMzStyledButton(`Miscellaneous Settings`, "green");
+            const days = mazyarCreateSettingsSectionButton("Days Settings");
+            const transfer = mazyarCreateSettingsSectionButton("Transfer Settings");
+            const miscellaneous = mazyarCreateSettingsSectionButton("Miscellaneous Settings");
 
-            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "blue");
-
-            const close = mazyarCreateMzStyledButton("Close", "green");
+            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "red");
 
             div.classList.add("mazyar-flex-container");
 
@@ -3966,14 +4033,10 @@
                 this.#displayMiscellaneousSettingsMenu();
             });
 
-            clean.style.marginBottom = "0";
+            clean.style.marginTop = "15px";
             clean.addEventListener("click", () => {
                 this.#hideModal();
-                this.#displayCleanMenu();
-            });
-
-            close.addEventListener("click", () => {
-                this.#hideModal();
+                this.#displayCleanInstallMenu();
             });
 
             div.appendChild(title);
@@ -3981,7 +4044,6 @@
             div.appendChild(transfer);
             div.appendChild(miscellaneous);
             div.appendChild(clean);
-            div.appendChild(close);
 
             this.#replaceModalContent([div]);
         }
@@ -4012,7 +4074,9 @@
 
             const scoutText = this.#getSelectedScoutsOptionText();
 
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Filter");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Filter", () => {
+                this.#hideModal();
+            });
             const div = document.createElement("div");
             const datalist = mazyarCreateSuggestionList(filters.map((f) => f.name));
             const filterName = mazyarCreateMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
@@ -4021,7 +4085,6 @@
 
             const validation = document.createElement("div");
             const buttons = document.createElement("div");
-            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
             div.classList.add("mazyar-flex-container");
@@ -4045,10 +4108,6 @@
 
             buttons.classList.add("mazyar-flex-container-row");
 
-            cancel.addEventListener("click", () => {
-                this.#hideModal();
-            });
-
             save.addEventListener("click", () => {
                 // save then close
                 const name = filterName.querySelector("input[type=text]").value;
@@ -4064,7 +4123,6 @@
                 }
             });
 
-            buttons.appendChild(cancel);
             buttons.appendChild(save);
 
             div.appendChild(title);
@@ -4121,7 +4179,9 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Hide List");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Hide List", () => {
+                this.#hideModal();
+            });
             await this.#countPlayersOfHideListInIndexDb();
             const body = document.createElement("div");
             const description = document.createElement("div");
@@ -4141,8 +4201,6 @@
             body.style.maxWidth = "320px";
             dayClearDiv.classList.add("mazyar-flex-container-row");
             daysInput.querySelector("input[type='text']").style.width = "2rem";
-
-            const close = mazyarCreateMzStyledButton("Close", "green");
 
             description.innerHTML = `<p>There are <strong style="color:red;">${await this.#countPlayersOfHideListInIndexDb()}</strong> player(s) hidden from transfer market.</p>
             <p>You can remove players from hide list.</p>
@@ -4183,13 +4241,8 @@
                 }
             });
 
-            close.addEventListener("click", () => {
-                this.#hideModal();
-            });
-
             div.appendChild(title);
             div.appendChild(body);
-            div.appendChild(close);
 
             this.#replaceModalContent([div]);
         }
@@ -4283,7 +4336,9 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Filters");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Filters", () => {
+                this.#hideModal();
+            });
 
             const filtersView = document.createElement("div");
             filtersView.classList.add("mazyar-flex-container");
@@ -4313,15 +4368,9 @@
                 noFilterView.style.display = "unset";
             }
 
-            const close = mazyarCreateMzStyledButton("Close", "green");
-            close.addEventListener("click", () => {
-                this.#hideModal();
-            });
-
             div.appendChild(title);
             div.appendChild(filtersView);
             div.appendChild(noFilterView);
-            div.appendChild(close);
 
             this.#replaceModalContent([div]);
         }
@@ -4338,12 +4387,10 @@
                 topPlayers.style.margin = "2px 5px";
                 topPlayers.style.padding = "0";
 
-                const header = mazyarCreateMzStyledTitle("MZY Squad Summary");
-                const button = mazyarCreateMzStyledButton("Close", "red");
-                button.addEventListener("click", () => {
+                const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
                     this.#hideModal();
                 });
-                this.#replaceModalContent([header, topPlayers, button]);
+                this.#replaceModalContent([header, topPlayers]);
             }
         }
 
@@ -4351,7 +4398,9 @@
             const div = document.createElement("div");
             div.classList.add("mazyar-flex-container");
 
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Deadlines");
+            const title = mazyarCreateMzStyledTitle("MZY Transfer Deadlines", () => {
+                this.#hideModal();
+            });
 
             const middle = document.createElement("div");
             middle.classList.add("mazyar-scrollable-vertical");
@@ -4404,14 +4453,8 @@
                 tbody.appendChild(row);
             }
 
-            const close = mazyarCreateMzStyledButton("Close", "green");
-            close.addEventListener("click", () => {
-                this.#hideModal();
-            });
-
             div.appendChild(title);
             div.appendChild(middle);
-            div.appendChild(close);
 
             this.#replaceModalContent([div]);
         }
@@ -4455,28 +4498,11 @@
         }
 
         async #updatePlayerDeadlineFromMarket(pid) {
-            const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${pid}`;
-            const result = await mazyarFetchJson(url);
-            if (result) {
-                if (result.totalHits > 0) {
-                    const parser = new DOMParser();
-                    const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
-                    const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
-                    const latestBid = playerDiv.querySelector("span:is(.bid_button, .semi_transparent).player_icon_placeholder").parentNode.previousElementSibling.querySelector("strong").innerText;
-                    const flag = playerDiv.querySelector(`img[src*="/flags/"]`)?.src;
-                    const player = {
-                        name: playerDiv.querySelector(".player_name")?.innerText,
-                        pid,
-                        deadline: 1 + Math.ceil((mazyarParseMzDateTime(deadline.trim()) - new Date()) / 60_000),
-                        deadlineFull: deadline.trim(),
-                        latestBid,
-                        source: "mzy",
-                        flag,
-                    };
-                    await this.#addPlayerToDeadlineListInIndexDb(player);
-                } else {
-                    await this.#removePlayerFromDeadlineList(pid);
-                }
+            const { player, remove } = await mazyarFetchPlayerMarketDetail(pid, this.#sport);
+            if (player) {
+                await this.#addPlayerToDeadlineListInIndexDb(player);
+            } else if (remove) {
+                await this.#removePlayerFromDeadlineList(pid);
             }
         }
 
@@ -4605,17 +4631,15 @@
 
         #createFilterInfo(data = { name: "", scout: { high: [], low: [] }, count: "" }) {
             const info = document.createElement("div");
-            const nameSpan = document.createElement("span");
-            const scoutSpan = document.createElement("span");
-            const countSpan = document.createElement("span");
+            const nameSpan = document.createElement("p");
+            const scoutSpan = document.createElement("p");
+            const countSpan = document.createElement("p");
 
-            info.style.margin = "3px";
-            info.style.padding = "3px";
-            info.style.alignSelf = "flex-start";
+            info.classList.add("mazyar-scout-filter-info");
 
-            nameSpan.innerHTML = `<strong>Filter Name: </strong>${data.name}<br>`;
-            scoutSpan.innerHTML = `<strong>Selected: ${this.#getSelectedScoutsOptionTextForFilter(data.scout)}<strong><br>`;
-            countSpan.innerHTML = `<strong>Hit Count: </strong><span class="filter-count-span">${data.count}<span>`;
+            nameSpan.innerHTML = `<strong>Filter Name: </strong>${data.name}`;
+            scoutSpan.innerHTML = `<strong>Selected: ${this.#getSelectedScoutsOptionTextForFilter(data.scout)}</strong>`;
+            countSpan.innerHTML = `<strong>Hit Count: </strong><span class="filter-count-span">${data.count}</span>`;
 
             info.appendChild(nameSpan);
             info.appendChild(scoutSpan);
@@ -4653,22 +4677,18 @@
         async displayFilterResults(filterId, filterInfo) {
             const div = document.createElement("div");
 
-            const header = mazyarCreateMzStyledTitle("MZY Filter Results");
+            const header = mazyarCreateMzStyledTitle("MZY Filter Results", () => {
+                this.#hideModal();
+                this.#displayTransferFilters();
+            });
             const info = this.#createFilterInfo(filterInfo);
             const middle = document.createElement("div");
-            const close = mazyarCreateMzStyledButton("Close", "red");
 
             div.classList.add("mazyar-flex-container");
 
             middle.classList.add("mazyar-scrollable-vertical");
             middle.style.flex = "1";
-            middle.style.margin = "5px 2px";
-
-            close.style.marginBottom = "1px";
-            close.addEventListener("click", () => {
-                this.#hideModal();
-                this.#displayTransferFilters();
-            });
+            middle.style.padding = "5px 2px";
 
             const players = await this.#getHitsFromIndexedDb(filterId);
             this.#displayLoading("MZY Filter Results");
@@ -4696,9 +4716,7 @@
             div.appendChild(header);
             if (noResult) {
                 div.appendChild(middle);
-                div.appendChild(close);
             } else {
-                div.appendChild(close);
                 div.appendChild(info);
                 div.appendChild(middle);
             }
@@ -4707,9 +4725,10 @@
 
         async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
-            const header = mazyarCreateMzStyledTitle("MZY Player Note");
+            const header = mazyarCreateMzStyledTitle("MZY Player Note", () => {
+                this.#hideModal();
+            });
             const text = document.createElement("textarea");
-            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
             const buttons = document.createElement("div");
 
@@ -4717,10 +4736,6 @@
 
             text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
             text.classList.add("mazyar-player-comment-textarea");
-
-            cancel.addEventListener("click", () => {
-                this.#hideModal();
-            });
 
             save.addEventListener("click", async () => {
                 await this.#setPlayerCommentInIndexedDb(playerId, text.value);
@@ -4734,7 +4749,6 @@
                 this.#hideModal();
             });
 
-            buttons.appendChild(cancel);
             buttons.appendChild(save);
 
             this.#replaceModalContent([header, text, buttons]);
@@ -4818,15 +4832,12 @@
             text.appendChild(changesTitle);
             text.appendChild(changes);
 
-            const header = mazyarCreateMzStyledTitle("MZY Notice");
-            const close = mazyarCreateMzStyledButton("close", "green");
-
-            close.addEventListener("click", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Notice", () => {
                 GM_setValue("previous_version", CURRENT_VERSION);
                 this.#hideModal();
             });
 
-            this.#replaceModalContent([header, text, close]);
+            this.#replaceModalContent([header, text]);
         }
 
         showPlayerInModal(playerView) {
@@ -4836,14 +4847,11 @@
             player.style.backgroundColor = "wheat";
             player.appendChild(playerView);
 
-            const header = mazyarCreateMzStyledTitle("MZY Player View");
-            const close = mazyarCreateMzStyledButton("close", "green");
-
-            close.addEventListener("click", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Player View", () => {
                 this.#hideModal();
             });
 
-            this.#replaceModalContent([header, player, close]);
+            this.#replaceModalContent([header, player]);
         }
 
         #hideModal() {

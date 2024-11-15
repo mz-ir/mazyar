@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.2
+// @version      1.3
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -504,7 +504,8 @@ async function mazyarExtractPlayersProfileDetails(teamId) {
                 shared: !!player.querySelector("i.special_player.fa-share-alt"),
                 market: !!inMarket,
                 marketLink: inMarket?.href,
-                name: player.querySelector("span.player_name").innerText,
+                name: player.querySelector("span.player_name")?.innerText,
+                age: player.querySelector(".dg_playerview_info__table tbody tr:nth-child(1) td:nth-child(1) strong")?.innerText,
             }
         }
         return info;
@@ -724,7 +725,7 @@ function mazyarGetMzButtonColorClass(color) {
 
 function mazyarCreateMzStyledButton(title, color = "", floatDirection = null) {
     const div = document.createElement("div");
-    div.style.margin = "0.3rem";
+    div.style.margin = "auto 0.3rem";
     if (floatDirection) {
         // floatDirection: floatRight, floatLeft
         div.classList.add(floatDirection);
@@ -738,16 +739,47 @@ function mazyarCreateMzStyledButton(title, color = "", floatDirection = null) {
     return div;
 }
 
-function mazyarCreateMzStyledTitle(text = "") {
-    const div = document.createElement("div");
-    div.classList.add("win_bg");
+function mazyarCreateSettingsSectionButton(text = "", style = { backgroundColor: null }) {
+    const button = document.createElement("button");
+    button.innerText = text;
+    button.classList.add("mazyar-settings-section-button");
+    if (style?.backgroundColor) {
+        button.style.backgroundColor = style.backgroundColor;
+    }
+    return button;
+}
 
-    const title = document.createElement("h3");
+function mazyarCreateMzStyledCloseButton(callback) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-cross-close-button");
+
+    div.innerHTML = `
+    <span class="fa-stack fa-lg">
+        <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+        <i class="fa fa-close fa-stack-1x"></i>
+    </span>`;
+
+    div.addEventListener("click", callback);
+    return div;
+}
+
+function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-modal-title", "mazyar-flex-container-row");
+
+    const title = document.createElement("span");
     title.innerText = text;
-    title.style.margin = "0.4rem auto";
-    title.style.padding = "0 0.6rem";
+    title.style.flexGrow = "1";
+    title.style.fontWeight = "bold";
+    title.style.fontSize = "larger";
+    title.style.padding = "5px";
 
     div.appendChild(title);
+
+    if (closeCallback) {
+        const close = mazyarCreateMzStyledCloseButton(closeCallback);
+        div.appendChild(close);
+    }
     return div;
 }
 
@@ -1039,6 +1071,35 @@ function mazyarClearPlayerRowsInMonitor(tbody) {
         tbody.removeChild(player);
     }
 }
+
+async function mazyarFetchPlayerMarketDetail(pid, sport = "soccer") {
+    const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${sport}&u=${pid}`;
+    const result = await mazyarFetchJson(url);
+    if (result) {
+        if (result.totalHits > 0) {
+            const parser = new DOMParser();
+            const playerDiv = parser.parseFromString(result?.players, "text/html").body.firstChild;
+            const deadline = playerDiv.querySelector(".transfer-control-area div.box_dark:nth-child(1) table:nth-child(1) tr:nth-child(3) strong")?.innerText;
+            const fee = playerDiv.querySelector(".transfer-control-area > div > div:nth-child(1) > table > tbody > tr:last-child strong")?.innerText;
+            const latestBid = playerDiv.querySelector(".transfer-control-area > div > div:nth-child(2) > table > tbody > tr:last-child strong")?.innerText;
+            const flag = playerDiv.querySelector(`img[src*="/flags/"]`)?.src;
+            const player = {
+                name: playerDiv.querySelector(".player_name")?.innerText,
+                pid,
+                deadline: 1 + Math.ceil((mazyarParseMzDateTime(deadline.trim()) - new Date()) / 60_000),
+                deadlineFull: deadline.trim(),
+                latestBid,
+                fee,
+                source: "mzy",
+                flag,
+            };
+            return { player, remove: false };
+        }
+        return { player: null, remove: true };
+    }
+    return { player: null, remove: false };
+}
+
 
 function mazyarCreatePlayerRowForMonitor(
     player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
