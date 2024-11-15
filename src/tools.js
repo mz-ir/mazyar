@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.4
+// @version      1.5
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -1100,6 +1100,23 @@ async function mazyarFetchPlayerMarketDetail(pid, sport = "soccer") {
     return { player: null, remove: false };
 }
 
+async function mazyarFetchTrainingCampDetail() {
+    const url = `https://${location.hostname}/?p=training_camp`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const players = doc.querySelectorAll("#training_camp_players_container div.tc_table_container");
+        const detail = {};
+        for (const player of players) {
+            const pid = mazyarExtractPlayerIdFromProfileLink(player.querySelector(".player_link")?.href);
+            const daysFull = player.querySelector(".tc_table_duration > div:nth-child(2)")?.innerText;
+            detail[pid] = {
+                days: daysFull?.split(": ")?.[1],
+            }
+        }
+        return detail;
+    }
+    return null;
+}
 
 function mazyarCreatePlayerRowForMonitor(
     player = { pid: "", name: "", deadline: 0, deadlineFull: "", latestBid: "", flag: "" },
