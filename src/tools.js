@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.3
+// @version      1.4
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -505,7 +505,7 @@ async function mazyarExtractPlayersProfileDetails(teamId) {
                 market: !!inMarket,
                 marketLink: inMarket?.href,
                 name: player.querySelector("span.player_name")?.innerText,
-                age: player.querySelector(".dg_playerview_info__table tbody tr:nth-child(1) td:nth-child(1) strong")?.innerText,
+                age: player.querySelector(".dg_playerview_info tbody tr:nth-child(1) td:nth-child(1) strong")?.innerText,
             }
         }
         return info;
