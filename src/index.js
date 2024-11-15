@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.9
+// @version      3.10
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1484499/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1484715/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1484500/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.10": [
+            "<b>[fix]</b> Table Transfer List: fix undefined age",
+        ],
         "3.9": [
             "<b>[new]</b> MZY Modal: add close button in title",
             "<b>[improve]</b> MZY Settings: update sections' styles",
@@ -1778,7 +1781,6 @@
                     <td class="mazyar-deadline">${mazyarCreateLoadingIcon2().outerHTML}</td>
                     <td class="mazyar-fee">${mazyarCreateLoadingIcon2().outerHTML}</td>
                     <td class="mazyar-bid">${mazyarCreateLoadingIcon2().outerHTML}</td>`;
-                    console.log({ player })
                     mazyarFetchPlayerMarketDetail(player, sport).then((detail) => {
                         tr.querySelector(".mazyar-deadline").innerText = detail?.player?.deadlineFull ?? "passed";
                         tr.querySelector(".mazyar-fee").innerText = detail?.player?.fee ?? "n/a";
