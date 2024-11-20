@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.11
+// @version      3.12
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1484778/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1487404/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1484500/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.12": [
+            "<b>[fix]</b> Transfer: training camp indicator in main host (www.managerzone.com)",
+        ],
         "3.11": [
             "<b>[new]</b> Training Report: add player's days left in the camp",
         ],
