@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -135,10 +135,7 @@ function mazyarIsMatchInProgress(resultText) {
 }
 
 function mazyarIsPlayerSentToCamp(doc) {
-    if (location.hostname.startsWith("test")) {
-        return !!doc.querySelector(`#thePlayers_0 span.player_icon_wrapper i.fa-traffic-cone.tc-status-icon:not(.tc-status-icon--disabled)`);
-    }
-    return !!doc.querySelector(`#thePlayers_0 span.player_icon_image[style*="icon_trainingcamp_dg"]`);
+    return !!doc.querySelector(`#thePlayers_0 span.player_icon_wrapper i.fa-traffic-cone.tc-status-icon:not(.tc-status-icon--disabled)`);
 }
 
 function mazyarExtractSkillNamesFromPlayerInfo(player) {
