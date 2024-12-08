@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1487404/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1498952/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1484500/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
