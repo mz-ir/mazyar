@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.7
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -633,6 +633,61 @@ function mazyarCreateAddToDeadlineIcon(title, color) {
 }
 
 // -------------------------------- DOM Utils ------------------------------
+
+async function mazyarGetTransferHistory(url) {
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const table = doc.querySelector("#transfer-history");
+        const tbody = table.querySelector("tbody");
+        tbody.querySelectorAll("tr:not(.bought, .sold)")?.forEach((child) => {
+            tbody.removeChild(child);
+        });
+        return table;
+    }
+    return null;
+}
+
+async function mazyarGetTableTransferHistories(table) {
+    const teams = table.querySelectorAll("tbody tr.responsive-hide");
+    const jobs = [];
+    for (const team of teams) {
+        const teamLink = team.querySelector("td:nth-child(2) a:last-child");
+        const tid = mazyarExtractTeamId(teamLink?.href);
+        const url = `https://${location.hostname}/?p=transfer_history&tid=${tid}`;
+        jobs.push(mazyarGetTransferHistory(url).then((history) => {
+            if (history) {
+                const name = document.createElement("td");
+                name.innerHTML = `For Team: <a style="text-decoration: none !important;" href="${url}">${teamLink?.innerText}</a>`;
+                name.colSpan = 5;
+                // name.style.backgroundColor = "khaki";
+                name.style.fontWeight = "bold";
+                name.style.padding = "10px 5px 5px";
+                const tr = document.createElement("tr");
+                tr.classList.add("mazyar-history-name");
+                tr.style.border = "2px solid darkgray";
+                tr.appendChild(name);
+                history.querySelector("tbody").prepend(tr);
+                return history;
+            }
+            return null;
+        }));
+    }
+    return (await Promise.all(jobs)).filter((h) => !!h);
+}
+
+function mazyarFilterTransferHistory(history, weeks = 2) {
+    history.filterResults = 0;
+    const players = history?.querySelectorAll("tbody tr:not(.mazyar-history-name)");
+    players?.forEach((child) => {
+        const date = child.querySelector("td.hitlist-compact-list-column")?.firstChild?.nodeValue?.trim();
+        if (Date.now() - mazyarParseMzDate(date) >= weeks * 7 * 24 * 60 * 60 * 1000) {
+            child.style.display = 'none';
+        } else {
+            child.style.display = "table-row";
+            history.filterResults += 1;
+        }
+    });
+}
 
 function mazyarMakeElementDraggable(element, dragHandleElement, dragEndCallback = null) {
     let deltaX = 0, deltaY = 0, lastX = 0, lastY = 0;
