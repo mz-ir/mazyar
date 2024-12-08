@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.12
+// @version      3.13
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.13": [
+            "<b>[new]</b> Table Transfer History: add teams' last month transfer history to the standing tables",
+        ],
         "3.12": [
             "<b>[fix]</b> Transfer: training camp indicator in main host (www.managerzone.com)",
         ],
@@ -1801,22 +1804,23 @@
     }
 
     async function tableInjectTransferList(table) {
-        const parent = table.parentNode;
-
-        const div = document.createElement("div");
-        div.classList.add("mainContent");
-        div.style.padding = "5px";
-        div.innerText = "fetching...";
-        parent.insertBefore(div, table.nextSibling);
+        const parent = table.parentNode.parentNode;
 
         const header = document.createElement("h2");
         header.classList.add("subheader", "clearfix");
         header.style.marginTop = "5px";
         header.innerText = "MZY Transfer List";
-        parent.insertBefore(header, div);
+        header.style.fontWeight = "bold";
+        parent?.appendChild(header);
+
+        const div = document.createElement("div");
+        div.classList.add("mainContent");
+        div.style.padding = "5px";
+        div.innerText = "fetching...";
+        parent?.appendChild(div);
 
         const teams = table.querySelectorAll("tbody tr.responsive-hide");
-        const jobs = []
+        const jobs = [];
         for (const team of teams) {
             const teamLink = team.querySelector("td:nth-child(2) a:last-child");
             const tid = mazyarExtractTeamId(teamLink?.href);
@@ -1828,6 +1832,82 @@
         const teamsPlayers = await Promise.all(jobs);
         const result = await tableCreateTransferList(teamsPlayers);
         div.replaceChildren(result);
+    }
+
+    function tableCreateTransferHistoryResultTable(histories, weeks) {
+        let hasRows = false;
+        const table = histories?.[0]?.cloneNode(2);
+        table.classList.remove("marker");
+        table.classList.add("nice_table");
+        const [th3, th2] = table.querySelectorAll("thead tr td")[3].innerText.split("/");
+        table.querySelectorAll("thead tr td")[2].innerText = th2;
+        table.querySelectorAll("thead tr td")[3].innerText = th3;
+        const tbody = table?.querySelector("tbody");
+        tbody.replaceChildren();
+        histories.forEach((history) => {
+            mazyarFilterTransferHistory(history, weeks);
+            if (history.filterResults > 0) {
+                tbody.append(...history.querySelectorAll("tbody tr"));
+                hasRows = true;
+            }
+        });
+        return hasRows ? table : document.createTextNode("No history to display");
+    }
+
+    async function tableInjectRecentTransferHistory(table) {
+        const parent = table.parentNode.parentNode;
+
+        const headerDiv = document.createElement("div");
+        headerDiv.classList.add("mazyar-flex-container-row");
+        headerDiv.style.justifyContent = "space-between";
+        headerDiv.style.backgroundColor = "#E4C800";
+
+        const header = document.createElement("div");
+        header.style.marginTop = "5px";
+        header.style.fontWeight = "bold";
+        header.innerText = "MZY Transfer History";
+        header.classList.add("subheader", "clearfix");
+
+        const options = {
+            1: {
+                value: "1",
+                label: "last week",
+            },
+            2: {
+                value: "2",
+                label: "last two weeks",
+            },
+            3: {
+                value: "3",
+                label: "last 3 weeks",
+            },
+            4: {
+                value: "4",
+                label: "last month",
+            },
+        }
+        const weekSelector = mazyarCreateDropDownMenu("", options, options[4].value);
+
+        headerDiv.appendChild(header);
+        parent?.appendChild(headerDiv);
+
+        const div = document.createElement("div");
+        div.classList.add("mainContent");
+        div.style.padding = "5px";
+        div.innerText = "fetching...";
+        parent?.appendChild(div);
+
+        const histories = await mazyarGetTableTransferHistories(table);
+        // headerDiv.appendChild(weekSelector);
+
+        const selectedWeeks = weekSelector.querySelector("select");
+        const result = tableCreateTransferHistoryResultTable(histories, parseInt(selectedWeeks.value));
+        div.replaceChildren(result);
+
+        selectedWeeks.addEventListener("input", () => {
+            const result = tableCreateTransferHistoryResultTable(histories, parseInt(selectedWeeks.value));
+            div.replaceChildren(result);
+        })
     }
 
     function tableWaitAndInjectTopPlayersInfo(timeout = 16000) {
@@ -1846,6 +1926,9 @@
                     }
                     if (mazyar.mustAddTransferListToTable()) {
                         tableInjectTransferList(table);
+                    }
+                    if (mazyar.mustAddTransferHistoryToTable()) {
+                        tableInjectRecentTransferHistory(table);
                     }
                 }
             } else {
@@ -2487,6 +2570,7 @@
                 player_comment: false,
                 coach_salary: false,
                 table_transfer_list: false,
+                table_transfer_history: false,
             },
             transfer: {
                 enable_filters: false,
@@ -2559,6 +2643,7 @@
             this.#settings.miscellaneous.coach_salary = GM_getValue("coach_salary", true);
             this.#settings.miscellaneous.fixture_full_name = GM_getValue("fixture_full_name", true);
             this.#settings.miscellaneous.table_transfer_list = GM_getValue("table_transfer_list", true);
+            this.#settings.miscellaneous.table_transfer_history = GM_getValue("table_transfer_history", true);
         }
 
         #saveMiscellaneousSettings() {
@@ -2569,6 +2654,7 @@
             GM_setValue("coach_salary", this.#settings.miscellaneous.coach_salary);
             GM_setValue("fixture_full_name", this.#settings.miscellaneous.fixture_full_name);
             GM_setValue("table_transfer_list", this.#settings.miscellaneous.table_transfer_list);
+            GM_setValue("table_transfer_history", this.#settings.miscellaneous.table_transfer_history);
             document.getElementById("mazyar-in-progress-icon").style.color = this.mustDisplayInProgressResults() ? "greenyellow" : "unset";
         }
 
@@ -2628,6 +2714,7 @@
                 coach_salary: false,
                 fixture_full_name: false,
                 table_transfer_list: false,
+                table_transfer_history: false,
             });
             this.#updateDaysSettings({
                 display_in_profiles: false,
@@ -2757,6 +2844,10 @@
 
         mustAddTransferListToTable() {
             return this.#settings.miscellaneous.table_transfer_list;
+        }
+
+        mustAddTransferHistoryToTable() {
+            return this.#settings.miscellaneous.table_transfer_history;
         }
 
         // -------------------------------- Database -------------------------------------
@@ -3986,6 +4077,7 @@
             const mzPredictor = mazyarCreateMenuCheckBox("Help with World Cup Predictor", this.#settings.miscellaneous.mz_predictor, level1Style);
             const fixtureFullName = mazyarCreateMenuCheckBox("Display team's full name in fixture", this.#settings.miscellaneous.fixture_full_name, level1Style);
             const tableTransferList = mazyarCreateMenuCheckBox("Add transfer list in tables", this.#settings.miscellaneous.table_transfer_list, level1Style);
+            const tableTransferHistory = mazyarCreateMenuCheckBox("Add transfer history in tables", this.#settings.miscellaneous.table_transfer_history, level1Style);
             const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.miscellaneous.coach_salary, level1Style);
             mzPredictor.style.display = 'none';
             group.appendChild(playerComment);
@@ -3995,6 +4087,7 @@
             group.appendChild(coachSalaries);
             group.appendChild(mzPredictor);
             group.appendChild(tableTransferList);
+            group.appendChild(tableTransferHistory);
 
             const buttons = document.createElement("div");
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
@@ -4018,6 +4111,7 @@
                     coach_salary: coachSalaries.querySelector("input[type=checkbox]").checked,
                     fixture_full_name: fixtureFullName.querySelector("input[type=checkbox]").checked,
                     table_transfer_list: tableTransferList.querySelector("input[type=checkbox]").checked,
+                    table_transfer_history: tableTransferHistory.querySelector("input[type=checkbox]").checked,
                 });
                 this.#hideModal();
                 this.#displaySettingsMenu();
