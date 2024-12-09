@@ -1860,16 +1860,15 @@
     async function tableInjectRecentTransferHistory(table) {
         const parent = table.parentNode.parentNode;
 
-        const headerDiv = document.createElement("div");
-        headerDiv.classList.add("mazyar-flex-container-row");
-        headerDiv.style.justifyContent = "space-between";
-        headerDiv.style.backgroundColor = "#E4C800";
-
         const header = document.createElement("div");
+        header.classList.add("mazyar-flex-container-row", "subheader", "clearfix");
+        header.style.justifyContent = "space-between";
         header.style.marginTop = "5px";
-        header.style.fontWeight = "bold";
-        header.innerText = "MZY Transfer History";
-        header.classList.add("subheader", "clearfix");
+
+        const headerTitle = document.createElement("div");
+        headerTitle.innerText = "MZY Transfer History";
+        headerTitle.style.fontWeight = "bold";
+        headerTitle.style.margin = "3px 0px";
 
         const options = {
             1: {
@@ -1890,8 +1889,11 @@
             },
         }
         const weekSelector = mazyarCreateDropDownMenu("", options, options[4].value);
-        headerDiv.appendChild(header);
-        parent?.appendChild(headerDiv);
+        weekSelector.style.alignSelf = "unset";
+        weekSelector.style.margin = "unset";
+        weekSelector.style.marginLeft = "auto";
+        header.appendChild(headerTitle);
+        parent?.appendChild(header);
 
         const div = document.createElement("div");
         div.classList.add("mainContent");
@@ -1901,7 +1903,7 @@
 
         const histories = await mazyarGetTableTransferHistories(table);
         // now is the time to attach the selector
-        headerDiv.appendChild(weekSelector);
+        header.appendChild(weekSelector);
 
         // delete histories older than maximum period
         const maxWeeks = Math.max(...Object.keys(options));
