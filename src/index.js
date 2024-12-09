@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.13
+// @version      3.14
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.14": [
+            "<b>[improve]</b> Table Transfer History: add a drop-down menu to filter the results to a narrower period",
+        ],
         "3.13": [
             "<b>[new]</b> Table Transfer History: add teams' last month transfer history to the standing tables",
         ],
@@ -1847,7 +1850,7 @@
         histories.forEach((history) => {
             mazyarFilterTransferHistory(history, weeks);
             if (history.filterResults > 0) {
-                tbody.append(...history.querySelectorAll("tbody tr"));
+                tbody.append(...[...history.querySelectorAll("tbody tr")].map((el) => el.cloneNode(2)));
                 hasRows = true;
             }
         });
@@ -1887,7 +1890,6 @@
             },
         }
         const weekSelector = mazyarCreateDropDownMenu("", options, options[4].value);
-
         headerDiv.appendChild(header);
         parent?.appendChild(headerDiv);
 
@@ -1898,7 +1900,12 @@
         parent?.appendChild(div);
 
         const histories = await mazyarGetTableTransferHistories(table);
-        // headerDiv.appendChild(weekSelector);
+        // now is the time to attach the selector
+        headerDiv.appendChild(weekSelector);
+
+        // delete histories older than maximum period
+        const maxWeeks = Math.max(...Object.keys(options));
+        histories.forEach((history) => mazyarRemoveOldTransferHistory(history, maxWeeks));
 
         const selectedWeeks = weekSelector.querySelector("select");
         const result = tableCreateTransferHistoryResultTable(histories, parseInt(selectedWeeks.value));
