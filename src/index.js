@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.13
+// @version      3.14
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -16,7 +16,7 @@
 // @grant        GM_xmlhttpRequest
 // @connect      self
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1498952/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1499502/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1484500/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -37,6 +37,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "3.14": [
+            "<b>[improve]</b> Table Transfer History: add a drop-down menu to filter the results to a narrower period",
+        ],
         "3.13": [
             "<b>[new]</b> Table Transfer History: add teams' last month transfer history to the standing tables",
         ],
@@ -1847,7 +1850,7 @@
         histories.forEach((history) => {
             mazyarFilterTransferHistory(history, weeks);
             if (history.filterResults > 0) {
-                tbody.append(...history.querySelectorAll("tbody tr"));
+                tbody.append(...[...history.querySelectorAll("tbody tr")].map((el) => el.cloneNode(2)));
                 hasRows = true;
             }
         });
@@ -1857,16 +1860,15 @@
     async function tableInjectRecentTransferHistory(table) {
         const parent = table.parentNode.parentNode;
 
-        const headerDiv = document.createElement("div");
-        headerDiv.classList.add("mazyar-flex-container-row");
-        headerDiv.style.justifyContent = "space-between";
-        headerDiv.style.backgroundColor = "#E4C800";
-
         const header = document.createElement("div");
+        header.classList.add("mazyar-flex-container-row", "subheader", "clearfix");
+        header.style.justifyContent = "space-between";
         header.style.marginTop = "5px";
-        header.style.fontWeight = "bold";
-        header.innerText = "MZY Transfer History";
-        header.classList.add("subheader", "clearfix");
+
+        const headerTitle = document.createElement("div");
+        headerTitle.innerText = "MZY Transfer History";
+        headerTitle.style.fontWeight = "bold";
+        headerTitle.style.margin = "3px 0px";
 
         const options = {
             1: {
@@ -1887,9 +1889,11 @@
             },
         }
         const weekSelector = mazyarCreateDropDownMenu("", options, options[4].value);
-
-        headerDiv.appendChild(header);
-        parent?.appendChild(headerDiv);
+        weekSelector.style.alignSelf = "unset";
+        weekSelector.style.margin = "unset";
+        weekSelector.style.marginLeft = "auto";
+        header.appendChild(headerTitle);
+        parent?.appendChild(header);
 
         const div = document.createElement("div");
         div.classList.add("mainContent");
@@ -1898,7 +1902,12 @@
         parent?.appendChild(div);
 
         const histories = await mazyarGetTableTransferHistories(table);
-        // headerDiv.appendChild(weekSelector);
+        // now is the time to attach the selector
+        header.appendChild(weekSelector);
+
+        // delete histories older than maximum period
+        const maxWeeks = Math.max(...Object.keys(options));
+        histories.forEach((history) => mazyarRemoveOldTransferHistory(history, maxWeeks));
 
         const selectedWeeks = weekSelector.querySelector("select");
         const result = tableCreateTransferHistoryResultTable(histories, parseInt(selectedWeeks.value));

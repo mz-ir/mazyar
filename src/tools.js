@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -663,7 +663,7 @@ async function mazyarGetTableTransferHistories(table) {
                 name.style.fontWeight = "bold";
                 name.style.padding = "10px 5px 5px";
                 const tr = document.createElement("tr");
-                tr.classList.add("mazyar-history-name");
+                tr.classList.add("mazyar-history-name", "hitlist-compact-list-column");
                 tr.style.border = "2px solid darkgray";
                 tr.appendChild(name);
                 history.querySelector("tbody").prepend(tr);
@@ -685,6 +685,16 @@ function mazyarFilterTransferHistory(history, weeks = 2) {
         } else {
             child.style.display = "table-row";
             history.filterResults += 1;
+        }
+    });
+}
+
+function mazyarRemoveOldTransferHistory(history, weeks = 4) {
+    const players = history?.querySelectorAll("tbody tr:not(.mazyar-history-name)");
+    players?.forEach((child) => {
+        const date = child.querySelector("td.hitlist-compact-list-column")?.firstChild?.nodeValue?.trim();
+        if (Date.now() - mazyarParseMzDate(date) >= weeks * 7 * 24 * 60 * 60 * 1000) {
+            child.parentNode.removeChild(child);
         }
     });
 }
