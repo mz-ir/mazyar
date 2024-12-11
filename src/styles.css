@@ -12,6 +12,10 @@
 @supportURL   https://github.com/mz-ir/mazyar
 ==/UserStyle== */
 
+.mazyar-hide {
+    display: none;
+}
+
 .mazyar-flex-container {
     display: flex;
     flex-direction: column;
@@ -30,7 +34,6 @@
 }
 
 #mazyar-modal-overlay {
-    display: none;
     position: fixed;
     z-index: 9999;
     left: 0;

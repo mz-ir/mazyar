@@ -2579,8 +2579,6 @@
     /* *********************** Class ********************************** */
 
     class Mazyar {
-        #modal = null; // dom element
-        #content = null; // dom element
         #notebook = {
             element: null,
             text: "",
@@ -3643,17 +3641,26 @@
         // -------------------------------- Display -------------------------------------
 
         #createModal() {
-            this.#modal = document.createElement("div");
-            this.#modal.id = "mazyar-modal-overlay";
-            this.#modal.classList.add("mazyar-flex-container");
+            const overlay = document.createElement("div");
+            overlay.id = "mazyar-modal-overlay";
+            overlay.classList.add("mazyar-flex-container", "mazyar-hide");
 
-            this.#content = document.createElement("div");
-            this.#content.id = "mazyar-modal";
-            this.#content.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
+            const modal = document.createElement("div");
+            modal.id = "mazyar-modal";
+            modal.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
 
-            this.#modal.appendChild(this.#content);
-            this.#hideModal();
-            document.body?.appendChild(this.#modal);
+            overlay.appendChild(modal);
+            document.body?.appendChild(overlay);
+        }
+
+        #hideModal() {
+            document.getElementById("mazyar-modal-overlay").classList.add("mazyar-hide");
+            document.getElementById("mazyar-modal").replaceChildren();
+        }
+
+        #showModal(elements = []) {
+            document.getElementById("mazyar-modal").replaceChildren(...elements);
+            document.getElementById("mazyar-modal-overlay").classList.remove("mazyar-hide");
         }
 
         #addToolbar() {
@@ -3713,24 +3720,6 @@
             }
         }
 
-        #displayModal() {
-            this.#modal.style.display = "flex";
-        }
-
-        #clearModalContent() {
-            this.#content.innerText = "";
-        }
-
-        #replaceModalContent(elements = []) {
-            this.#clearModalContent();
-            for (const element of elements) {
-                if (element) {
-                    this.#content.appendChild(element);
-                }
-            }
-            this.#displayModal();
-        }
-
         #displayLoading(title = "MZY") {
             const header = mazyarCreateMzStyledTitle(title, () => {
                 this.#hideModal();
@@ -3744,7 +3733,7 @@
 
             div.appendChild(loading);
 
-            this.#replaceModalContent([header, div]);
+            this.#showModal([header, div]);
         }
 
         #displayCleanInstallMenu() {
@@ -3782,7 +3771,7 @@
             buttons.appendChild(clean);
             div.appendChild(buttons);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         // --------------------------- Notebook ------------------------------------
@@ -4038,7 +4027,7 @@
             buttons.appendChild(save);
             div.appendChild(buttons);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #displayDaysSettingsMenu() {
@@ -4090,7 +4079,7 @@
             buttons.appendChild(save);
             div.appendChild(buttons);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #displayMiscellaneousSettingsMenu() {
@@ -4155,7 +4144,7 @@
             buttons.appendChild(save);
             div.appendChild(buttons);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #displaySettingsMenu() {
@@ -4199,7 +4188,7 @@
             div.appendChild(miscellaneous);
             div.appendChild(clean);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #getSelectedHighLows(useScout) {
@@ -4289,7 +4278,7 @@
             div.appendChild(validation);
             div.appendChild(buttons);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #setFilterHitsInToolbar(total = -1) {
@@ -4398,7 +4387,7 @@
             div.appendChild(title);
             div.appendChild(body);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #filtersViewCreateTableBody(filters = []) {
@@ -4526,7 +4515,7 @@
             div.appendChild(filtersView);
             div.appendChild(noFilterView);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         async displaySquadSummary(url) {
@@ -4544,7 +4533,7 @@
                 const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
                     this.#hideModal();
                 });
-                this.#replaceModalContent([header, topPlayers]);
+                this.#showModal([header, topPlayers]);
             }
         }
 
@@ -4610,7 +4599,7 @@
             div.appendChild(title);
             div.appendChild(middle);
 
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         #addDeadlineIndicator() {
@@ -4878,7 +4867,7 @@
                 div.appendChild(info);
                 div.appendChild(middle);
             }
-            this.#replaceModalContent([div]);
+            this.#showModal([div]);
         }
 
         async #displayPlayerComment(target, playerId) {
@@ -4909,7 +4898,7 @@
 
             buttons.appendChild(save);
 
-            this.#replaceModalContent([header, text, buttons]);
+            this.#showModal([header, text, buttons]);
         }
 
         #getVersionNumbers(v) {
@@ -4995,7 +4984,7 @@
                 this.#hideModal();
             });
 
-            this.#replaceModalContent([header, text]);
+            this.#showModal([header, text]);
         }
 
         showPlayerInModal(playerView) {
@@ -5009,7 +4998,7 @@
                 this.#hideModal();
             });
 
-            this.#replaceModalContent([header, player]);
+            this.#showModal([header, player]);
         }
 
         #mergeAndKeepFilters(filters) {
@@ -5064,7 +5053,7 @@
             overview.appendChild(overviewOld);
             overview.appendChild(overviewNew);
 
-            this.#replaceModalContent([header, overview, buttons]);
+            this.#showModal([header, overview, buttons]);
         }
 
         #attachImportButton(note) {
@@ -5106,10 +5095,6 @@
             }
         }
 
-        #hideModal() {
-            this.#modal.style.display = "none";
-            this.#clearModalContent();
-        }
     }
 
     /* *********************** Database ********************************** */
