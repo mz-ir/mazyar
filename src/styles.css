@@ -48,6 +48,16 @@
     padding-bottom: 8px;
 }
 
+#mazyar-toolbar-overlay {
+    position: fixed;
+    z-index: 9998;
+    top: 40%;
+    right: 5px;
+    color: white;
+    background-color: black;
+    text-align: center;
+}
+
 #mazyar-notebook-overlay {
     z-index: 9990;
     position: absolute;

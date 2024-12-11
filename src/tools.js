@@ -1026,14 +1026,8 @@ function mazyarCreateToolbar() {
     const transferIcon = mazyarCreateSearchIcon("Transfer");
     const transferCount = document.createElement("span");
 
+    toolbar.id = "mazyar-toolbar-overlay";
     toolbar.classList.add("mazyar-flex-container");
-    toolbar.style.position = "fixed";
-    toolbar.style.zIndex = "9998";
-    toolbar.style.top = "40%";
-    toolbar.style.right = "5px";
-    toolbar.style.background = "black";
-    toolbar.style.color = "white";
-    toolbar.style.textAlign = "center";
 
     logo.innerText = "MZY";
     logo.style.fontSize = "0.6rem";
