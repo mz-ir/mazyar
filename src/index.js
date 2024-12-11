@@ -4614,17 +4614,21 @@
         }
 
         #addDeadlineIndicator() {
-            const deadline = mazyarCreateDeadlineIndicator();
-            deadline.id = "mazyar-deadline";
-            deadline.style.display = "none";
-            deadline.style.border = "1px solid black";
+            const deadline = document.createElement("div");
+
+            const transferIcon = mazyarCreateLegalIcon();
+            transferIcon.style.fontSize = "2rem";
+
+            deadline.id = "mazyar-deadline-overlay";
+            deadline.classList.add("mazyar-flex-container");
             deadline.style.borderRadius = "50%";
-            deadline.style.padding = "0.5rem";
+
+            deadline.appendChild(transferIcon);
             document.body?.appendChild(deadline);
+
             deadline.addEventListener("click", () => {
                 this.#displayTransferDeadlines();
             });
-            return deadline;
         }
 
         async #monitorFetchAndProcessYourBidsPlayers() {
@@ -4717,7 +4721,7 @@
 
         #deadlineUpdateIconStyle() {
             const deadlineTimeout = this.#getTransferDeadlineTimeout();
-            const deadlineIcon = document.getElementById("mazyar-deadline");
+            const deadlineIcon = document.getElementById("mazyar-deadline-overlay");
             const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= deadlineTimeout).length > 0;
             if (strobe && deadlineIcon) {
                 deadlineIcon.style.display = 'unset';

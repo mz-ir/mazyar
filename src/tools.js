@@ -587,24 +587,6 @@ function mazyarCreateLoadingIcon2(title = "") {
     return icon;
 }
 
-function mazyarCreateDeadlineIndicator() {
-    const div = document.createElement("div");
-    const transferIcon = mazyarCreateLegalIcon();
-
-    div.classList.add("mazyar-flex-container");
-    div.style.position = "fixed";
-    div.style.zIndex = "9997";
-    div.style.top = "48%";
-    div.style.right = "35px";
-    div.style.color = "white";
-    div.style.textAlign = "center";
-
-    transferIcon.style.fontSize = "2rem";
-
-    div.appendChild(transferIcon);
-
-    return div;
-}
 
 function mazyarCreateDeleteIcon(title) {
     const icon = document.createElement("span");
