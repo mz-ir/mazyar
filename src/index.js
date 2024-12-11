@@ -3644,11 +3644,11 @@
 
         #createModal() {
             this.#modal = document.createElement("div");
-            this.#modal.id = "mazyar-modal";
+            this.#modal.id = "mazyar-modal-overlay";
             this.#modal.classList.add("mazyar-flex-container");
 
             this.#content = document.createElement("div");
-            this.#content.id = "mazyar-modal-content";
+            this.#content.id = "mazyar-modal";
             this.#content.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
 
             this.#modal.appendChild(this.#content);

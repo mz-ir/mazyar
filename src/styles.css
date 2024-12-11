@@ -29,7 +29,7 @@
     flex-wrap: wrap;
 }
 
-#mazyar-modal {
+#mazyar-modal-overlay {
     display: none;
     position: fixed;
     z-index: 9999;
@@ -40,7 +40,7 @@
     background-color: rgba(0, 0, 0, 0.4);
 }
 
-#mazyar-modal-content {
+#mazyar-modal {
     width: fit-content;
     background-color: beige;
     border-radius: 5px;
