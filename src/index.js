@@ -368,7 +368,7 @@
             } else if (mazyar.isDaysAtThisClubEnabledForOneClubPlayers()) {
                 const text = 'Entire Career';
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-                daysDiv.classList.add("mazyar-days-at-this-club-entire");
+                daysDiv.classList.add("mazyar-days-at-this-club", "mazyar-days-entire");
             }
             const profile = document.querySelector("div.playerContainer");
             profile?.appendChild(daysDiv);
@@ -3453,7 +3453,7 @@
             } else if (this.isDaysAtThisClubEnabledForOneClubPlayers()) {
                 const text = 'Entire Career';
                 daysDiv.innerHTML = `Days at this club: <strong>${text}</strong>`;
-                daysDiv.classList.add("mazyar-days-at-this-club-entire");
+                daysDiv.classList.add("mazyar-days-at-this-club", "mazyar-days-entire");
             }
             player.querySelector("div.mainContent")?.appendChild(daysDiv);
         }

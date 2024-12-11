@@ -269,13 +269,8 @@ div.mazyar-transfer-control-area {
     text-align: center;
 }
 
-.mazyar-days-at-this-club-entire {
-    margin: 5px;
-    padding: 3px;
+.mazyar-days-at-this-club.mazyar-days-entire {
     background-color: greenyellow;
-    border-radius: 5px;
-    border: 1px solid black;
-    text-align: center;
 }
 
 @media only screen and (max-device-width: 1020px) {
