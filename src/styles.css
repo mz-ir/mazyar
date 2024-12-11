@@ -1,7 +1,7 @@
 /* ==UserStyle==
 @name         MazyarStyles
 @namespace    http://tampermonkey.net/
-@version      1.1
+@version      2.0
 @description  Styles used by Mazyar userscript
 @copyright    z7z from managerzone.com
 @author       z7z from managerzone.com
@@ -11,6 +11,23 @@
 @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 @supportURL   https://github.com/mz-ir/mazyar
 ==/UserStyle== */
+
+.mazyar-flex-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    max-height: 100%;
+}
+
+.mazyar-flex-container-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+}
 
 #mazyar-modal {
     display: none;
@@ -67,23 +84,6 @@
 
 .mazyar-resizable {
     resize: both;
-}
-
-.mazyar-flex-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    max-height: 100%;
-}
-
-.mazyar-flex-container-row {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
 }
 
 .mazyar-donut {

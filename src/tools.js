@@ -827,7 +827,7 @@ function mazyarCreateMzStyledCloseButton(callback) {
 
 function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-modal-title", "mazyar-flex-container-row");
+    div.classList.add("mazyar-flex-container-row", "mazyar-modal-title");
 
     const title = document.createElement("span");
     title.innerText = text;
@@ -1082,8 +1082,23 @@ function mazyarCreateToolbar() {
     return { toolbar, menu, transfer, note, live };
 }
 
+function mazyarCreateFiltersOverview(filters, label) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
 
-/* *********************** Monitor ********************************** */
+    const header = document.createElement("div");
+    header.innerText = label;
+
+    const text = document.createElement("div");
+    text.innerText = JSON.stringify(filters, null, 2);
+    text.style.maxWidth = "360px";
+
+    div.appendChild(header);
+    div.appendChild(text);
+    return div;
+}
+
+// -------------------------------- Monitor ------------------------------
 
 function mazyarCreateSectionSeparatorForMonitor() {
     const tr = document.createElement("tr");
@@ -1239,4 +1254,20 @@ function mazyarCreatePlayerRowForMonitor(
             </td>
        `;
     return tr;
+}
+
+// -------------------------------- Tools ------------------------------
+
+function mazyarConvertFilterArrayToFilterObject(filters) {
+    return filters?.reduce((filter, { id, name, params, scout, interval }) => {
+        filter[name] = { id, name, params, scout, interval };
+        return filter;
+    }, {});
+}
+
+function mazyarMergeFilters(a = [], b = []) {
+    // 'b' members could replace 'a' members
+    const aObj = mazyarConvertFilterArrayToFilterObject(a);
+    const bObj = mazyarConvertFilterArrayToFilterObject(b);
+    return Object.values({ ...aObj, ...bObj });
 }

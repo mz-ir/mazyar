@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.14
+// @version      3.15
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -237,6 +237,8 @@
             label: "never",
         },
     };
+
+    const MAZYAR_FILTER_BACKUP_TITLE = "Mazyar Filters Backup\n\n";
 
     const MAZYAR_DEADLINE_ALERT_SOUND =
         "data:audio/mpeg;base64,//OExAAAAAAAAAAAAFhpbmcAAAAPAAAAKAAADbAAAQEfHy4uLjMzOTk5Pz9CQkJISE9PT2ZmbW1tc"
@@ -615,6 +617,26 @@
             const observer = new MutationObserver(callback);
             const config = { childList: true, subtree: true };
             observer.observe(target, config);
+        }
+    }
+
+    function calendarInject() {
+        if (document.getElementById('calendar-new')) {
+            // add observer if user changes from other tabs to squad summary tab
+            const callback = (mutationsList,) => {
+                for (let mutation of mutationsList) {
+                    if (mutation.type === 'childList') {
+                        const modal = document.getElementById('lightbox_calendar-administration');
+                        if (modal && !modal.injecting) {
+                            modal.injecting = true;
+                            mazyar.injectToCalendar(modal);
+                        }
+                    }
+                }
+            };
+            const observer = new MutationObserver(callback);
+            const config = { childList: true };
+            observer.observe(document.body, config);
         }
     }
 
@@ -1881,7 +1903,7 @@
             },
             3: {
                 value: "3",
-                label: "last 3 weeks",
+                label: "last three weeks",
             },
             4: {
                 value: "4",
@@ -4985,6 +5007,100 @@
             this.#replaceModalContent([header, player]);
         }
 
+        #mergeAndKeepFilters(filters) {
+            const hockey = mazyarMergeFilters(filters.hockey, this.#filters.hockey);
+            const soccer = mazyarMergeFilters(filters.soccer, this.#filters.soccer);
+            this.#filters = JSON.parse(JSON.stringify({ hockey, soccer }));
+        }
+
+        #mergeAndReplaceFilters(filters) {
+            const hockey = mazyarMergeFilters(this.#filters.hockey, filters.hockey);
+            const soccer = mazyarMergeFilters(this.#filters.soccer, filters.soccer);
+            this.#filters = JSON.parse(JSON.stringify({ hockey, soccer }));
+        }
+
+        #createExportButtons(modal) {
+            const filtersButton = mazyarCreateMzStyledButton("MZY Filters", "blue", "floatLeft");
+            filtersButton.addEventListener("click", () => {
+                const notepad = modal.querySelector("textarea.calendar_textarea");
+                const filters = btoa(JSON.stringify(this.#filters, null, 0));
+                notepad.value = MAZYAR_FILTER_BACKUP_TITLE + filters;
+            });
+            return [filtersButton,];
+        }
+
+        #openImportFiltersModal(filters) {
+            const header = mazyarCreateMzStyledTitle("MZY Import Filters", () => {
+                this.#hideModal();
+            });
+            const overview = document.createElement("div");
+            const overviewOld = mazyarCreateFiltersOverview(this.#filters, "Current");
+            const overviewNew = mazyarCreateFiltersOverview(filters, "New");
+            const keep = mazyarCreateMzStyledButton("Merge & Keep", "blue");
+            const replace = mazyarCreateMzStyledButton("Merge & Replace", "red");
+            const buttons = document.createElement("div");
+
+            overview.classList.add("mazyar-flex-container");
+            buttons.classList.add("mazyar-flex-container-row");
+
+            keep.addEventListener("click", () => {
+                this.#mergeAndKeepFilters(filters);
+                this.#hideModal();
+            });
+
+            replace.addEventListener("click", () => {
+                this.#mergeAndReplaceFilters(filters);
+                this.#hideModal();
+            });
+
+            buttons.appendChild(keep);
+            buttons.appendChild(replace);
+
+            overview.appendChild(overviewOld);
+            overview.appendChild(overviewNew);
+
+            this.#replaceModalContent([header, overview, buttons]);
+        }
+
+        #attachImportButton(note) {
+            if (note.value.startsWith(MAZYAR_FILTER_BACKUP_TITLE)) {
+                const button = mazyarCreateMzStyledButton("MZY Import Filters", "blue", "floatLeft");
+                button.style.marginTop = "10px";
+                button.addEventListener("click", () => {
+                    try {
+                        const filters = JSON.parse(atob(note.value.replace(MAZYAR_FILTER_BACKUP_TITLE, "")));
+                        this.#openImportFiltersModal(filters);
+                    } catch (e) {
+                        console.log(e);
+                    }
+                });
+                note.parentNode.appendChild(button);
+            }
+        }
+
+        injectToCalendar(modal) {
+            const addButton = document.getElementById("calendar_add_not_btn");
+            if (addButton) {
+                const exportButtons = this.#createExportButtons(modal);
+                addButton.parentNode.append(...exportButtons);
+            } else {
+                const createButton = document.getElementById("create_note_btn");
+                if (createButton) {
+                    createButton.addEventListener("click", () => {
+                        const addButton = document.getElementById("calendar_add_not_btn");
+                        if (addButton) {
+                            const exportButtons = this.#createExportButtons(modal);
+                            addButton.parentNode.append(...exportButtons);
+                        }
+                    });
+                    const notes = modal.querySelectorAll("textarea.calendar_textarea_disabled");
+                    for (const note of notes) {
+                        this.#attachImportButton(note);
+                    }
+                }
+            }
+        }
+
         #hideModal() {
             this.#modal.style.display = "none";
             this.#clearModalContent();
@@ -5054,7 +5170,7 @@
             mazyar.setInitialFiltersHitInToolbar();
         }
         mazyar.injectTransferDeadlineAlert();
-
+        calendarInject();
         const uri = document.baseURI;
         if (uri.search("/?p=federations") > -1) {
             if (uri.search("&sub=clash") > -1) {
