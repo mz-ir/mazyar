@@ -4609,7 +4609,7 @@
             transferIcon.style.fontSize = "2rem";
 
             deadline.id = "mazyar-deadline-overlay";
-            deadline.classList.add("mazyar-flex-container");
+            deadline.classList.add("mazyar-flex-container", "mazyar-hide");
             deadline.style.borderRadius = "50%";
 
             deadline.appendChild(transferIcon);
@@ -4713,11 +4713,11 @@
             const deadlineIcon = document.getElementById("mazyar-deadline-overlay");
             const strobe = Object.values(this.#deadlines).filter((player) => player.deadline <= deadlineTimeout).length > 0;
             if (strobe && deadlineIcon) {
-                deadlineIcon.style.display = 'unset';
                 deadlineIcon.classList.add("mazyar-deadline-throb-lightgreen");
+                deadlineIcon.classList.remove("mazyar-hide");
                 this.#playDeadlineAlert();
             } else {
-                deadlineIcon.style.display = 'none';
+                deadlineIcon.classList.add("mazyar-hide");
                 deadlineIcon.classList.remove("mazyar-deadline-throb-lightgreen");
             }
         }

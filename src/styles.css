@@ -62,7 +62,6 @@
 }
 
 #mazyar-deadline-overlay {
-    display: none;
     position: fixed;
     z-index: 9997;
     top: 48%;
