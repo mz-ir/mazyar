@@ -48,7 +48,7 @@
     padding-bottom: 8px;
 }
 
-.mazyar-notebook-plain {
+#mazyar-notebook-overlay {
     z-index: 9990;
     position: absolute;
     left: 0;

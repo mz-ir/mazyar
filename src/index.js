@@ -3869,7 +3869,8 @@
             const discard = mazyarCreateMzStyledButton("Discard", "red");
             const buttons = document.createElement("div");
 
-            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-notebook-plain", "mazyar-scrollable-vertical");
+            this.#notebook.element.id = "mazyar-notebook-overlay";
+            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
             content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
             text.classList.add("mazyar-notebook-textarea");
             buttons.classList.add("mazyar-flex-container-row");
