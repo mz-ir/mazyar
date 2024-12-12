@@ -3736,22 +3736,24 @@
         }
 
         #displayCleanInstallMenu() {
-            const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle("MZY Settings - Clean", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Settings - Clean", () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
+
+            const body = document.createElement("div");
+            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
             const notice = document.createElement("div");
-            const buttons = document.createElement("div");
-            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
-            const clean = mazyarCreateMzStyledButton("Clean", "blue");
-
-            div.classList.add("mazyar-flexbox-column");
-
-            buttons.classList.add("mazyar-flexbox-row");
-
             notice.innerHTML = "All Settings, Filters, Scout Reports and ... will be deleted.<br>Are you sure?";
             notice.style.padding = "1rem";
+            body.appendChild(notice);
+
+            const footer = document.createElement("div");
+            footer.classList.add("mazyar-flexbox-row", "mazyar-modal-footer");
+            const cancel = mazyarCreateMzStyledButton("Cancel", "red");
+            const clean = mazyarCreateMzStyledButton("Clean", "blue");
+            footer.appendChild(cancel);
+            footer.appendChild(clean);
 
             clean.addEventListener("click", async () => {
                 await this.#cleanInstall();
@@ -3764,13 +3766,7 @@
                 this.#displaySettingsMenu();
             });
 
-            div.appendChild(title);
-            div.appendChild(notice);
-            buttons.appendChild(cancel);
-            buttons.appendChild(clean);
-            div.appendChild(buttons);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         // --------------------------- Notebook ------------------------------------
