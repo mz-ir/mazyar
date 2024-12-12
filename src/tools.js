@@ -567,10 +567,6 @@ function mazyarCreateLegalIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
 }
 
-function mazyarCreateTrashIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fas", "fa-trash"], title);
-}
-
 function mazyarCreateSignalIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-signal-stream"], title);
 }
@@ -587,12 +583,14 @@ function mazyarCreateLoadingIcon2(title = "") {
     return icon;
 }
 
-
-function mazyarCreateDeleteIcon(title) {
-    const icon = document.createElement("span");
-    icon.classList.add("mazyar-icon-delete");
-    if (title) {
-        icon.title = title;
+function mazyarCreateTrashIcon(title = "", style = { fontSize: "1rem", margin: "unset" }) {
+    const icon = mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-trash", "discard-icon"], title);
+    icon.style.cursor = "pointer";
+    if (style?.fontSize) {
+        icon.style.fontSize = style.fontSize;
+    }
+    if (style?.margin) {
+        icon.style.margin = style.margin;
     }
     return icon;
 }
@@ -606,6 +604,20 @@ function mazyarCreateAddToDeadlineIcon(title, color) {
 
     const span = document.createElement("span");
     span.style.color = color;
+    span.classList.add("floatRight");
+    if (title) {
+        span.title = title;
+    }
+    span.appendChild(icon);
+    return span;
+}
+
+function mazyarCreateHideFromTransferIcon(title) {
+    const icon = mazyarCreateTrashIcon(title, { fontSize: "0.9rem" });
+    icon.style.verticalAlign = "unset";
+    icon.style.padding = "3px";
+
+    const span = document.createElement("span");
     span.classList.add("floatRight");
     if (title) {
         span.title = title;
@@ -941,19 +953,28 @@ function mazyarCreateDropDownMenu(label, options, initialValue) {
     return div;
 }
 
-function mazyarCreateDeleteButtonWithTrashIcon(title = "Delete") {
-    const icon = mazyarCreateDeleteIcon();
-
+function mazyarCreateDeleteAllFiltersButton(title = "Delete", clickCallback = null) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-flexbox-row");
+    div.style.width = "100%";
+    const button = document.createElement("button");
+    button.classList.add("mazyar-button");
+    const icon = mazyarCreateTrashIcon(null, { fontSize: "0.9rem", margin: "1px 3px" });
     const text = document.createElement("span");
     text.innerText = title;
-
-    const button = document.createElement("button");
-    button.classList.add("mazyar-flexbox-row", "mazyar-button");
-    button.style.margin = "0.6rem 0 0";
-
+    text.style.fontWeight = "bold";
     button.appendChild(icon);
     button.appendChild(text);
-    return button;
+    div.append(button);
+
+    button.style.margin = "4px";
+    button.style.padding = "3px";
+
+    if (clickCallback) {
+        button.addEventListener("click", clickCallback);
+    }
+
+    return div;
 }
 
 function mazyarCreateTableHeaderForFiltersView() {

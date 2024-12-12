@@ -373,3 +373,10 @@ div.mazyar-transfer-control-area {
     margin: 3px 3px 0;
     border-radius: 5px;
 }
+
+.mazyar-filters-view {
+    width: 100%;
+    flex: 1 1;
+    /* body must be scrollable */
+    overflow: auto;
+}

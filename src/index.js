@@ -3206,9 +3206,7 @@
             }
             player.hideButtonInjected = true;
             const playerId = mazyarExtractPlayerIdFromContainer(player);
-            const hideIcon = mazyarCreateDeleteIcon("Hide player from search result.");
-            hideIcon.classList.add("floatRight");
-            hideIcon.style.marginTop = "0.2rem";
+            const hideIcon = mazyarCreateHideFromTransferIcon("Hide player from search result.");
             player.querySelector("h2.clearfix div")?.appendChild(hideIcon);
 
             hideIcon.addEventListener("click", () => {
@@ -4391,8 +4389,7 @@
                     };
                 }
 
-                const del = mazyarCreateDeleteIcon("Delete the filter permanently.");
-                del.style.verticalAlign = "bottom";
+                const del = mazyarCreateTrashIcon("Delete the filter permanently.", { fontSize: "1rem", margin: "0px 3px 0px 0px" });
                 del.onclick = () => {
                     this.deleteFilter(filter.id);
                     tbody.removeChild(tr);
@@ -4431,6 +4428,9 @@
         }
 
         #filtersViewCreateTable(filters) {
+            const div = document.createElement("div");
+            div.classList.add("mazyar-filters-view");
+
             const table = document.createElement("table");
             const thead = mazyarCreateTableHeaderForFiltersView();
             const tbody = this.#filtersViewCreateTableBody(filters);
@@ -4440,33 +4440,36 @@
 
             table.appendChild(thead);
             table.appendChild(tbody);
-            return table;
+            div.appendChild(table);
+            return div;
         }
 
         async #displayTransferFilters() {
-            const div = document.createElement("div");
-            div.classList.add("mazyar-flexbox-column");
-
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Filters", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Transfer Filters", () => {
                 this.#hideModal();
             });
 
+            const body = this.#createModalBody();
             const filtersView = document.createElement("div");
-            filtersView.classList.add("mazyar-flexbox-column");
-
             const noFilterView = document.createElement("span");
+            body.appendChild(filtersView);
+            body.appendChild(noFilterView);
+
+            filtersView.classList.add("mazyar-flexbox-column");
+            filtersView.style.flexWrap = "nowrap";
+
             noFilterView.innerText = "There is no filter to display";
             noFilterView.style.display = "none";
             noFilterView.style.margin = "1rem";
 
             const filters = this.#getCurrentFilters();
             if (filters.length > 0) {
-                const deleteAll = mazyarCreateDeleteButtonWithTrashIcon("Delete all filters");
-                deleteAll.addEventListener("click", () => {
+                const deleteAll = mazyarCreateDeleteAllFiltersButton("Delete all filters", () => {
                     this.deleteAllFilters();
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
                 });
+
                 const table = this.#filtersViewCreateTable(filters);
                 table.addEventListener("destroy", () => {
                     // remove 'delete all' button if no filter is left
@@ -4479,11 +4482,7 @@
                 noFilterView.style.display = "unset";
             }
 
-            div.appendChild(title);
-            div.appendChild(filtersView);
-            div.appendChild(noFilterView);
-
-            this.#showModal([div]);
+            this.#showModal([header, body]);
         }
 
         async displaySquadSummary(url) {
@@ -4544,7 +4543,7 @@
                     }
                 });
 
-                const trashIcon = mazyarCreateTrashIcon("Remove from deadline list");
+                const trashIcon = mazyarCreateTrashIcon("Remove from deadline list", { fontSize: "0.8rem" });
                 deleteButton.appendChild(trashIcon);
 
                 const name = document.createElement("td");
