@@ -4491,10 +4491,13 @@
                 topPlayers.style.margin = "2px 5px";
                 topPlayers.style.padding = "0";
 
+                const body = this.#createModalBody();
+                body.appendChild(topPlayers);
+
                 const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
                     this.#hideModal();
                 });
-                this.#showModal([header, topPlayers]);  // TODO: showModal
+                this.#showModal([header, body]);
             }
         }
 
