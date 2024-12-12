@@ -4190,23 +4190,29 @@
 
         displayFilterSaveMenu(params) {
             const filters = this.#getCurrentFilters();
-
             const scoutText = this.#getSelectedScoutsOptionText();
 
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Filter", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Transfer Filter", () => {
                 this.#hideModal();
             });
-            const div = document.createElement("div");
+
+            const body = this.#createModalBody();
             const datalist = mazyarCreateSuggestionList(filters.map((f) => f.name));
             const filterName = mazyarCreateMenuTextInput("Filter Name", "U21 K-10 ST-10", datalist.id);
             const useScout = mazyarCreateMenuCheckBox(`Use scout reports too (${scoutText})`);
             const checkInterval = mazyarCreateDropDownMenu("Check Interval", MAZYAR_TRANSFER_INTERVALS, MAZYAR_TRANSFER_INTERVALS.onceHour.value);
-
             const validation = document.createElement("div");
-            const buttons = document.createElement("div");
-            const save = mazyarCreateMzStyledButton("Save", "green");
+            body.appendChild(filterName);
+            body.appendChild(checkInterval);
+            if (scoutText) {
+                body.appendChild(useScout);
+            }
+            body.appendChild(datalist);
+            body.appendChild(validation);
 
-            div.classList.add("mazyar-flexbox-column");
+            const footer = this.#createModalFooter();
+            const save = mazyarCreateMzStyledButton("Save", "green");
+            footer.appendChild(save);
 
             validation.innerText = "Error: Name is empty.";
             validation.style.color = "red";
@@ -4225,8 +4231,6 @@
                 }
             };
 
-            buttons.classList.add("mazyar-flexbox-row");
-
             save.addEventListener("click", () => {
                 // save then close
                 const name = filterName.querySelector("input[type=text]").value;
@@ -4242,19 +4246,7 @@
                 }
             });
 
-            buttons.appendChild(save);
-
-            div.appendChild(title);
-            div.appendChild(filterName);
-            div.appendChild(checkInterval);
-            if (scoutText) {
-                div.appendChild(useScout);
-            }
-            div.appendChild(datalist);
-            div.appendChild(validation);
-            div.appendChild(buttons);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         #setFilterHitsInToolbar(total = -1) {
