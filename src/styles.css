@@ -78,8 +78,7 @@
     flex: 1 1;
     max-width: fit-content;
     /* body must be scrollable */
-    overflow-x: auto;
-    overflow-y: auto;
+    overflow: auto;
 }
 
 #mazyar-modal>div.mazyar-modal-footer {

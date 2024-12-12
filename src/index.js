@@ -4902,8 +4902,10 @@
                 return;
             }
 
-            const headHTML = `<b>Mazyar</b> is updated<br>` +
-                `from <b style="color: red;">v${previousVersion}</b><span> to </span><b style="color: blue;">v${CURRENT_VERSION}</b>`;
+            const headHTML = `
+                <span><b>Mazyar</b> is updated</span>
+                <br><span>from <b style="color: red;">v${previousVersion}</b>
+                <span> to </span><b style="color: blue;">v${CURRENT_VERSION}</b></span>`;
             const head = document.createElement("div");
             head.innerHTML = headHTML;
             head.style.textAlign = "center";
@@ -4923,14 +4925,24 @@
                 }
                 if (this.#isVersionGreaterThan(version, previous)) {
                     const v = version.join('.');
-                    changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
-                        + MAZYAR_CHANGELOG[v]?.join("</li><li>") + "</li></ul></div>";
+                    changesHTML += `
+                    <div style="margin-bottom: 1rem;">
+                        <b>v${v}</b>
+                        <ul style="margin: 0px 5px 5px;">
+                            <li>${MAZYAR_CHANGELOG[v]?.join("</li><li>")}</li>
+                        </ul>
+                    </div>`;
                 }
             }
             if (changesHTML === '' && force) {
                 const v = versions[0].join('.');
-                changesHTML += `<div style="margin-bottom: 1rem;"><b>v${v}</b><ul style="margin: 0px 5px 5px;"><li>`
-                    + MAZYAR_CHANGELOG[v]?.join("</li><li>") + "</li></ul></div>";
+                changesHTML += `
+                <div style="margin-bottom: 1rem;">
+                    <b>v${v}</b>
+                    <ul style="margin: 0px 5px 5px;">
+                        <li>${MAZYAR_CHANGELOG[v]?.join("</li><li>")}</li>
+                    </ul>
+                </div>`;
             }
             const changes = document.createElement("div");
             changes.innerHTML = changesHTML;
@@ -4942,20 +4954,22 @@
             changes.style.flex = "1";
             changes.classList.add("mazyar-scrollable-vertical");
 
-            const text = document.createElement("div");
-            text.classList.add("mazyar-flexbox-column");
-            text.style.margin = "10px";
-            text.style.padding = "5px";
-            text.appendChild(head);
-            text.appendChild(changesTitle);
-            text.appendChild(changes);
+            const body = this.#createModalBody();
+            body.style.margin = "10px";
+            body.style.padding = "5px";
+            // changes has scroll for itself. if it is not unset here (from auto), it would add scroll on x-axis
+            body.style.overflow = "unset";
+
+            body.appendChild(head);
+            body.appendChild(changesTitle);
+            body.appendChild(changes);
 
             const header = mazyarCreateMzStyledTitle("MZY Notice", () => {
                 GM_setValue("previous_version", CURRENT_VERSION);
                 this.#hideModal();
             });
 
-            this.#showModal([header, text]);  // TODO: showModal
+            this.#showModal([header, body]);
         }
 
         showPlayerInModal(playerView) {
