@@ -3147,7 +3147,7 @@
         }
 
         #clearTransferFilters() {
-            document.querySelectorAll(".mazyar-hide")?.forEach((el) => {
+            document.querySelectorAll("#players_container .mazyar-hide")?.forEach((el) => {
                 el.classList.remove("mazyar-hide");
             });
             document.querySelectorAll(".mazyar-dim-50")?.forEach((el) => el.classList.remove("mazyar-dim-50"));
