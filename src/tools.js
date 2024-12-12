@@ -809,7 +809,7 @@ function mazyarCreateMzStyledCloseButton(callback) {
 
 function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container-row", "mazyar-modal-title");
+    div.classList.add("mazyar-flexbox-row", "mazyar-modal-title");
 
     const title = document.createElement("span");
     title.innerText = text;
@@ -840,7 +840,7 @@ function mazyarCreateSuggestionList(items) {
 
 function mazyarCreateMenuTextInput(title = "input", placeholder = "example", datalistId = "") {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container-row");
+    div.classList.add("mazyar-flexbox-row");
     div.style.justifyItems = "space-between";
     div.innerHTML = `
             <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
@@ -854,7 +854,7 @@ function mazyarCreateSubMenuTextInput(title = "input", placeholder = "example", 
     inputSize: "5px"
 }) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container-row");
+    div.classList.add("mazyar-flexbox-row");
     div.style.justifyItems = "space-between";
     div.style.margin = style?.margin ?? "0.1rem 2.2rem";
     div.innerHTML = `
@@ -894,7 +894,7 @@ function mazyarCreateMenuCheckBox(
 
 function mazyarCreateMenuGroup(title = "") {
     const group = document.createElement("div");
-    group.classList.add("mazyar-flex-container");
+    group.classList.add("mazyar-flexbox-column");
     group.style.alignSelf = "flex-start";
     group.style.alignItems = "flex-start";
     group.style.margin = "0.2rem 0.6rem";
@@ -948,7 +948,7 @@ function mazyarCreateDeleteButtonWithTrashIcon(title = "Delete") {
     text.innerText = title;
 
     const button = document.createElement("button");
-    button.classList.add("mazyar-flex-container-row", "mazyar-button");
+    button.classList.add("mazyar-flexbox-row", "mazyar-button");
     button.style.margin = "0.6rem 0 0";
 
     button.appendChild(icon);
@@ -1009,7 +1009,7 @@ function mazyarCreateToolbar() {
     const transferCount = document.createElement("span");
 
     toolbar.id = "mazyar-toolbar-overlay";
-    toolbar.classList.add("mazyar-flex-container");
+    toolbar.classList.add("mazyar-flexbox-column");
 
     logo.innerText = "MZY";
     logo.style.fontSize = "0.6rem";
@@ -1035,7 +1035,7 @@ function mazyarCreateToolbar() {
     separator.style.margin = "0";
     separator.style.padding = "0";
 
-    transfer.classList.add("mazyar-flex-container");
+    transfer.classList.add("mazyar-flexbox-column");
     transfer.style.cursor = "pointer";
 
     transferCount.id = "mazyar-transfer-filter-hits";
@@ -1060,7 +1060,7 @@ function mazyarCreateToolbar() {
 
 function mazyarCreateFiltersOverview(filters, label) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
+    div.classList.add("mazyar-flexbox-column", "mazyar-scrollable-vertical");
 
     const header = document.createElement("div");
     header.innerText = label;

@@ -581,7 +581,7 @@
         topPlayers.style.marginBottom = "10px";
 
         const div = document.createElement("div");
-        div.classList.add("mazyar-flex-container");
+        div.classList.add("mazyar-flexbox-column");
         div.appendChild(topPlayers);
         div.style.marginTop = "10px";
         const target = table.parentNode.parentNode;
@@ -1218,7 +1218,7 @@
         const table = matchCreateSummaryTable(summary, currency, sport);
 
         const div = document.createElement("div");
-        div.classList.add("mazyar-flex-container");
+        div.classList.add("mazyar-flexbox-column");
 
         div.appendChild(table);
         team.appendChild(div);
@@ -1883,7 +1883,7 @@
         const parent = table.parentNode.parentNode;
 
         const header = document.createElement("div");
-        header.classList.add("mazyar-flex-container-row", "subheader", "clearfix");
+        header.classList.add("mazyar-flexbox-row", "subheader", "clearfix");
         header.style.justifyContent = "space-between";
         header.style.marginTop = "5px";
 
@@ -2175,18 +2175,18 @@
 
     function transferCreateScoutOptions() {
         const div = document.createElement("div");
-        div.classList.add("mazyar-flex-container-row");
+        div.classList.add("mazyar-flexbox-row");
         div.style.justifyContent = "left";
         div.style.marginTop = "6px";
 
         const highs = document.createElement("div");
-        highs.classList.add("mazyar-flex-container-row");
+        highs.classList.add("mazyar-flexbox-row");
         highs.style.justifyContent = "left";
         highs.style.border = "1px inset black";
         highs.style.marginRight = "2rem";
 
         const lows = document.createElement("div");
-        lows.classList.add("mazyar-flex-container-row");
+        lows.classList.add("mazyar-flexbox-row");
         lows.style.justifyContent = "left";
         lows.style.border = "1px outset black";
         lows.style.marginRight = "2rem";
@@ -3642,11 +3642,11 @@
         #createModal() {
             const overlay = document.createElement("div");
             overlay.id = "mazyar-modal-overlay";
-            overlay.classList.add("mazyar-flex-container", "mazyar-hide");
+            overlay.classList.add("mazyar-flexbox-column", "mazyar-hide");
 
             const modal = document.createElement("div");
             modal.id = "mazyar-modal";
-            modal.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
+            modal.classList.add("mazyar-flexbox-column", "mazyar-scrollable-vertical");
 
             overlay.appendChild(modal);
             document.body?.appendChild(overlay);
@@ -3744,9 +3744,9 @@
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const clean = mazyarCreateMzStyledButton("Clean", "blue");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             notice.innerHTML = "All Settings, Filters, Scout Reports and ... will be deleted.<br>Are you sure?";
             notice.style.padding = "1rem";
@@ -3869,10 +3869,10 @@
             const buttons = document.createElement("div");
 
             overlay.id = "mazyar-notebook-overlay";
-            overlay.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
-            content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
+            overlay.classList.add("mazyar-flexbox-column", "mazyar-scrollable-vertical");
+            content.classList.add("mazyar-flexbox-column", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
             text.classList.add("mazyar-notebook-textarea");
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             warning.innerText = "You have unsaved changes!";
             warning.style.color = "red";
@@ -3934,7 +3934,7 @@
 
         #createDeadlineOptions(level1Style, level2Style) {
             const div = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
             const enabled = mazyarCreateMenuCheckBox("Enable deadline alert", this.#settings.transfer.deadline.enabled, level1Style);
             const playBell = mazyarCreateMenuCheckBox("Sound Notification", this.#settings.transfer.deadline.play_bell, level2Style);
             const timeout = mazyarCreateSubMenuTextInput("Timeout", "30", this.#settings.transfer.deadline.timeout);
@@ -3994,9 +3994,9 @@
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4051,9 +4051,9 @@
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4112,9 +4112,9 @@
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4157,7 +4157,7 @@
 
             const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "red");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             transfer.addEventListener("click", () => {
                 this.#hideModal();
@@ -4228,7 +4228,7 @@
             const buttons = document.createElement("div");
             const save = mazyarCreateMzStyledButton("Save", "green");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             validation.innerText = "Error: Name is empty.";
             validation.style.color = "red";
@@ -4247,7 +4247,7 @@
                 }
             };
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             save.addEventListener("click", () => {
                 // save then close
@@ -4318,7 +4318,7 @@
 
         async #displayTransferHideMenu() {
             const div = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             const title = mazyarCreateMzStyledTitle("MZY Transfer Hide List", () => {
                 this.#hideModal();
@@ -4338,9 +4338,9 @@
             body.appendChild(validation);
             body.appendChild(result);
 
-            body.classList.add("mazyar-flex-container");
+            body.classList.add("mazyar-flexbox-column");
             body.style.maxWidth = "320px";
-            dayClearDiv.classList.add("mazyar-flex-container-row");
+            dayClearDiv.classList.add("mazyar-flexbox-row");
             daysInput.querySelector("input[type='text']").style.width = "2rem";
 
             description.innerHTML = `<p>There are <strong style="color:red;">${await this.#countPlayersOfHideListInIndexDb()}</strong> player(s) hidden from transfer market.</p>
@@ -4475,14 +4475,14 @@
 
         async #displayTransferFilters() {
             const div = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             const title = mazyarCreateMzStyledTitle("MZY Transfer Filters", () => {
                 this.#hideModal();
             });
 
             const filtersView = document.createElement("div");
-            filtersView.classList.add("mazyar-flex-container");
+            filtersView.classList.add("mazyar-flexbox-column");
 
             const noFilterView = document.createElement("span");
             noFilterView.innerText = "There is no filter to display";
@@ -4537,7 +4537,7 @@
 
         async #displayTransferDeadlines() {
             const div = document.createElement("div");
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             const title = mazyarCreateMzStyledTitle("MZY Transfer Deadlines", () => {
                 this.#hideModal();
@@ -4607,7 +4607,7 @@
             transferIcon.style.fontSize = "2rem";
 
             deadline.id = "mazyar-deadline-overlay";
-            deadline.classList.add("mazyar-flex-container", "mazyar-hide");
+            deadline.classList.add("mazyar-flexbox-column", "mazyar-hide");
             deadline.style.borderRadius = "50%";
 
             deadline.appendChild(transferIcon);
@@ -4829,7 +4829,7 @@
             const info = this.#createFilterInfo(filterInfo);
             const middle = document.createElement("div");
 
-            div.classList.add("mazyar-flex-container");
+            div.classList.add("mazyar-flexbox-column");
 
             middle.classList.add("mazyar-scrollable-vertical");
             middle.style.flex = "1";
@@ -4877,7 +4877,7 @@
             const save = mazyarCreateMzStyledButton("Save", "green");
             const buttons = document.createElement("div");
 
-            buttons.classList.add("mazyar-flex-container-row");
+            buttons.classList.add("mazyar-flexbox-row");
 
             text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
             text.classList.add("mazyar-player-comment-textarea");
@@ -4970,7 +4970,7 @@
             changes.classList.add("mazyar-scrollable-vertical");
 
             const text = document.createElement("div");
-            text.classList.add("mazyar-flex-container");
+            text.classList.add("mazyar-flexbox-column");
             text.style.margin = "10px";
             text.style.padding = "5px";
             text.appendChild(head);
@@ -5032,8 +5032,8 @@
             const replace = mazyarCreateMzStyledButton("Merge & Replace", "red");
             const buttons = document.createElement("div");
 
-            overview.classList.add("mazyar-flex-container");
-            buttons.classList.add("mazyar-flex-container-row");
+            overview.classList.add("mazyar-flexbox-column");
+            buttons.classList.add("mazyar-flexbox-row");
 
             keep.addEventListener("click", () => {
                 this.#mergeAndKeepFilters(filters);

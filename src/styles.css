@@ -16,7 +16,7 @@
     display: none;
 }
 
-.mazyar-flex-container {
+.mazyar-flexbox-column {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -25,12 +25,13 @@
     max-height: 100%;
 }
 
-.mazyar-flex-container-row {
+.mazyar-flexbox-row {
     display: flex;
     flex-direction: row;
     justify-content: center;
     align-items: center;
     flex-wrap: wrap;
+    max-width: 100%;
 }
 
 #mazyar-modal-overlay {
