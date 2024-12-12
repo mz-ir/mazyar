@@ -3972,29 +3972,28 @@
             const level1Style = { margin: "0.3rem 0.7rem" };
             const level2Style = { margin: "0.3rem 1.2rem" };
 
-            const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Transfer Settings`, () => {
+            const header = mazyarCreateMzStyledTitle(`MZY Transfer Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
 
-            const group = document.createElement("div");
+            const body = document.createElement("div");
+            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
             const filters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer.enable_filters, level1Style);
             const maxed = mazyarCreateMenuCheckBox("Mark maxed skills", this.#settings.transfer.display_maxed, level1Style);
             const camp = mazyarCreateMenuCheckBox("Check if player is sent to camp", this.#settings.transfer.display_camp, level1Style);
             const deadline = this.#createDeadlineOptions(level1Style, level2Style);
-            group.appendChild(filters);
-            group.appendChild(maxed);
-            group.appendChild(camp);
-            group.appendChild(deadline);
+            body.appendChild(filters);
+            body.appendChild(maxed);
+            body.appendChild(camp);
+            body.appendChild(deadline);
 
-            const buttons = document.createElement("div");
+            const footer = document.createElement("div");
+            footer.classList.add("mazyar-flexbox-row", "mazyar-modal-footer");
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
-
-            div.classList.add("mazyar-flexbox-column");
-
-            buttons.classList.add("mazyar-flexbox-row");
+            footer.appendChild(cancel);
+            footer.appendChild(save);
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4017,13 +4016,7 @@
                 this.#displaySettingsMenu();
             };
 
-            div.appendChild(title);
-            div.appendChild(group);
-            buttons.appendChild(cancel);
-            buttons.appendChild(save);
-            div.appendChild(buttons);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         #displayDaysSettingsMenu() {
