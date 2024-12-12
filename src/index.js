@@ -2580,7 +2580,6 @@
 
     class Mazyar {
         #notebook = {
-            element: null,
             text: "",
             style: {
                 hide: true,
@@ -3674,10 +3673,8 @@
             note.addEventListener("click", () => {
                 if (this.#notebook.style.hide) {
                     this.#showNotebook();
-                    this.#saveNotebookStyle();
                 } else {
                     this.#hideNotebook();
-                    this.#saveNotebookStyle();
                 }
             });
             live.style.color = this.mustDisplayInProgressResults() ? "greenyellow" : "unset";
@@ -3809,14 +3806,14 @@
             GM_setValue("notebook_text", this.#notebook.text);
         }
 
-        #updateNotebookDisplay(content, text) {
+        #updateNotebookDisplay(overlay, content, text) {
             this.#fetchNotebookStyle();
             this.#fetchNotebookText();
 
             if (this.#notebook.style.hide) {
-                this.#notebook.element.style.display = "none";
+                overlay?.classList.add("mazyar-hide");
             } else {
-                this.#notebook.element.style.display = "flex";
+                overlay?.classList.remove("mazyar-hide");
             }
             text.value = this.#notebook.text;
             content.style.width = this.#notebook.style.width + "px";
@@ -3834,22 +3831,35 @@
         }
 
         #hideNotebook() {
-            this.#notebook.element.style.display = "none";
+            document.getElementById("mazyar-notebook-overlay")?.classList.add("mazyar-hide");
             this.#notebook.style.hide = true;
+            this.#saveNotebookStyle();
         }
 
         #showNotebook() {
-            this.#notebook.element.style.display = "flex";
+            document.getElementById("mazyar-notebook-overlay")?.classList.remove("mazyar-hide");
             this.#notebook.style.hide = false;
+            this.#saveNotebookStyle();
+        }
+
+        #showNotebookEditButtons(save, discard, warning) {
+            save.style.display = "unset";
+            discard.style.display = "unset";
+            warning.style.display = "unset";
+        }
+
+        #hideNotebookEditButtons(save, discard, warning) {
+            save.style.display = "none";
+            discard.style.display = "none";
+            warning.style.display = "none";
         }
 
         #createNotebook() {
-            this.#notebook.element = document.createElement("div");
+            const overlay = document.createElement("div");
             const content = document.createElement("div");
 
             const contentHeader = mazyarCreateMzStyledTitle("MZY Notebook", () => {
                 this.#hideNotebook();
-                this.#saveNotebookStyle();
             });
             const text = document.createElement("textarea");
             const hide = mazyarCreateMzStyledButton("Hide", "blue");
@@ -3858,25 +3868,22 @@
             const discard = mazyarCreateMzStyledButton("Discard", "red");
             const buttons = document.createElement("div");
 
-            this.#notebook.element.id = "mazyar-notebook-overlay";
-            this.#notebook.element.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
+            overlay.id = "mazyar-notebook-overlay";
+            overlay.classList.add("mazyar-flex-container", "mazyar-scrollable-vertical");
             content.classList.add("mazyar-flex-container", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
             text.classList.add("mazyar-notebook-textarea");
             buttons.classList.add("mazyar-flex-container-row");
 
             warning.innerText = "You have unsaved changes!";
             warning.style.color = "red";
-            warning.style.display = "none";
             warning.style.marginTop = "5px";
-            save.style.display = "none";
-            discard.style.display = "none";
 
-            this.#updateNotebookDisplay(content, text);
+            this.#hideNotebookEditButtons(save, discard, warning);
+
+            this.#updateNotebookDisplay(overlay, content, text);
             document.addEventListener("focus", () => {
-                this.#updateNotebookDisplay(content, text);
-                save.style.display = "none";
-                warning.style.display = "none";
-                discard.style.display = "none";
+                this.#updateNotebookDisplay(overlay, content, text);
+                this.#hideNotebookEditButtons(save, discard, warning);
             });
 
             mazyarMakeElementDraggable(content, contentHeader, () => {
@@ -3891,34 +3898,25 @@
 
             text.addEventListener("input", () => {
                 if (text.value !== this.#notebook.text) {
-                    save.style.display = "unset";
-                    warning.style.display = "unset";
-                    discard.style.display = "unset";
+                    this.#showNotebookEditButtons(save, discard, warning);
                 } else {
-                    save.style.display = "none";
-                    warning.style.display = "none";
-                    discard.style.display = "none";
+                    this.#hideNotebookEditButtons(save, discard, warning);
                 }
             })
 
             discard.addEventListener("click", () => {
                 text.value = this.#notebook.text;
-                save.style.display = "none";
-                warning.style.display = "none";
-                discard.style.display = "none";
+                this.#hideNotebookEditButtons(save, discard, warning);
             });
 
             hide.addEventListener("click", () => {
                 this.#hideNotebook();
-                this.#saveNotebookStyle();
             });
 
             save.addEventListener("click", () => {
                 this.#notebook.text = text.value;
                 this.#saveNotebookText();
-                save.style.display = "none";
-                warning.style.display = "none";
-                discard.style.display = "none";
+                this.#hideNotebookEditButtons(save, discard, warning);
             });
 
             buttons.appendChild(hide);
@@ -3928,8 +3926,8 @@
             content.appendChild(text);
             content.appendChild(warning);
             content.appendChild(buttons);
-            this.#notebook.element.appendChild(content);
-            document.body?.appendChild(this.#notebook.element);
+            overlay.appendChild(content);
+            document.body?.appendChild(overlay);
         }
 
         // ----------------------------------------------------------------------------------
