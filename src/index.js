@@ -3662,6 +3662,18 @@
             document.getElementById("mazyar-modal-overlay").classList.remove("mazyar-hide");
         }
 
+        #createModalBody() {
+            const body = document.createElement("div");
+            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
+            return body;
+        }
+
+        #createModalFooter() {
+            const footer = document.createElement("div");
+            footer.classList.add("mazyar-flexbox-row", "mazyar-modal-footer");
+            return footer;
+        }
+
         #addToolbar() {
             const { toolbar, menu, transfer, note, live } = mazyarCreateToolbar();
             menu.addEventListener("click", () => {
@@ -3741,15 +3753,13 @@
                 this.#displaySettingsMenu();
             });
 
-            const body = document.createElement("div");
-            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
+            const body = this.#createModalBody();
             const notice = document.createElement("div");
             notice.innerHTML = "All Settings, Filters, Scout Reports and ... will be deleted.<br>Are you sure?";
             notice.style.padding = "1rem";
             body.appendChild(notice);
 
-            const footer = document.createElement("div");
-            footer.classList.add("mazyar-flexbox-row", "mazyar-modal-footer");
+            const footer = this.#createModalFooter();
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const clean = mazyarCreateMzStyledButton("Clean", "blue");
             footer.appendChild(cancel);
@@ -3977,8 +3987,7 @@
                 this.#displaySettingsMenu();
             });
 
-            const body = document.createElement("div");
-            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
+            const body = this.#createModalBody();
             const filters = mazyarCreateMenuCheckBox("Enable transfer filters", this.#settings.transfer.enable_filters, level1Style);
             const maxed = mazyarCreateMenuCheckBox("Mark maxed skills", this.#settings.transfer.display_maxed, level1Style);
             const camp = mazyarCreateMenuCheckBox("Check if player is sent to camp", this.#settings.transfer.display_camp, level1Style);
@@ -3988,8 +3997,7 @@
             body.appendChild(camp);
             body.appendChild(deadline);
 
-            const footer = document.createElement("div");
-            footer.classList.add("mazyar-flexbox-row", "mazyar-modal-footer");
+            const footer = this.#createModalFooter();
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
             footer.appendChild(cancel);
@@ -4022,29 +4030,26 @@
         #displayDaysSettingsMenu() {
             const level1Style = { margin: "0.3rem 0.7rem" };
 
-            const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Days Settings`, () => {
+            const header = mazyarCreateMzStyledTitle(`MZY Days Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
 
-            const group = document.createElement("div");
+            const body = this.#createModalBody();
             const daysInProfiles = mazyarCreateMenuCheckBox("Display in player profiles", this.#settings.days.display_in_profiles, level1Style);
             const daysInTransfer = mazyarCreateMenuCheckBox("Display in transfer market", this.#settings.days.display_in_transfer, level1Style);
             const daysInTraining = mazyarCreateMenuCheckBox("Display in training report", this.#settings.days.display_in_training, level1Style);
             const daysForOneClubs = mazyarCreateMenuCheckBox("Display for One-Club players", this.#settings.days.display_for_one_clubs, level1Style);
-            group.appendChild(daysInProfiles);
-            group.appendChild(daysInTransfer);
-            group.appendChild(daysInTraining);
-            group.appendChild(daysForOneClubs);
+            body.appendChild(daysInProfiles);
+            body.appendChild(daysInTransfer);
+            body.appendChild(daysInTraining);
+            body.appendChild(daysForOneClubs);
 
-            const buttons = document.createElement("div");
+            const footer = this.#createModalFooter();
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
-
-            div.classList.add("mazyar-flexbox-column");
-
-            buttons.classList.add("mazyar-flexbox-row");
+            footer.appendChild(cancel);
+            footer.appendChild(save);
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4062,25 +4067,18 @@
                 this.#displaySettingsMenu();
             };
 
-            div.appendChild(title);
-            div.appendChild(group);
-            buttons.appendChild(cancel);
-            buttons.appendChild(save);
-            div.appendChild(buttons);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         #displayMiscellaneousSettingsMenu() {
             const level1Style = { margin: "0.3rem 0.7rem" };
 
-            const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`, () => {
+            const header = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
 
-            const group = document.createElement("div");
+            const body = this.#createModalBody();
             const playerComment = mazyarCreateMenuCheckBox("Enable player comment", this.#settings.miscellaneous.player_comment, level1Style);
             const inProgress = mazyarCreateMenuCheckBox("Display in progress results", this.#settings.miscellaneous.in_progress_results, level1Style);
             const tableInjection = mazyarCreateMenuCheckBox("Display teams' top players in tables", this.#settings.miscellaneous.top_players_in_tables, level1Style);
@@ -4090,22 +4088,20 @@
             const tableTransferHistory = mazyarCreateMenuCheckBox("Add transfer history in tables", this.#settings.miscellaneous.table_transfer_history, level1Style);
             const coachSalaries = mazyarCreateMenuCheckBox("Display salaries in search results", this.#settings.miscellaneous.coach_salary, level1Style);
             mzPredictor.style.display = 'none';
-            group.appendChild(playerComment);
-            group.appendChild(inProgress);
-            group.appendChild(tableInjection);
-            group.appendChild(fixtureFullName);
-            group.appendChild(coachSalaries);
-            group.appendChild(mzPredictor);
-            group.appendChild(tableTransferList);
-            group.appendChild(tableTransferHistory);
+            body.appendChild(playerComment);
+            body.appendChild(inProgress);
+            body.appendChild(tableInjection);
+            body.appendChild(fixtureFullName);
+            body.appendChild(coachSalaries);
+            body.appendChild(mzPredictor);
+            body.appendChild(tableTransferList);
+            body.appendChild(tableTransferHistory);
 
-            const buttons = document.createElement("div");
+            const footer = this.#createModalFooter();
             const cancel = mazyarCreateMzStyledButton("Cancel", "red");
             const save = mazyarCreateMzStyledButton("Save", "green");
-
-            div.classList.add("mazyar-flexbox-column");
-
-            buttons.classList.add("mazyar-flexbox-row");
+            footer.appendChild(cancel);
+            footer.appendChild(save);
 
             cancel.addEventListener("click", () => {
                 this.#hideModal();
@@ -4127,28 +4123,26 @@
                 this.#displaySettingsMenu();
             };
 
-            div.appendChild(title);
-            div.appendChild(group);
-            buttons.appendChild(cancel);
-            buttons.appendChild(save);
-            div.appendChild(buttons);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         #displaySettingsMenu() {
-            const div = document.createElement("div");
-            const title = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`, () => {
+            const header = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`, () => {
                 this.#hideModal();
             });
 
+            const body = this.#createModalBody();
             const days = mazyarCreateSettingsSectionButton("Days Settings");
             const transfer = mazyarCreateSettingsSectionButton("Transfer Settings");
             const miscellaneous = mazyarCreateSettingsSectionButton("Miscellaneous Settings");
+            body.appendChild(days);
+            body.appendChild(transfer);
+            body.appendChild(miscellaneous);
 
+            const footer = this.#createModalFooter();
             const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "red");
-
-            div.classList.add("mazyar-flexbox-column");
+            clean.style.marginTop = "15px";
+            footer.appendChild(clean);
 
             transfer.addEventListener("click", () => {
                 this.#hideModal();
@@ -4165,19 +4159,12 @@
                 this.#displayMiscellaneousSettingsMenu();
             });
 
-            clean.style.marginTop = "15px";
             clean.addEventListener("click", () => {
                 this.#hideModal();
                 this.#displayCleanInstallMenu();
             });
 
-            div.appendChild(title);
-            div.appendChild(days);
-            div.appendChild(transfer);
-            div.appendChild(miscellaneous);
-            div.appendChild(clean);
-
-            this.#showModal([div]);
+            this.#showModal([header, body, footer]);
         }
 
         #getSelectedHighLows(useScout) {
