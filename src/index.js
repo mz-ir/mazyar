@@ -4285,14 +4285,12 @@
         }
 
         async #displayTransferHideMenu() {
-            const div = document.createElement("div");
-            div.classList.add("mazyar-flexbox-column");
-
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Hide List", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Transfer Hide List", () => {
                 this.#hideModal();
             });
             await this.#countPlayersOfHideListInIndexDb();
-            const body = document.createElement("div");
+
+            const body = this.#createModalBody();
             const description = document.createElement("div");
             const dayClearDiv = document.createElement("div");
             const daysInput = mazyarCreateMenuTextInput("Days", "0", "");
@@ -4306,7 +4304,6 @@
             body.appendChild(validation);
             body.appendChild(result);
 
-            body.classList.add("mazyar-flexbox-column");
             body.style.maxWidth = "320px";
             dayClearDiv.classList.add("mazyar-flexbox-row");
             daysInput.querySelector("input[type='text']").style.width = "2rem";
@@ -4350,10 +4347,7 @@
                 }
             });
 
-            div.appendChild(title);
-            div.appendChild(body);
-
-            this.#showModal([div]);
+            this.#showModal([header, body]);
         }
 
         #filtersViewCreateTableBody(filters = []) {
@@ -4500,7 +4494,7 @@
                 const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
                     this.#hideModal();
                 });
-                this.#showModal([header, topPlayers]);
+                this.#showModal([header, topPlayers]);  // TODO: showModal
             }
         }
 
@@ -4566,7 +4560,7 @@
             div.appendChild(title);
             div.appendChild(middle);
 
-            this.#showModal([div]);
+            this.#showModal([div]);  // TODO: showModal
         }
 
         #addDeadlineIndicator() {
@@ -4834,7 +4828,7 @@
                 div.appendChild(info);
                 div.appendChild(middle);
             }
-            this.#showModal([div]);
+            this.#showModal([div]);  // TODO: showModal
         }
 
         async #displayPlayerComment(target, playerId) {
@@ -4865,7 +4859,7 @@
 
             buttons.appendChild(save);
 
-            this.#showModal([header, text, buttons]);
+            this.#showModal([header, text, buttons]);  // TODO: showModal
         }
 
         #getVersionNumbers(v) {
@@ -4951,7 +4945,7 @@
                 this.#hideModal();
             });
 
-            this.#showModal([header, text]);
+            this.#showModal([header, text]);  // TODO: showModal
         }
 
         showPlayerInModal(playerView) {
@@ -4965,7 +4959,7 @@
                 this.#hideModal();
             });
 
-            this.#showModal([header, player]);
+            this.#showModal([header, player]);  // TODO: showModal
         }
 
         #mergeAndKeepFilters(filters) {
