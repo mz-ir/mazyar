@@ -3727,19 +3727,13 @@
             }
         }
 
-        #displayLoading(title = "MZY") {
-            const header = mazyarCreateMzStyledTitle(title, () => {
-                this.#hideModal();
-            });
+        #displayLoading(title) {
+            const header = mazyarCreateMzStyledTitle(title);
 
-            const body = document.createElement("div");
-            const loading = mazyarCreateLoadingIcon2();
-
-            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
+            const body = this.#createModalBody();
             body.style.margin = "1rem";
-
+            const loading = mazyarCreateLoadingIcon2();
             loading.style.fontSize = "x-large";
-
             body.appendChild(loading);
 
             this.#showModal([header, body]);
@@ -4375,11 +4369,13 @@
                         scout.innerHTML = "X";
                     }
                 });
-
+                let scoutClickable = true;
                 if (filter.scout) {
                     scout.onclick = () => {
-                        const info = { name: filter.name, scout: filter.scout, count: scout.innerText };
-                        this.displayFilterResults(filter.id, info);
+                        if (scoutClickable) {
+                            const info = { name: filter.name, scout: filter.scout, count: scout.innerText };
+                            this.displayFilterResults(filter.id, info);
+                        }
                     };
                 }
 
@@ -4395,6 +4391,7 @@
                 const refresh = mazyarCreateRefreshIcon("Refresh filter hits.");
                 refresh.style.fontSize = "1.1rem";
                 refresh.onclick = async () => {
+                    scoutClickable = false;
                     mazyarStartSpinning(refresh);
                     total.replaceChildren(mazyarCreateLoadingIcon());
                     scout.replaceChildren(mazyarCreateLoadingIcon());
@@ -4406,6 +4403,7 @@
                         scout.innerHTML = "X";
                     }
                     mazyarStopSpinning(refresh);
+                    scoutClickable = true;
                 };
 
                 const tools = document.createElement("td");
@@ -4481,6 +4479,11 @@
 
         async displaySquadSummary(url) {
             this.#displayLoading("MZY Squad Summary");
+            const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
+                this.#hideModal();
+            });
+            const body = this.#createModalBody();
+
             const doc = await mazyarFetchHtml(url);
             if (doc) {
                 const sport = mazyarExtractSportType(doc);
@@ -4491,14 +4494,12 @@
                 topPlayers.style.margin = "2px 5px";
                 topPlayers.style.padding = "0";
 
-                const body = this.#createModalBody();
                 body.appendChild(topPlayers);
 
-                const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
-                    this.#hideModal();
-                });
-                this.#showModal([header, body]);
+            } else {
+                body.innerText = "Fetching squad summary failed."
             }
+            this.#showModal([header, body]);
         }
 
         async #displayTransferDeadlines() {
@@ -4791,23 +4792,9 @@
         }
 
         async displayFilterResults(filterId, filterInfo) {
-            const div = document.createElement("div");
-
-            const header = mazyarCreateMzStyledTitle("MZY Filter Results", () => {
-                this.#hideModal();
-                this.#displayTransferFilters();
-            });
-            const info = this.#createFilterInfo(filterInfo);
-            const middle = document.createElement("div");
-
-            div.classList.add("mazyar-flexbox-column");
-
-            middle.classList.add("mazyar-scrollable-vertical");
-            middle.style.flex = "1";
-            middle.style.padding = "5px 2px";
+            this.#displayLoading("MZY Filter Results");
 
             const players = await this.#getHitsFromIndexedDb(filterId);
-            this.#displayLoading("MZY Filter Results");
             const jobs = [];
             for (const player of players) {
                 const url = `https://${location.hostname}/ajax.php?p=transfer&sub=transfer-search&sport=${this.#sport}&u=${player.pid}`;
@@ -4818,25 +4805,31 @@
                 );
             }
             const searchResults = await Promise.all(jobs);
-            this.#appendFilterResultToModal(middle, searchResults, filterId);
+            const results = document.createElement("div");
+            results.classList.add("mazyar-scrollable-vertical");
+            results.style.flex = "1";
+            results.style.padding = "5px 2px";
+            this.#appendFilterResultToModal(results, searchResults, filterId);
 
-            const noResult = middle.childNodes.length === 0;
-            if (noResult) {
-                middle.innerHTML = "<h3>No Players To Display</h3><span>Please refresh the filter to update hits.</span>";
-                middle.style.padding = "10px";
-                middle.style.textAlign = "center";
-            } else {
-                info.querySelector(".filter-count-span").innerText = middle.childNodes.length.toString();
-            }
 
-            div.appendChild(header);
-            if (noResult) {
-                div.appendChild(middle);
+            const body = this.#createModalBody();
+            if (results.childNodes.length !== 0) {
+                const info = this.#createFilterInfo(filterInfo);
+                info.querySelector(".filter-count-span").innerText = results.childNodes.length.toString();
+                body.appendChild(info);
             } else {
-                div.appendChild(info);
-                div.appendChild(middle);
+                results.innerHTML = "<h3>No Players To Display</h3><span>Please refresh the filter to update hits.</span>";
+                results.style.padding = "10px";
+                results.style.textAlign = "center";
             }
-            this.#showModal([div]);  // TODO: showModal
+            body.appendChild(results);
+
+            const header = mazyarCreateMzStyledTitle("MZY Filter Results", () => {
+                this.#hideModal();
+                this.#displayTransferFilters();
+            });
+
+            this.#showModal([header, body]);
         }
 
         async #displayPlayerComment(target, playerId) {
