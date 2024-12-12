@@ -374,7 +374,7 @@ div.mazyar-transfer-control-area {
     border-radius: 5px;
 }
 
-.mazyar-filters-view {
+.mazyar-modal-table-container {
     width: 100%;
     flex: 1 1;
     /* body must be scrollable */

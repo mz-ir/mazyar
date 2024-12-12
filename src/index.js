@@ -4423,7 +4423,7 @@
 
         #filtersViewCreateTable(filters) {
             const div = document.createElement("div");
-            div.classList.add("mazyar-filters-view");
+            div.classList.add("mazyar-modal-table-container");
 
             const table = document.createElement("table");
             const thead = mazyarCreateTableHeaderForFiltersView();
@@ -4444,13 +4444,13 @@
             });
 
             const body = this.#createModalBody();
+            // filters table is fully shown and scrollable only when it is structured like body > div > div > table
             const filtersView = document.createElement("div");
             const noFilterView = document.createElement("span");
             body.appendChild(filtersView);
             body.appendChild(noFilterView);
 
             filtersView.classList.add("mazyar-flexbox-column");
-            filtersView.style.flexWrap = "nowrap";
 
             noFilterView.innerText = "There is no filter to display";
             noFilterView.style.display = "none";
@@ -4502,30 +4502,38 @@
         }
 
         async #displayTransferDeadlines() {
-            const div = document.createElement("div");
-            div.classList.add("mazyar-flexbox-column");
-
-            const title = mazyarCreateMzStyledTitle("MZY Transfer Deadlines", () => {
+            const header = mazyarCreateMzStyledTitle("MZY Transfer Deadlines", () => {
                 this.#hideModal();
             });
 
-            const middle = document.createElement("div");
-            middle.classList.add("mazyar-scrollable-vertical");
+            const body = this.#createModalBody();
 
-            middle.style.flex = "1";
-            middle.style.margin = "5px 2px";
+            // table is fully shown and scrollable only when it is structured like body > div > div > table
+            const divMain = document.createElement("div");
+            divMain.classList.add("mazyar-flexbox-column");
+            const divChild = document.createElement("div");
+            // 'overflow: auto' makes the table scrollable and fully shown
+            divChild.classList.add("mazyar-modal-table-container");
+            divMain.appendChild(divChild);
+            body.appendChild(divMain);
 
-            const bids = document.createElement("table");
-            bids.style.margin = "5px 2px";
-            middle.appendChild(bids);
+            const table = document.createElement("table");
+            table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
+            table.style.margin = "0.5rem";
+            divChild.appendChild(table);
 
             const thead = document.createElement("thead");
-            thead.innerHTML = `<tr><th style="width: 15px;"></th><th style="text-align: left;"><strong>Player</strong></th><th><strong>Deadline</strong></th></tr>`;
-            bids.appendChild(thead);
+            thead.innerHTML = `
+                <tr>
+                    <th style="text-decoration: none; width: 15px;"></th>
+                    <th style="text-decoration: none; text-align: left; padding-left: 5px;"><strong>Player</strong></th>
+                    <th style="text-decoration: none;"><strong>Deadline</strong></th>
+                </tr>`;
+            table.appendChild(thead);
 
             const sortedBids = Object.values(this.#deadlines)?.sort((a, b) => a.deadline - b.deadline);
             const tbody = document.createElement("tbody");
-            bids.appendChild(tbody);
+            table.appendChild(tbody);
             const deadlineTimeout = this.#getTransferDeadlineTimeout();
             for (const bid of sortedBids) {
                 const row = document.createElement("tr");
@@ -4560,10 +4568,7 @@
                 tbody.appendChild(row);
             }
 
-            div.appendChild(title);
-            div.appendChild(middle);
-
-            this.#showModal([div]);  // TODO: showModal
+            this.#showModal([header, body]);
         }
 
         #addDeadlineIndicator() {
