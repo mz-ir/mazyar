@@ -3722,15 +3722,17 @@
                 this.#hideModal();
             });
 
-            const div = document.createElement("div");
-            div.style.margin = "1rem";
-
+            const body = document.createElement("div");
             const loading = mazyarCreateLoadingIcon2();
+
+            body.classList.add("mazyar-flexbox-column", "mazyar-modal-body");
+            body.style.margin = "1rem";
+
             loading.style.fontSize = "x-large";
 
-            div.appendChild(loading);
+            body.appendChild(loading);
 
-            this.#showModal([header, div]);
+            this.#showModal([header, body]);
         }
 
         #displayCleanInstallMenu() {

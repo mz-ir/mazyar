@@ -48,8 +48,42 @@
     width: fit-content;
     background-color: beige;
     border-radius: 5px;
-    max-height: 100%;
     padding-bottom: 8px;
+    min-width: 200px;
+    max-width: 95vw;
+    max-height: 95vh;
+}
+
+#mazyar-modal>div.mazyar-modal-header {
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
+    height: 32px;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: #e4c800;
+    color: #000;
+    -moz-border-radius-topleft: 5px;
+    -moz-border-radius-topright: 5px;
+    -webkit-border-top-left-radius: 5px;
+    -webkit-border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-color: #998504;
+}
+
+#mazyar-modal>div.mazyar-modal-body {
+    width: 100%;
+    flex: 1 1;
+    max-width: fit-content;
+    /* body must be scrollable */
+    overflow-x: auto;
+    overflow-y: auto;
+}
+
+#mazyar-modal>div.mazyar-modal-footer {
+    width: 100%;
 }
 
 #mazyar-toolbar-overlay {
@@ -331,26 +365,6 @@ div.mazyar-transfer-control-area {
 .mazyar-cross-close-button {
     cursor: pointer;
     font-size: x-small;
-}
-
-.mazyar-modal-title {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    text-align: left;
-    height: 32px;
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background: #e4c800;
-    color: #000;
-    -moz-border-radius-topleft: 5px;
-    -moz-border-radius-topright: 5px;
-    -webkit-border-top-left-radius: 5px;
-    -webkit-border-top-right-radius: 5px;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-color: #998504;
 }
 
 .mazyar-scout-filter-info {

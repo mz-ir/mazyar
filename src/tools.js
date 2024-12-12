@@ -809,7 +809,7 @@ function mazyarCreateMzStyledCloseButton(callback) {
 
 function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flexbox-row", "mazyar-modal-title");
+    div.classList.add("mazyar-flexbox-row", "mazyar-modal-header");
 
     const title = document.createElement("span");
     title.innerText = text;
