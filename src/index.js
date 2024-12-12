@@ -4995,15 +4995,18 @@
             const header = mazyarCreateMzStyledTitle("MZY Import Filters", () => {
                 this.#hideModal();
             });
-            const overview = document.createElement("div");
+
+            const body = this.#createModalBody();
             const overviewOld = mazyarCreateFiltersOverview(this.#filters, "Current");
             const overviewNew = mazyarCreateFiltersOverview(filters, "New");
+            body.appendChild(overviewOld);
+            body.appendChild(overviewNew);
+
+            const footer = this.#createModalFooter();
             const keep = mazyarCreateMzStyledButton("Merge & Keep", "blue");
             const replace = mazyarCreateMzStyledButton("Merge & Replace", "red");
-            const buttons = document.createElement("div");
-
-            overview.classList.add("mazyar-flexbox-column");
-            buttons.classList.add("mazyar-flexbox-row");
+            footer.appendChild(keep);
+            footer.appendChild(replace);
 
             keep.addEventListener("click", () => {
                 this.#mergeAndKeepFilters(filters);
@@ -5015,13 +5018,7 @@
                 this.#hideModal();
             });
 
-            buttons.appendChild(keep);
-            buttons.appendChild(replace);
-
-            overview.appendChild(overviewOld);
-            overview.appendChild(overviewNew);
-
-            this.#showModal([header, overview, buttons]);
+            this.#showModal([header, body, footer]);
         }
 
         #attachImportButton(note) {
