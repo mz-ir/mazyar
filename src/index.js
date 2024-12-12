@@ -4841,17 +4841,21 @@
 
         async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
+
             const header = mazyarCreateMzStyledTitle("MZY Player Note", () => {
                 this.#hideModal();
             });
-            const text = document.createElement("textarea");
-            const save = mazyarCreateMzStyledButton("Save", "green");
-            const buttons = document.createElement("div");
 
-            buttons.classList.add("mazyar-flexbox-row");
+            const body = this.#createModalBody();
+            const text = document.createElement("textarea");
+            text.classList.add("mazyar-player-comment-textarea");
+            body.appendChild(text);
+
+            const footer = this.#createModalFooter();
+            const save = mazyarCreateMzStyledButton("Save", "green");
+            footer.appendChild(save);
 
             text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
-            text.classList.add("mazyar-player-comment-textarea");
 
             save.addEventListener("click", async () => {
                 await this.#setPlayerCommentInIndexedDb(playerId, text.value);
@@ -4865,9 +4869,7 @@
                 this.#hideModal();
             });
 
-            buttons.appendChild(save);
-
-            this.#showModal([header, text, buttons]);  // TODO: showModal
+            this.#showModal([header, body, footer]);
         }
 
         #getVersionNumbers(v) {
