@@ -4959,17 +4959,20 @@
         }
 
         showPlayerInModal(playerView) {
-            const player = document.createElement("div");
-            player.style.margin = "5px";
-            player.style.padding = "0px";
-            player.style.backgroundColor = "wheat";
-            player.appendChild(playerView);
-
             const header = mazyarCreateMzStyledTitle("MZY Player View", () => {
                 this.#hideModal();
             });
 
-            this.#showModal([header, player]);  // TODO: showModal
+            const body = this.#createModalBody();
+            const player = document.createElement("div");
+            player.appendChild(playerView);
+            body.appendChild(player);
+
+            player.style.margin = "5px";
+            player.style.padding = "0px";
+            player.style.backgroundColor = "wheat";
+
+            this.#showModal([header, body]);
         }
 
         #mergeAndKeepFilters(filters) {
