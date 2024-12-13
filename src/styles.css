@@ -21,7 +21,7 @@
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     max-height: 100%;
 }
 
@@ -30,31 +30,27 @@
     flex-direction: row;
     justify-content: center;
     align-items: center;
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     max-width: 100%;
 }
 
-#mazyar-modal-overlay {
-    position: fixed;
-    z-index: 9999;
-    top: 0;
-    left: 0;
+.mazyar-modal-table-container {
     width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
+    flex: 1 1;
+    /* body must be scrollable */
+    overflow: auto;
 }
 
-#mazyar-modal {
-    width: fit-content;
-    background-color: beige;
-    border-radius: 5px;
-    padding-bottom: 8px;
-    min-width: 200px;
-    max-width: 95vw;
-    max-height: 95vh;
+.mazyar-scrollable-vertical {
+    overflow-x: clip;
+    overflow-y: auto;
 }
 
-#mazyar-modal>div.mazyar-modal-header {
+.mazyar-resizable {
+    resize: both;
+}
+
+.mazyar-modal-header {
     width: 100%;
     justify-content: space-between;
     text-align: left;
@@ -73,7 +69,7 @@
     border-color: #998504;
 }
 
-#mazyar-modal>div.mazyar-modal-body {
+.mazyar-modal-body {
     width: 100%;
     flex: 1 1;
     max-width: fit-content;
@@ -81,8 +77,25 @@
     overflow: auto;
 }
 
-#mazyar-modal>div.mazyar-modal-footer {
+.mazyar-modal-footer {
     width: 100%;
+}
+
+#mazyar-modal-overlay {
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+#mazyar-notebook-overlay {
+    z-index: 9990;
+    position: absolute;
+    top: 0;
+    left: 0;
 }
 
 #mazyar-toolbar-overlay {
@@ -107,15 +120,17 @@
     border-radius: 50%;
 }
 
-#mazyar-notebook-overlay {
-    z-index: 9990;
-    position: absolute;
-    top: 0;
-    left: 0;
-    flex-wrap: nowrap;
+#mazyar-modal {
+    width: fit-content;
+    background-color: beige;
+    border-radius: 5px;
+    padding-bottom: 8px;
+    min-width: 200px;
+    max-width: 95vw;
+    max-height: 95vh;
 }
 
-.mazyar-notebook-modal {
+#mazyar-notebook {
     position: fixed;
     top: 0;
     left: 0;
@@ -125,53 +140,14 @@
     min-height: 250px;
     max-width: 95vw;
     max-height: 99vh;
-    flex-wrap: nowrap;
 }
 
 .mazyar-notebook-textarea {
-    padding: 5px;
-    min-width: 180px;
+    flex: 1;
     resize: none;
     width: 90%;
-    flex: 1;
-}
-
-.mazyar-scrollable-vertical {
-    overflow-x: clip;
-    overflow-y: auto;
-}
-
-.mazyar-resizable {
-    resize: both;
-}
-
-.mazyar-donut {
-    width: 1.7em;
-    height: 1.7em;
-    margin-right: 5px;
-    border-radius: 50%;
-    text-align: center;
-    font-size: 1.2em;
-    padding: 3px;
-    background-color: yellow;
-    color: yellow;
-}
-
-.mazyar-final-donut {
-    border: rgb(213, 232, 44) solid 2px;
-    color: inherit;
-    padding: 0;
-}
-
-.mazyar-loading-donut {
-    border-bottom-color: rgb(213, 232, 44);
-    animation: 1.5s mazyar-donut-spin infinite linear;
-}
-
-@keyframes mazyar-donut-spin {
-    to {
-        transform: rotate(360deg);
-    }
+    min-width: 180px;
+    padding: 5px;
 }
 
 table.mazyar-table {
@@ -195,67 +171,6 @@ table.mazyar-table thead th {
     }
 }
 
-a.mazyar-in-progress-result {
-    animation: mazyar-change-result-background 3s infinite;
-}
-
-@keyframes mazyar-change-result-background {
-    0% {
-        background-color: inherit;
-    }
-
-    50% {
-        background-color: lightgreen;
-    }
-
-    100% {
-        background-color: inherit;
-    }
-}
-
-.mazyar-deadline-throb-lightgreen {
-    animation: mazyar-throb-deadline-icon 3s infinite;
-}
-
-@keyframes mazyar-throb-deadline-icon {
-    0% {
-        color: yellow;
-    }
-
-    50% {
-        color: crimson;
-    }
-
-    100% {
-        color: yellow;
-    }
-}
-
-.mazyar-deadline-monitor-throb {
-    animation: mazyar-throb-deadline-monitor 3s infinite;
-}
-
-@keyframes mazyar-throb-deadline-monitor {
-    0% {
-        background-color: inherit;
-    }
-
-    50% {
-        background-color: yellow;
-    }
-
-    100% {
-        background-color: inherit;
-    }
-}
-
-span.mazyar-icon-delete {
-    display: inline-block;
-    cursor: pointer;
-    background-image: url("nocache-869/img/player/discard.png");
-    width: 21px;
-    height: 20px;
-}
 
 button.mazyar-button {
     cursor: pointer;
@@ -373,9 +288,87 @@ div.mazyar-transfer-control-area {
     border-radius: 5px;
 }
 
-.mazyar-modal-table-container {
-    width: 100%;
-    flex: 1 1;
-    /* body must be scrollable */
-    overflow: auto;
+/* ------------------------- Animation ------------------------------ */
+
+.mazyar-donut {
+    width: 1.7em;
+    height: 1.7em;
+    margin-right: 5px;
+    border-radius: 50%;
+    text-align: center;
+    font-size: 1.2em;
+    padding: 3px;
+    background-color: yellow;
+    color: yellow;
+}
+
+.mazyar-final-donut {
+    border: rgb(213, 232, 44) solid 2px;
+    color: inherit;
+    padding: 0;
+}
+
+.mazyar-loading-donut {
+    border-bottom-color: rgb(213, 232, 44);
+    animation: 1.5s mazyar-donut-spin infinite linear;
+}
+
+@keyframes mazyar-donut-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+a.mazyar-in-progress-result {
+    animation: mazyar-change-result-background 3s infinite;
+}
+
+@keyframes mazyar-change-result-background {
+    0% {
+        background-color: inherit;
+    }
+
+    50% {
+        background-color: lightgreen;
+    }
+
+    100% {
+        background-color: inherit;
+    }
+}
+
+.mazyar-deadline-throb-lightgreen {
+    animation: mazyar-throb-deadline-icon 3s infinite;
+}
+
+@keyframes mazyar-throb-deadline-icon {
+    0% {
+        color: yellow;
+    }
+
+    50% {
+        color: crimson;
+    }
+
+    100% {
+        color: yellow;
+    }
+}
+
+.mazyar-deadline-monitor-throb {
+    animation: mazyar-throb-deadline-monitor 3s infinite;
+}
+
+@keyframes mazyar-throb-deadline-monitor {
+    0% {
+        background-color: inherit;
+    }
+
+    50% {
+        background-color: yellow;
+    }
+
+    100% {
+        background-color: inherit;
+    }
 }

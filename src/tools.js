@@ -805,23 +805,24 @@ function mazyarCreateSettingsSectionButton(text = "", style = { backgroundColor:
     return button;
 }
 
-function mazyarCreateMzStyledCloseButton(callback) {
-    const div = document.createElement("div");
-    div.classList.add("mazyar-cross-close-button");
+function mazyarCreateMzStyledCloseButton(closeCallback) {
+    const close = document.createElement("div");
+    close.classList.add("mazyar-cross-close-button");
 
-    div.innerHTML = `
-    <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-        <i class="fa fa-close fa-stack-1x"></i>
-    </span>`;
-
-    div.addEventListener("click", callback);
-    return div;
+    close.innerHTML = `
+        <span class="fa-stack fa-lg">
+            <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+            <i class="fa fa-close fa-stack-1x"></i>
+        </span>`;
+    if (closeCallback) {
+        close.addEventListener("click", closeCallback);
+    }
+    return close;
 }
 
-function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
-    const div = document.createElement("div");
-    div.classList.add("mazyar-flexbox-row", "mazyar-modal-header");
+function mazyarCreateMzStyledModalHeader(text = "", closeCallback = null) {
+    const header = document.createElement("div");
+    header.classList.add("mazyar-flexbox-row", "mazyar-modal-header");
 
     const title = document.createElement("span");
     title.innerText = text;
@@ -830,13 +831,13 @@ function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
     title.style.fontSize = "larger";
     title.style.padding = "5px";
 
-    div.appendChild(title);
+    header.appendChild(title);
 
     if (closeCallback) {
         const close = mazyarCreateMzStyledCloseButton(closeCallback);
-        div.appendChild(close);
+        header.appendChild(close);
     }
-    return div;
+    return header;
 }
 
 function mazyarCreateSuggestionList(items) {
@@ -855,9 +856,8 @@ function mazyarCreateMenuTextInput(title = "input", placeholder = "example", dat
     div.classList.add("mazyar-flexbox-row");
     div.style.justifyItems = "space-between";
     div.innerHTML = `
-            <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
-            <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
-        `;
+        <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
+        <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">`;
     return div;
 }
 
@@ -870,9 +870,8 @@ function mazyarCreateSubMenuTextInput(title = "input", placeholder = "example", 
     div.style.justifyItems = "space-between";
     div.style.margin = style?.margin ?? "0.1rem 2.2rem";
     div.innerHTML = `
-            <label style="margin-left: 0.5rem;">${title}: </label>
-            <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">
-        `;
+        <label style="margin-left: 0.5rem;">${title}: </label>
+        <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">`;
     return div;
 }
 
@@ -1123,19 +1122,25 @@ function monitorAddRowSeparator() {
 function mazyarCreateSectionForMonitor(title, id) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-            <td><div id="${id}">
-            <table width="100%" cellpadding="0" cellspacing="0">
-            <tbody><tr>
-            <td style="background-image: url(img/subheader_right.gif);">
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tbody><tr>
-                    <td class="subheader" valign="bottom">${title}</td>
-                </tr></tbody>
+        <td>
+            <div id="${id}">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                <tbody>
+                <tr>
+                    <td style="background-image: url(img/subheader_right.gif);">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tbody>
+                        <tr>
+                            <td class="subheader" valign="bottom">${title}</td>
+                        </tr>
+                        </tbody>
+                        </table>
+                    </td>
+                </tr>
+                </tbody>
                 </table>
-            </td>
-            </tr></tbody>
-            </table>
-            </div></td>`;
+            </div>
+        </td>`;
     return tr;
 }
 
@@ -1201,55 +1206,54 @@ function mazyarCreatePlayerRowForMonitor(
         tr.classList.add("mazyar-deadline-monitor-throb");
     }
     tr.innerHTML = `
-            <td valign="top" style="" width="100%">
+        <td valign="top" style="" width="100%">
             <table width="100%" border="0">
-                <tbody>
-                <tr style="height: 25px;">
-                    <td colspan="2">
+            <tbody>
+            <tr style="height: 25px;">
+                <td colspan="2">
                     <table cellpadding="0" cellspacing="0" width="100%" border="0">
-                        <tbody>
-                        <tr>
-                            <td width="220">
+                    <tbody>
+                    <tr>
+                        <td width="220">
                             <table>
-                                <tbody>
-                                <tr>
-                                    <td><img src="${player.flag}"></td>
-                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
-                                    <td></td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td><img src="${player.flag}"></td>
+                                <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
+                                <td></td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                            <td>
+                        </td>
+                        <td>
                             <table class="deadline-table">
-                                <tbody>
-                                <tr>
-                                    <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
-                                    <td>${player.deadlineFull}</td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
+                                <td>${player.deadlineFull}</td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                            <td align="right">
+                        </td>
+                        <td align="right">
                             <table border="0">
-                                <tbody>
-                                <tr>
-                                    <td>Latest bid:</td>
-                                    <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
-                                    <td>&nbsp;</td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td>Latest bid:</td>
+                                <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
+                                <td>&nbsp;</td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                        </tr>
-                        </tbody>
+                        </td>
+                    </tr>
+                    </tbody>
                     </table>
-                    </td>
-                </tr>
-                </tbody>
+                </td>
+            </tr>
+            </tbody>
             </table>
-            </td>
-       `;
+        </td>`;
     return tr;
 }
 

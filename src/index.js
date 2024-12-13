@@ -3728,7 +3728,7 @@
         }
 
         #displayLoading(title) {
-            const header = mazyarCreateMzStyledTitle(title);
+            const header = mazyarCreateMzStyledModalHeader(title);
 
             const body = this.#createModalBody();
             body.style.margin = "1rem";
@@ -3740,7 +3740,7 @@
         }
 
         #displayCleanInstallMenu() {
-            const header = mazyarCreateMzStyledTitle("MZY Settings - Clean", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Settings - Clean", () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
@@ -3806,7 +3806,7 @@
             GM_setValue("notebook_text", this.#notebook.text);
         }
 
-        #updateNotebookDisplay(overlay, content, text) {
+        #updateNotebookDisplay(overlay, modal, text) {
             this.#fetchNotebookStyle();
             this.#fetchNotebookText();
 
@@ -3816,14 +3816,14 @@
                 overlay?.classList.remove("mazyar-hide");
             }
             text.value = this.#notebook.text;
-            content.style.width = this.#notebook.style.width + "px";
-            content.style.height = this.#notebook.style.height + "px";
-            content.style.top = this.#notebook.style.top + "px";
-            content.style.left = this.#notebook.style.left + "px";
+            modal.style.width = this.#notebook.style.width + "px";
+            modal.style.height = this.#notebook.style.height + "px";
+            modal.style.top = this.#notebook.style.top + "px";
+            modal.style.left = this.#notebook.style.left + "px";
         }
 
-        #updateNotebookLocation(content) {
-            const { top, left, width, height } = content.getBoundingClientRect();
+        #updateNotebookLocation(modal) {
+            const { top, left, width, height } = modal.getBoundingClientRect();
             this.#notebook.style.top = top;
             this.#notebook.style.left = left;
             this.#notebook.style.width = width;
@@ -3856,43 +3856,55 @@
 
         #createNotebook() {
             const overlay = document.createElement("div");
-            const content = document.createElement("div");
-
-            const contentHeader = mazyarCreateMzStyledTitle("MZY Notebook", () => {
-                this.#hideNotebook();
-            });
-            const text = document.createElement("textarea");
-            const hide = mazyarCreateMzStyledButton("Hide", "blue");
-            const save = mazyarCreateMzStyledButton("Save", "green");
-            const warning = document.createElement("div");
-            const discard = mazyarCreateMzStyledButton("Discard", "red");
-            const buttons = document.createElement("div");
-
             overlay.id = "mazyar-notebook-overlay";
             overlay.classList.add("mazyar-flexbox-column", "mazyar-scrollable-vertical");
-            content.classList.add("mazyar-flexbox-column", "mazyar-resizable", "mazyar-scrollable-vertical", "mazyar-notebook-modal");
-            text.classList.add("mazyar-notebook-textarea");
-            buttons.classList.add("mazyar-flexbox-row");
 
+            const modal = document.createElement("div");
+            modal.id = "mazyar-notebook";
+            modal.classList.add("mazyar-flexbox-column", "mazyar-resizable", "mazyar-scrollable-vertical");
+            overlay.appendChild(modal);
+
+            const header = mazyarCreateMzStyledModalHeader("MZY Notebook", () => {
+                this.#hideNotebook();
+            });
+
+            const text = document.createElement("textarea");
+            text.classList.add("mazyar-notebook-textarea");
+
+            const warning = document.createElement("div");
             warning.innerText = "You have unsaved changes!";
             warning.style.color = "red";
             warning.style.marginTop = "5px";
 
+            const footer = document.createElement("div");
+            footer.classList.add("mazyar-flexbox-row");
+            const hide = mazyarCreateMzStyledButton("Hide", "blue");
+            const save = mazyarCreateMzStyledButton("Save", "green");
+            const discard = mazyarCreateMzStyledButton("Discard", "red");
+            footer.appendChild(hide);
+            footer.appendChild(discard);
+            footer.appendChild(save);
+
+            modal.appendChild(header);
+            modal.appendChild(text);
+            modal.appendChild(warning);
+            modal.appendChild(footer);
+
             this.#hideNotebookEditButtons(save, discard, warning);
 
-            this.#updateNotebookDisplay(overlay, content, text);
+            this.#updateNotebookDisplay(overlay, modal, text);
             document.addEventListener("focus", () => {
-                this.#updateNotebookDisplay(overlay, content, text);
+                this.#updateNotebookDisplay(overlay, modal, text);
                 this.#hideNotebookEditButtons(save, discard, warning);
             });
 
-            mazyarMakeElementDraggable(content, contentHeader, () => {
-                this.#updateNotebookLocation(content);
+            mazyarMakeElementDraggable(modal, header, () => {
+                this.#updateNotebookLocation(modal);
                 this.#saveNotebookStyle();
             });
 
-            content.addEventListener("mouseup", () => {
-                this.#updateNotebookLocation(content);
+            modal.addEventListener("mouseup", () => {
+                this.#updateNotebookLocation(modal);
                 this.#saveNotebookStyle();
             })
 
@@ -3919,14 +3931,6 @@
                 this.#hideNotebookEditButtons(save, discard, warning);
             });
 
-            buttons.appendChild(hide);
-            buttons.appendChild(discard);
-            buttons.appendChild(save);
-            content.appendChild(contentHeader);
-            content.appendChild(text);
-            content.appendChild(warning);
-            content.appendChild(buttons);
-            overlay.appendChild(content);
             document.body?.appendChild(overlay);
         }
 
@@ -3974,7 +3978,7 @@
             const level1Style = { margin: "0.3rem 0.7rem" };
             const level2Style = { margin: "0.3rem 1.2rem" };
 
-            const header = mazyarCreateMzStyledTitle(`MZY Transfer Settings`, () => {
+            const header = mazyarCreateMzStyledModalHeader(`MZY Transfer Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
@@ -4022,7 +4026,7 @@
         #displayDaysSettingsMenu() {
             const level1Style = { margin: "0.3rem 0.7rem" };
 
-            const header = mazyarCreateMzStyledTitle(`MZY Days Settings`, () => {
+            const header = mazyarCreateMzStyledModalHeader(`MZY Days Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
@@ -4065,7 +4069,7 @@
         #displayMiscellaneousSettingsMenu() {
             const level1Style = { margin: "0.3rem 0.7rem" };
 
-            const header = mazyarCreateMzStyledTitle(`MZY Miscellaneous Settings`, () => {
+            const header = mazyarCreateMzStyledModalHeader(`MZY Miscellaneous Settings`, () => {
                 this.#hideModal();
                 this.#displaySettingsMenu();
             });
@@ -4119,7 +4123,7 @@
         }
 
         #displaySettingsMenu() {
-            const header = mazyarCreateMzStyledTitle(`MZY Settings (v${CURRENT_VERSION})`, () => {
+            const header = mazyarCreateMzStyledModalHeader(`MZY Settings (v${CURRENT_VERSION})`, () => {
                 this.#hideModal();
             });
 
@@ -4184,7 +4188,7 @@
             const filters = this.#getCurrentFilters();
             const scoutText = this.#getSelectedScoutsOptionText();
 
-            const header = mazyarCreateMzStyledTitle("MZY Transfer Filter", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Transfer Filter", () => {
                 this.#hideModal();
             });
 
@@ -4279,7 +4283,7 @@
         }
 
         async #displayTransferHideMenu() {
-            const header = mazyarCreateMzStyledTitle("MZY Transfer Hide List", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Transfer Hide List", () => {
                 this.#hideModal();
             });
             await this.#countPlayersOfHideListInIndexDb();
@@ -4437,7 +4441,7 @@
         }
 
         async #displayTransferFilters() {
-            const header = mazyarCreateMzStyledTitle("MZY Transfer Filters", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Transfer Filters", () => {
                 this.#hideModal();
             });
 
@@ -4479,7 +4483,7 @@
 
         async displaySquadSummary(url) {
             this.#displayLoading("MZY Squad Summary");
-            const header = mazyarCreateMzStyledTitle("MZY Squad Summary", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Squad Summary", () => {
                 this.#hideModal();
             });
             const body = this.#createModalBody();
@@ -4503,7 +4507,7 @@
         }
 
         async #displayTransferDeadlines() {
-            const header = mazyarCreateMzStyledTitle("MZY Transfer Deadlines", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Transfer Deadlines", () => {
                 this.#hideModal();
             });
 
@@ -4824,7 +4828,7 @@
             }
             body.appendChild(results);
 
-            const header = mazyarCreateMzStyledTitle("MZY Filter Results", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Filter Results", () => {
                 this.#hideModal();
                 this.#displayTransferFilters();
             });
@@ -4835,7 +4839,7 @@
         async #displayPlayerComment(target, playerId) {
             this.#displayLoading("MZY Player Note");
 
-            const header = mazyarCreateMzStyledTitle("MZY Player Note", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Player Note", () => {
                 this.#hideModal();
             });
 
@@ -4957,7 +4961,7 @@
             body.appendChild(changesTitle);
             body.appendChild(changes);
 
-            const header = mazyarCreateMzStyledTitle("MZY Notice", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Notice", () => {
                 GM_setValue("previous_version", CURRENT_VERSION);
                 this.#hideModal();
             });
@@ -4966,7 +4970,7 @@
         }
 
         showPlayerInModal(playerView) {
-            const header = mazyarCreateMzStyledTitle("MZY Player View", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Player View", () => {
                 this.#hideModal();
             });
 
@@ -5005,7 +5009,7 @@
         }
 
         #openImportFiltersModal(filters) {
-            const header = mazyarCreateMzStyledTitle("MZY Import Filters", () => {
+            const header = mazyarCreateMzStyledModalHeader("MZY Import Filters", () => {
                 this.#hideModal();
             });
 
