@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      3.15
+// @version      4.0
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,11 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "4.0": [
+            "<b>[new]</b> Import & Export Filters: use calendar to export filters (as a note).",
+            "<b>[fix]</b> style of Mazyar modals.",
+            "<b>[fix]</b> location of Transfer List & History in friendly leagues.",
+        ],
         "3.14": [
             "<b>[improve]</b> Table Transfer History: add a drop-down menu to filter the results to a narrower period",
         ],
