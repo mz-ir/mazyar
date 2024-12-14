@@ -1828,8 +1828,16 @@
         return rows > 0 ? table : document.createTextNode('No players in transfer market.');
     }
 
+    function getParentToAppendTransferSectionForLeagues(table) {
+        if (table.parentNode.parentNode.id === 'tabs') {
+            // friendly leagues
+            return table.parentNode;
+        }
+        return table.parentNode.parentNode;
+    }
+
     async function tableInjectTransferList(table) {
-        const parent = table.parentNode.parentNode;
+        const parent = getParentToAppendTransferSectionForLeagues(table);
 
         const header = document.createElement("h2");
         header.classList.add("subheader", "clearfix");
@@ -1880,7 +1888,7 @@
     }
 
     async function tableInjectRecentTransferHistory(table) {
-        const parent = table.parentNode.parentNode;
+        const parent = getParentToAppendTransferSectionForLeagues(table);
 
         const header = document.createElement("div");
         header.classList.add("mazyar-flexbox-row", "subheader", "clearfix");
