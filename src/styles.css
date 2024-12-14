@@ -1,7 +1,7 @@
 /* ==UserStyle==
 @name         MazyarStyles
 @namespace    http://tampermonkey.net/
-@version      1.1
+@version      2.0
 @description  Styles used by Mazyar userscript
 @copyright    z7z from managerzone.com
 @author       z7z from managerzone.com
@@ -12,52 +12,33 @@
 @supportURL   https://github.com/mz-ir/mazyar
 ==/UserStyle== */
 
-#mazyar-modal {
-    display: none;
-    position: fixed;
-    z-index: 9999;
-    left: 0;
-    top: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.4);
+.mazyar-hide {
+    display: none !important;
 }
 
-#mazyar-modal-content {
-    width: fit-content;
-    background-color: beige;
-    border-radius: 5px;
+.mazyar-flexbox-column {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: nowrap;
     max-height: 100%;
-    padding-bottom: 8px;
 }
 
-.mazyar-notebook-plain {
-    z-index: 9990;
-    position: absolute;
-    left: 0;
-    top: 0;
+.mazyar-flexbox-row {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
     flex-wrap: nowrap;
+    max-width: 100%;
 }
 
-.mazyar-notebook-modal {
-    position: fixed;
-    top: 0;
-    left: 0;
-    background-color: beige;
-    border-radius: 5px;
-    min-width: 200px;
-    min-height: 250px;
-    max-width: 95vw;
-    max-height: 99vh;
-    flex-wrap: nowrap;
-}
-
-.mazyar-notebook-textarea {
-    padding: 5px;
-    min-width: 180px;
-    resize: none;
-    width: 90%;
-    flex: 1;
+.mazyar-modal-table-container {
+    width: 100%;
+    flex: 1 1;
+    /* body must be scrollable */
+    overflow: auto;
 }
 
 .mazyar-scrollable-vertical {
@@ -69,22 +50,260 @@
     resize: both;
 }
 
-.mazyar-flex-container {
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
-    max-height: 100%;
+.mazyar-modal-header {
+    width: 100%;
+    justify-content: space-between;
+    text-align: left;
+    height: 32px;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: #e4c800;
+    color: #000;
+    -moz-border-radius-topleft: 5px;
+    -moz-border-radius-topright: 5px;
+    -webkit-border-top-left-radius: 5px;
+    -webkit-border-top-right-radius: 5px;
+    border-top-left-radius: 5px;
+    border-top-right-radius: 5px;
+    border-color: #998504;
 }
 
-.mazyar-flex-container-row {
-    display: flex;
-    flex-direction: row;
-    justify-content: center;
-    align-items: center;
-    flex-wrap: wrap;
+.mazyar-modal-body {
+    width: 100%;
+    flex: 1 1;
+    max-width: fit-content;
+    /* body must be scrollable */
+    overflow: auto;
 }
+
+.mazyar-modal-footer {
+    width: 100%;
+}
+
+#mazyar-modal-overlay {
+    position: fixed;
+    z-index: 9999;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+#mazyar-notebook-overlay {
+    z-index: 9990;
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+#mazyar-toolbar-overlay {
+    position: fixed;
+    z-index: 9998;
+    top: 40%;
+    right: 5px;
+    color: white;
+    background-color: black;
+    text-align: center;
+}
+
+#mazyar-deadline-overlay {
+    position: fixed;
+    z-index: 9997;
+    top: 48%;
+    right: 35px;
+    color: white;
+    text-align: center;
+    padding: 0.5rem;
+    border: 1px solid black;
+    border-radius: 50%;
+}
+
+#mazyar-modal {
+    width: fit-content;
+    background-color: beige;
+    border-radius: 5px;
+    padding-bottom: 8px;
+    min-width: 200px;
+    max-width: 95vw;
+    max-height: 95vh;
+}
+
+#mazyar-notebook {
+    position: fixed;
+    top: 0;
+    left: 0;
+    background-color: beige;
+    border-radius: 5px;
+    min-width: 200px;
+    min-height: 250px;
+    max-width: 95vw;
+    max-height: 99vh;
+}
+
+.mazyar-notebook-textarea {
+    flex: 1;
+    resize: none;
+    width: 90%;
+    min-width: 180px;
+    padding: 5px;
+}
+
+table.mazyar-table {
+    border-spacing: 0;
+    width: auto;
+}
+
+table.mazyar-table tbody td,
+table.mazyar-table thead th {
+    padding: 0.3em 0.5em;
+    vertical-align: middle;
+}
+
+@media only screen and (max-device-width: 1020px) {
+    thead.responsive-show.mazyar-responsive-show {
+        display: table-header-group !important;
+    }
+
+    tbody tr.responsive-show.mazyar-responsive-show {
+        display: table-row !important;
+    }
+}
+
+
+button.mazyar-button {
+    cursor: pointer;
+}
+
+div.mazyar-transfer-control-area {
+    width: 50%;
+}
+
+.mazyar-dim-50 {
+    opacity: 50%;
+}
+
+.mazyar-dim-60 {
+    opacity: 60%;
+}
+
+.mazyar-scout-h {
+    font-weight: bold;
+}
+
+.mazyar-scout-1 {
+    color: red;
+}
+
+.mazyar-scout-2 {
+    color: darkgoldenrod;
+}
+
+.mazyar-scout-3 {
+    color: blue;
+}
+
+.mazyar-scout-4 {
+    color: fuchsia;
+}
+
+.mazyar-player-comment-icon-www {
+    vertical-align: top;
+}
+
+.mazyar-player-comment-icon-www span.player_icon_wrapper {
+    text-align: center;
+}
+
+.mazyar-player-comment-icon-inactive {
+    color: lightskyblue;
+}
+
+.mazyar-player-comment-icon-active {
+    color: blue;
+}
+
+.mazyar-player-comment-textarea {
+    margin: 0.5rem;
+    min-width: 220px;
+    min-height: 100px;
+}
+
+.mazyar-days-at-this-club {
+    margin: 5px;
+    padding: 3px;
+    background-color: azure;
+    border-radius: 5px;
+    border: 1px solid black;
+    text-align: center;
+}
+
+.mazyar-days-at-this-club.mazyar-days-entire {
+    background-color: greenyellow;
+}
+
+@media only screen and (max-device-width: 1020px) {
+    .mazyar-responsive-block {
+        display: block !important;
+    }
+}
+
+.mazyar-text-truncate {
+    display: inline-block;
+    width: 6rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.mazyar-settings-section-button {
+    margin: 8px 5px 0px;
+    padding: 5px;
+    width: 220px;
+    font-weight: bold;
+    border-radius: 4px;
+    border: solid 1px black;
+    cursor: pointer;
+    background-color: ghostwhite;
+}
+
+.mazyar-settings-section-button:hover {
+    background-color: blanchedalmond;
+}
+
+.mazyar-cross-close-button {
+    cursor: pointer;
+    font-size: x-small;
+}
+
+.mazyar-scout-filter-info {
+    padding: 0px 5px;
+    /* make it stretch to fill the entire width */
+    align-self: stretch;
+    background-color: ghostwhite;
+    line-height: 5px;
+    border: 1px solid;
+    margin: 3px 3px 0;
+    border-radius: 5px;
+}
+
+.mazyar-import-sport-title {
+    width: 100%;
+    flex: 1 1;
+    text-align: left;
+    align-self: flex-start;
+}
+
+.mazyar-import-filter-row {
+    width: 100%;
+    flex: 1 1;
+    text-align: left;
+    align-self: flex-start;
+    margin-left: 10px;
+}
+
+/* ------------------------- Animation ------------------------------ */
 
 .mazyar-donut {
     width: 1.7em;
@@ -112,27 +331,6 @@
 @keyframes mazyar-donut-spin {
     to {
         transform: rotate(360deg);
-    }
-}
-
-table.mazyar-table {
-    border-spacing: 0;
-    width: auto;
-}
-
-table.mazyar-table tbody td,
-table.mazyar-table thead th {
-    padding: 0.3em 0.5em;
-    vertical-align: middle;
-}
-
-@media only screen and (max-device-width: 1020px) {
-    thead.responsive-show.mazyar-responsive-show {
-        display: table-header-group !important;
-    }
-
-    tbody tr.responsive-show.mazyar-responsive-show {
-        display: table-row !important;
     }
 }
 
@@ -188,157 +386,4 @@ a.mazyar-in-progress-result {
     100% {
         background-color: inherit;
     }
-}
-
-span.mazyar-icon-delete {
-    display: inline-block;
-    cursor: pointer;
-    background-image: url("nocache-869/img/player/discard.png");
-    width: 21px;
-    height: 20px;
-}
-
-button.mazyar-button {
-    cursor: pointer;
-}
-
-div.mazyar-transfer-control-area {
-    width: 50%;
-}
-
-.mazyar-dim-50 {
-    opacity: 50%;
-}
-
-.mazyar-dim-60 {
-    opacity: 60%;
-}
-
-.mazyar-hide {
-    display: none;
-}
-
-.mazyar-scout-h {
-    font-weight: bold;
-}
-
-.mazyar-scout-1 {
-    color: red;
-}
-
-.mazyar-scout-2 {
-    color: darkgoldenrod;
-}
-
-.mazyar-scout-3 {
-    color: blue;
-}
-
-.mazyar-scout-4 {
-    color: fuchsia;
-}
-
-.mazyar-player-comment-icon-www {
-    vertical-align: top;
-}
-
-.mazyar-player-comment-icon-www span.player_icon_wrapper {
-    text-align: center;
-}
-
-.mazyar-player-comment-icon-inactive {
-    color: lightskyblue;
-}
-
-.mazyar-player-comment-icon-active {
-    color: blue;
-}
-
-.mazyar-player-comment-textarea {
-    margin: 0.5rem;
-    min-width: 220px;
-    min-height: 100px;
-}
-
-.mazyar-days-at-this-club {
-    margin: 5px;
-    padding: 3px;
-    background-color: azure;
-    border-radius: 5px;
-    border: 1px solid black;
-    text-align: center;
-}
-
-.mazyar-days-at-this-club-entire {
-    margin: 5px;
-    padding: 3px;
-    background-color: greenyellow;
-    border-radius: 5px;
-    border: 1px solid black;
-    text-align: center;
-}
-
-@media only screen and (max-device-width: 1020px) {
-    .mazyar-responsive-block {
-        display: block !important;
-    }
-}
-
-.mazyar-text-truncate {
-    display: inline-block;
-    width: 6rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.mazyar-settings-section-button {
-    margin: 8px 5px 0px;
-    padding: 5px;
-    width: 220px;
-    font-weight: bold;
-    border-radius: 4px;
-    border: solid 1px black;
-    cursor: pointer;
-    background-color: ghostwhite;
-}
-
-.mazyar-settings-section-button:hover {
-    background-color: blanchedalmond;
-}
-
-.mazyar-cross-close-button {
-    cursor: pointer;
-    font-size: x-small;
-}
-
-.mazyar-modal-title {
-    display: flex;
-    justify-content: space-between;
-    width: 100%;
-    text-align: left;
-    height: 32px;
-    text-decoration: none;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background: #e4c800;
-    color: #000;
-    -moz-border-radius-topleft: 5px;
-    -moz-border-radius-topright: 5px;
-    -webkit-border-top-left-radius: 5px;
-    -webkit-border-top-right-radius: 5px;
-    border-top-left-radius: 5px;
-    border-top-right-radius: 5px;
-    border-color: #998504;
-}
-
-.mazyar-scout-filter-info {
-    padding: 0px 5px;
-    /* make it stretch to fill the entire width */
-    align-self: stretch;
-    background-color: ghostwhite;
-    line-height: 5px;
-    border: 1px solid;
-    margin: 3px 3px 0;
-    border-radius: 5px;
 }

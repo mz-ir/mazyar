@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      1.8
+// @version      2.0
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -567,10 +567,6 @@ function mazyarCreateLegalIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-legal"], title);
 }
 
-function mazyarCreateTrashIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fas", "fa-trash"], title);
-}
-
 function mazyarCreateSignalIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-signal-stream"], title);
 }
@@ -587,30 +583,14 @@ function mazyarCreateLoadingIcon2(title = "") {
     return icon;
 }
 
-function mazyarCreateDeadlineIndicator() {
-    const div = document.createElement("div");
-    const transferIcon = mazyarCreateLegalIcon();
-
-    div.classList.add("mazyar-flex-container");
-    div.style.position = "fixed";
-    div.style.zIndex = "9997";
-    div.style.top = "48%";
-    div.style.right = "35px";
-    div.style.color = "white";
-    div.style.textAlign = "center";
-
-    transferIcon.style.fontSize = "2rem";
-
-    div.appendChild(transferIcon);
-
-    return div;
-}
-
-function mazyarCreateDeleteIcon(title) {
-    const icon = document.createElement("span");
-    icon.classList.add("mazyar-icon-delete");
-    if (title) {
-        icon.title = title;
+function mazyarCreateTrashIcon(title = "", style = { fontSize: "1rem", margin: "unset" }) {
+    const icon = mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-trash", "discard-icon"], title);
+    icon.style.cursor = "pointer";
+    if (style?.fontSize) {
+        icon.style.fontSize = style.fontSize;
+    }
+    if (style?.margin) {
+        icon.style.margin = style.margin;
     }
     return icon;
 }
@@ -624,6 +604,20 @@ function mazyarCreateAddToDeadlineIcon(title, color) {
 
     const span = document.createElement("span");
     span.style.color = color;
+    span.classList.add("floatRight");
+    if (title) {
+        span.title = title;
+    }
+    span.appendChild(icon);
+    return span;
+}
+
+function mazyarCreateHideFromTransferIcon(title) {
+    const icon = mazyarCreateTrashIcon(title, { fontSize: "0.9rem" });
+    icon.style.verticalAlign = "unset";
+    icon.style.padding = "3px";
+
+    const span = document.createElement("span");
     span.classList.add("floatRight");
     if (title) {
         span.title = title;
@@ -811,23 +805,24 @@ function mazyarCreateSettingsSectionButton(text = "", style = { backgroundColor:
     return button;
 }
 
-function mazyarCreateMzStyledCloseButton(callback) {
-    const div = document.createElement("div");
-    div.classList.add("mazyar-cross-close-button");
+function mazyarCreateMzStyledCloseButton(closeCallback) {
+    const close = document.createElement("div");
+    close.classList.add("mazyar-cross-close-button");
 
-    div.innerHTML = `
-    <span class="fa-stack fa-lg">
-        <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
-        <i class="fa fa-close fa-stack-1x"></i>
-    </span>`;
-
-    div.addEventListener("click", callback);
-    return div;
+    close.innerHTML = `
+        <span class="fa-stack fa-lg">
+            <i class="fa fa-circle fa-stack-2x fa-inverse"></i>
+            <i class="fa fa-close fa-stack-1x"></i>
+        </span>`;
+    if (closeCallback) {
+        close.addEventListener("click", closeCallback);
+    }
+    return close;
 }
 
-function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
-    const div = document.createElement("div");
-    div.classList.add("mazyar-modal-title", "mazyar-flex-container-row");
+function mazyarCreateMzStyledModalHeader(text = "", closeCallback = null) {
+    const header = document.createElement("div");
+    header.classList.add("mazyar-flexbox-row", "mazyar-modal-header");
 
     const title = document.createElement("span");
     title.innerText = text;
@@ -836,13 +831,13 @@ function mazyarCreateMzStyledTitle(text = "", closeCallback = null) {
     title.style.fontSize = "larger";
     title.style.padding = "5px";
 
-    div.appendChild(title);
+    header.appendChild(title);
 
     if (closeCallback) {
         const close = mazyarCreateMzStyledCloseButton(closeCallback);
-        div.appendChild(close);
+        header.appendChild(close);
     }
-    return div;
+    return header;
 }
 
 function mazyarCreateSuggestionList(items) {
@@ -858,12 +853,11 @@ function mazyarCreateSuggestionList(items) {
 
 function mazyarCreateMenuTextInput(title = "input", placeholder = "example", datalistId = "") {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container-row");
+    div.classList.add("mazyar-flexbox-row");
     div.style.justifyItems = "space-between";
     div.innerHTML = `
-            <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
-            <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">
-        `;
+        <label style="margin: 0.5rem; font-weight: bold;">${title}: </label>
+        <input list="${datalistId}" style="margin: 0.5rem;" type="text" value="" placeholder="${placeholder}">`;
     return div;
 }
 
@@ -872,13 +866,12 @@ function mazyarCreateSubMenuTextInput(title = "input", placeholder = "example", 
     inputSize: "5px"
 }) {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flex-container-row");
+    div.classList.add("mazyar-flexbox-row");
     div.style.justifyItems = "space-between";
     div.style.margin = style?.margin ?? "0.1rem 2.2rem";
     div.innerHTML = `
-            <label style="margin-left: 0.5rem;">${title}: </label>
-            <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">
-        `;
+        <label style="margin-left: 0.5rem;">${title}: </label>
+        <input style="margin-left: 0.5rem;" type="text" size="${style?.inputSize ?? "5px"}" placeholder="${placeholder}", value="${initialValue}">`;
     return div;
 }
 
@@ -912,7 +905,7 @@ function mazyarCreateMenuCheckBox(
 
 function mazyarCreateMenuGroup(title = "") {
     const group = document.createElement("div");
-    group.classList.add("mazyar-flex-container");
+    group.classList.add("mazyar-flexbox-column");
     group.style.alignSelf = "flex-start";
     group.style.alignItems = "flex-start";
     group.style.margin = "0.2rem 0.6rem";
@@ -959,19 +952,28 @@ function mazyarCreateDropDownMenu(label, options, initialValue) {
     return div;
 }
 
-function mazyarCreateDeleteButtonWithTrashIcon(title = "Delete") {
-    const icon = mazyarCreateDeleteIcon();
-
+function mazyarCreateDeleteAllFiltersButton(title = "Delete", clickCallback = null) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-flexbox-row");
+    div.style.width = "100%";
+    const button = document.createElement("button");
+    button.classList.add("mazyar-button");
+    const icon = mazyarCreateTrashIcon(null, { fontSize: "0.9rem", margin: "1px 3px" });
     const text = document.createElement("span");
     text.innerText = title;
-
-    const button = document.createElement("button");
-    button.classList.add("mazyar-flex-container-row", "mazyar-button");
-    button.style.margin = "0.6rem 0 0";
-
+    text.style.fontWeight = "bold";
     button.appendChild(icon);
     button.appendChild(text);
-    return button;
+    div.append(button);
+
+    button.style.margin = "4px";
+    button.style.padding = "3px";
+
+    if (clickCallback) {
+        button.addEventListener("click", clickCallback);
+    }
+
+    return div;
 }
 
 function mazyarCreateTableHeaderForFiltersView() {
@@ -1026,14 +1028,8 @@ function mazyarCreateToolbar() {
     const transferIcon = mazyarCreateSearchIcon("Transfer");
     const transferCount = document.createElement("span");
 
-    toolbar.classList.add("mazyar-flex-container");
-    toolbar.style.position = "fixed";
-    toolbar.style.zIndex = "9998";
-    toolbar.style.top = "40%";
-    toolbar.style.right = "5px";
-    toolbar.style.background = "black";
-    toolbar.style.color = "white";
-    toolbar.style.textAlign = "center";
+    toolbar.id = "mazyar-toolbar-overlay";
+    toolbar.classList.add("mazyar-flexbox-column");
 
     logo.innerText = "MZY";
     logo.style.fontSize = "0.6rem";
@@ -1059,7 +1055,7 @@ function mazyarCreateToolbar() {
     separator.style.margin = "0";
     separator.style.padding = "0";
 
-    transfer.classList.add("mazyar-flex-container");
+    transfer.classList.add("mazyar-flexbox-column");
     transfer.style.cursor = "pointer";
 
     transferCount.id = "mazyar-transfer-filter-hits";
@@ -1082,8 +1078,66 @@ function mazyarCreateToolbar() {
     return { toolbar, menu, transfer, note, live };
 }
 
+function mazyarCreateFiltersOverview(filters, label, labelColor = "black") {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-flexbox-column");
+    div.style.minWidth = "250px";
+    div.style.marginBottom = "20px";
+    div.style.alignItems = "flex-start";
 
-/* *********************** Monitor ********************************** */
+    const header = document.createElement("div");
+    header.innerText = label;
+    header.style.color = labelColor;
+    header.style.fontWeight = "bolder";
+    header.style.padding = "5px";
+    header.style.alignSelf = "center";
+    div.appendChild(header);
+
+    const rows = document.createElement("div");
+    rows.classList.add("mazyar-flexbox-column");
+    rows.style.justifyContent = "left";
+    rows.style.margin = "8px";
+    div.appendChild(rows);
+
+    if (filters.soccer.length > 0 || filters.hockey.length > 0) {
+        if (filters.soccer.length > 0) {
+            const title = document.createElement("div");
+            title.classList.add("mazyar-import-sport-title");
+            title.innerHTML = "<b>Soccer:</b>";
+            rows.appendChild(title);
+            for (const filter of filters.soccer) {
+                const row = document.createElement("div");
+                row.classList.add("mazyar-import-filter-row");
+                row.innerHTML = `
+                    <span>
+                        name: <b style="color: ${labelColor}">${filter.name}</b>
+                    </span>`;
+                rows.appendChild(row);
+            }
+        }
+        if (filters.hockey.length > 0) {
+            const title = document.createElement("div");
+            title.classList.add("mazyar-import-sport-title");
+            title.innerHTML = "<b>Hockey:</b>";
+            rows.appendChild(title);
+            for (const filter of filters.hockey) {
+                const row = document.createElement("div");
+                row.classList.add("mazyar-import-filter-row");
+                row.innerHTML = `
+                    <span>
+                        name: <b style="color: ${labelColor}">${filter.name}</b>
+                    </span>`;
+                rows.appendChild(row);
+            }
+        }
+    } else {
+        rows.appendChild(document.createTextNode("No Filters"));
+    }
+
+    return div;
+}
+
+// -------------------------------- Monitor ------------------------------
 
 function mazyarCreateSectionSeparatorForMonitor() {
     const tr = document.createElement("tr");
@@ -1111,19 +1165,25 @@ function monitorAddRowSeparator() {
 function mazyarCreateSectionForMonitor(title, id) {
     const tr = document.createElement("tr");
     tr.innerHTML = `
-            <td><div id="${id}">
-            <table width="100%" cellpadding="0" cellspacing="0">
-            <tbody><tr>
-            <td style="background-image: url(img/subheader_right.gif);">
-                <table border="0" cellpadding="0" cellspacing="0" width="100%">
-                <tbody><tr>
-                    <td class="subheader" valign="bottom">${title}</td>
-                </tr></tbody>
+        <td>
+            <div id="${id}">
+                <table width="100%" cellpadding="0" cellspacing="0">
+                <tbody>
+                <tr>
+                    <td style="background-image: url(img/subheader_right.gif);">
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                        <tbody>
+                        <tr>
+                            <td class="subheader" valign="bottom">${title}</td>
+                        </tr>
+                        </tbody>
+                        </table>
+                    </td>
+                </tr>
+                </tbody>
                 </table>
-            </td>
-            </tr></tbody>
-            </table>
-            </div></td>`;
+            </div>
+        </td>`;
     return tr;
 }
 
@@ -1189,54 +1249,69 @@ function mazyarCreatePlayerRowForMonitor(
         tr.classList.add("mazyar-deadline-monitor-throb");
     }
     tr.innerHTML = `
-            <td valign="top" style="" width="100%">
+        <td valign="top" style="" width="100%">
             <table width="100%" border="0">
-                <tbody>
-                <tr style="height: 25px;">
-                    <td colspan="2">
+            <tbody>
+            <tr style="height: 25px;">
+                <td colspan="2">
                     <table cellpadding="0" cellspacing="0" width="100%" border="0">
-                        <tbody>
-                        <tr>
-                            <td width="220">
+                    <tbody>
+                    <tr>
+                        <td width="220">
                             <table>
-                                <tbody>
-                                <tr>
-                                    <td><img src="${player.flag}"></td>
-                                    <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
-                                    <td></td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td><img src="${player.flag}"></td>
+                                <td><a target="_blank", href="/?p=transfer&sub=players&u=${player.pid}">${player.name}</a></td>
+                                <td></td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                            <td>
+                        </td>
+                        <td>
                             <table class="deadline-table">
-                                <tbody>
-                                <tr>
-                                    <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
-                                    <td>${player.deadlineFull}</td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td><img src="img/icon_deadline.gif" width="13" height="15"></td>
+                                <td>${player.deadlineFull}</td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                            <td align="right">
+                        </td>
+                        <td align="right">
                             <table border="0">
-                                <tbody>
-                                <tr>
-                                    <td>Latest bid:</td>
-                                    <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
-                                    <td>&nbsp;</td>
-                                </tr>
-                                </tbody>
+                            <tbody>
+                            <tr>
+                                <td>Latest bid:</td>
+                                <td align="right" style="font-size: 11px; font-weight: bold;">${player.latestBid}</td>
+                                <td>&nbsp;</td>
+                            </tr>
+                            </tbody>
                             </table>
-                            </td>
-                        </tr>
-                        </tbody>
+                        </td>
+                    </tr>
+                    </tbody>
                     </table>
-                    </td>
-                </tr>
-                </tbody>
+                </td>
+            </tr>
+            </tbody>
             </table>
-            </td>
-       `;
+        </td>`;
     return tr;
+}
+
+// -------------------------------- Tools ------------------------------
+
+function mazyarConvertFilterArrayToFilterObject(filters) {
+    return filters?.reduce((filter, { id, name, params, scout, interval }) => {
+        filter[name] = { id, name, params, scout, interval };
+        return filter;
+    }, {});
+}
+
+function mazyarMergeFilters(a = [], b = []) {
+    // 'b' members could replace 'a' members
+    const aObj = mazyarConvertFilterArrayToFilterObject(a);
+    const bObj = mazyarConvertFilterArrayToFilterObject(b);
+    return Object.values({ ...aObj, ...bObj });
 }
