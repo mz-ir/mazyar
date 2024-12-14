@@ -1078,19 +1078,62 @@ function mazyarCreateToolbar() {
     return { toolbar, menu, transfer, note, live };
 }
 
-function mazyarCreateFiltersOverview(filters, label) {
+function mazyarCreateFiltersOverview(filters, label, labelColor = "black") {
     const div = document.createElement("div");
-    div.classList.add("mazyar-flexbox-column", "mazyar-scrollable-vertical");
+    div.classList.add("mazyar-flexbox-column");
+    div.style.minWidth = "250px";
+    div.style.marginBottom = "20px";
+    div.style.alignItems = "flex-start";
 
     const header = document.createElement("div");
     header.innerText = label;
-
-    const text = document.createElement("div");
-    text.innerText = JSON.stringify(filters, null, 2);
-    text.style.maxWidth = "360px";
-
+    header.style.color = labelColor;
+    header.style.fontWeight = "bolder";
+    header.style.padding = "5px";
+    header.style.alignSelf = "center";
     div.appendChild(header);
-    div.appendChild(text);
+
+    const rows = document.createElement("div");
+    rows.classList.add("mazyar-flexbox-column");
+    rows.style.justifyContent = "left";
+    rows.style.margin = "8px";
+    div.appendChild(rows);
+
+    if (filters.soccer.length > 0 || filters.hockey.length > 0) {
+        if (filters.soccer.length > 0) {
+            const title = document.createElement("div");
+            title.classList.add("mazyar-import-sport-title");
+            title.innerHTML = "<b>Soccer:</b>";
+            rows.appendChild(title);
+            for (const filter of filters.soccer) {
+                const row = document.createElement("div");
+                row.classList.add("mazyar-import-filter-row");
+                row.innerHTML = `
+                    <span>
+                        name: <b style="color: ${labelColor}">${filter.name}</b>
+                    </span>`;
+                rows.appendChild(row);
+            }
+        }
+        if (filters.hockey.length > 0) {
+            const title = document.createElement("div");
+            title.classList.add("mazyar-import-sport-title");
+            title.innerHTML = "<b>Hockey:</b>";
+            rows.appendChild(title);
+            for (const filter of filters.hockey) {
+                const row = document.createElement("div");
+                row.classList.add("mazyar-import-filter-row");
+                row.innerHTML = `
+                    <span>
+                        name: <b style="color: ${labelColor}">${filter.name}</b>
+                    </span>`;
+                rows.appendChild(row);
+            }
+        }
+    } else {
+        rows.appendChild(document.createTextNode("No Filters"));
+    }
+
     return div;
 }
 

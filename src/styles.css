@@ -288,6 +288,21 @@ div.mazyar-transfer-control-area {
     border-radius: 5px;
 }
 
+.mazyar-import-sport-title {
+    width: 100%;
+    flex: 1 1;
+    text-align: left;
+    align-self: flex-start;
+}
+
+.mazyar-import-filter-row {
+    width: 100%;
+    flex: 1 1;
+    text-align: left;
+    align-self: flex-start;
+    margin-left: 10px;
+}
+
 /* ------------------------- Animation ------------------------------ */
 
 .mazyar-donut {

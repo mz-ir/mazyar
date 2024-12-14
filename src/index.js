@@ -5016,14 +5016,14 @@
             return [filtersButton,];
         }
 
-        #openImportFiltersModal(filters) {
+        #showImportFiltersModal(filters) {
             const header = mazyarCreateMzStyledModalHeader("MZY Import Filters", () => {
                 this.#hideModal();
             });
 
             const body = this.#createModalBody();
-            const overviewOld = mazyarCreateFiltersOverview(this.#filters, "Current");
-            const overviewNew = mazyarCreateFiltersOverview(filters, "New");
+            const overviewOld = mazyarCreateFiltersOverview(this.#filters, "Current Filters", "black");
+            const overviewNew = mazyarCreateFiltersOverview(filters, "New Filters", "crimson");
             body.appendChild(overviewOld);
             body.appendChild(overviewNew);
 
@@ -5053,7 +5053,7 @@
                 button.addEventListener("click", () => {
                     try {
                         const filters = JSON.parse(atob(note.value.replace(MAZYAR_FILTER_BACKUP_TITLE, "")));
-                        this.#openImportFiltersModal(filters);
+                        this.#showImportFiltersModal(filters);
                     } catch (e) {
                         console.log(e);
                     }
