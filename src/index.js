@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.0
+// @version      4.1
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -37,6 +37,10 @@
     const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
 
     const MAZYAR_CHANGELOG = {
+        "4.1": [
+            "<b>[fix]</b> MZY Transfer Filters: after delete last filter, table must be removed too.",
+            "<b>[remove]</b> Transfer Market: 'MZY Filters' button is removed from transfer market. Use magnifying glass icon on MZY Toolbar.",
+        ],
         "4.0": [
             "<b>[new]</b> Import & Export Filters: use calendar to export filters (as a note).",
             "<b>[fix]</b> style of Mazyar modals.",
@@ -2168,12 +2172,6 @@
     function transferInjectButtons(form) {
         const target = form.querySelector("div.buttons-wrapper.clearfix");
         if (target) {
-            const filterButton = mazyarCreateMzStyledButton("MZY Filters", "red", "floatLeft");
-            filterButton.style.margin = "0";
-            filterButton.onclick = () => {
-                document.getElementById("mazyar-transfer-filter-hits")?.click();
-            };
-
             const saveButton = mazyarCreateMzStyledButton("MZY Save Filter", "blue", "floatLeft");
             saveButton.style.margin = "0";
             saveButton.onclick = () => {
@@ -2181,7 +2179,6 @@
                 mazyar.displayFilterSaveMenu(params);
             };
 
-            target.appendChild(filterButton);
             target.appendChild(saveButton);
         }
     }
@@ -4401,7 +4398,7 @@
                     this.deleteFilter(filter.id);
                     tbody.removeChild(tr);
                     if (tbody.children.length === 0) {
-                        tbody.parentNode.dispatchEvent(new Event("destroy"));
+                        tbody.parentNode.dispatchEvent(new CustomEvent("destroy"));
                     }
                 };
 
@@ -4436,7 +4433,7 @@
             return tbody;
         }
 
-        #filtersViewCreateTable(filters) {
+        #filtersViewCreateTable(filters, destroyCallback) {
             const div = document.createElement("div");
             div.classList.add("mazyar-modal-table-container");
 
@@ -4449,6 +4446,9 @@
 
             table.appendChild(thead);
             table.appendChild(tbody);
+
+            table.addEventListener("destroy", destroyCallback);
+
             div.appendChild(table);
             return div;
         }
@@ -4479,8 +4479,7 @@
                     noFilterView.style.display = "unset";
                 });
 
-                const table = this.#filtersViewCreateTable(filters);
-                table.addEventListener("destroy", () => {
+                const table = this.#filtersViewCreateTable(filters, () => {
                     // remove 'delete all' button if no filter is left
                     filtersView.style.display = "none";
                     noFilterView.style.display = "unset";
@@ -4726,7 +4725,7 @@
                 }
             }
             this.#deadlineUpdateIconStyle();
-            document.body.dispatchEvent(new Event("deadlines-updated"));
+            document.body.dispatchEvent(new CustomEvent("deadlines-updated"));
         }
 
         async injectTransferDeadlineAlert() {
