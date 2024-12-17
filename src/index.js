@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.2
+// @version      4.3
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.3": [
+            "<b>[fix]</b> wrong update indicator.",
+        ],
         "4.2": [
             "<b>[new]</b> Mazyar will check for updates every hour." +
             " If a new update is available, the cog icon in the MZY Toolbar will turn green and start rotating." +
@@ -2648,7 +2651,7 @@
         // -------------------------------- Update -------------------------------------
 
         #fetchUpdateInfo() {
-            this.#updateInfo = GM_getValue("update_info", { version: '', lastCheck: 0 });
+            this.#updateInfo = GM_getValue("update_info", { version: CURRENT_VERSION, lastCheck: Date.now() });
         }
 
         #saveUpdateInfo() {
@@ -2656,26 +2659,34 @@
         }
 
         async #checkForUpdate(menu) {
+            const current = this.#getVersionNumbers(CURRENT_VERSION);
             if (Date.now() - this.#updateInfo.lastCheck > (UPDATE_CHECK_INTERVAL_MINUTES * 60 * 10000)) {
                 this.#updateInfo.lastCheck = Date.now();
                 const url = GM_info.script.updateURL ?? "https://update.greasyfork.org/scripts/476290/Mazyar.meta.js";
-                await mazyarFetchHtmlWithGM(url, 7).then((doc) => {
-                    const text = doc?.body.innerText;
+                const timestamp = "?" + new Date().getTime();
+                await mazyarFetchHtmlWithGM(url + timestamp, 7).then((doc) => {
+                    const text = doc?.body.innerText ?? '';
                     const matched = RegExp(/@version\s+(\d+\.\d+)/).exec(text);
                     if (matched?.[1]) {
-                        const current = this.#getVersionNumbers(CURRENT_VERSION);
                         const latest = this.#getVersionNumbers(matched?.[1]);
                         if (this.#isVersionGreaterThan(latest, current)) {
-                            this.#updateInfo.version = null;
-                        } else {
                             this.#updateInfo.version = matched?.[1];
+                        } else {
+                            this.#updateInfo.version = null;
                         }
                     }
                 });
                 this.#saveUpdateInfo();
             }
             if (this.#updateInfo.version) {
-                menu.classList.add("mazyar-update-available");
+                const latest = this.#getVersionNumbers(this.#updateInfo.version);
+                if (this.#isVersionGreaterThan(latest, current)) {
+                    menu.classList.add("mazyar-update-available");
+                } else {
+                    this.#updateInfo.version = null;
+                    this.#updateInfo.lastCheck = Date.now();
+                    this.#saveUpdateInfo();
+                }
             }
         }
 
