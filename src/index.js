@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.1
+// @version      4.2
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -15,9 +15,10 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      self
+// @connect      update.greasyfork.org
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1502553/MazyarTools.js
-// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1502552/MazyarStyles.user.css
+// @require      https://update.greasyfork.org/scripts/513041/1504558/MazyarTools.js
+// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1504557/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
@@ -34,9 +35,15 @@
     /* ********************** Constants ******************************** */
 
     const CURRENT_VERSION = GM_info.script.version;
-    const DEADLINE_INTERVAL_SECONDS = 30; // in seconds
+    const UPDATE_CHECK_INTERVAL_MINUTES = 60;
+    const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.2": [
+            "<b>[new]</b> Mazyar will check for updates every hour." +
+            " If a new update is available, the cog icon in the MZY Toolbar will turn green and start rotating." +
+            " Click on the icon to view the update.",
+        ],
         "4.1": [
             "<b>[fix]</b> MZY Transfer Filters: after delete last filter, table must be removed too.",
             "<b>[remove]</b> Transfer Market: 'MZY Filters' button is removed from transfer market. Use magnifying glass icon on MZY Toolbar.",
@@ -1368,6 +1375,7 @@
             result.style.background = "coral";
             result.style.color = "#fff";
         }
+        result.classList.add("mazyar-in-progress-result-gray");
     }
 
     function matchGetPossiblyInProgressMatches(section) {
@@ -1433,28 +1441,21 @@
             const mid = mazyarExtractMatchId(result.href);
             // this always returns your id
             const visitorId = mazyarExtractTeamId(result.href);
-            const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
-            GM_xmlhttpRequest({
-                method: "GET",
-                url,
-                context: { match, result, teamId: teamId ?? visitorId },
-                onload: function (resp) {
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(resp.responseText, "text/xml");
-                    if (!xmlDoc.querySelector("ManagerZone_Error")) {
-                        const home = xmlDoc.querySelector(`Team[field="home"]`);
-                        const away = xmlDoc.querySelector(`Team[field="away"]`);
-                        const context = {
-                            homeGoals: home.getAttribute("goals"),
-                            homeId: home.getAttribute("id"),
-                            awayGoals: away.getAttribute("goals"),
-                            awayId: away.getAttribute("id"),
-                            targetId: resp.context.teamId,
-                        };
-                        matchUpdateResult(resp.context.result, context);
-                    }
-                    resp.context.match.updated = true;
-                },
+            const url = `https://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            mazyarFetchXml(url).then((xmlDoc) => {
+                if (xmlDoc && !xmlDoc.querySelector("ManagerZone_Error")) {
+                    const home = xmlDoc.querySelector(`Team[field="home"]`);
+                    const away = xmlDoc.querySelector(`Team[field="away"]`);
+                    const context = {
+                        homeGoals: home.getAttribute("goals"),
+                        homeId: home.getAttribute("id"),
+                        awayGoals: away.getAttribute("goals"),
+                        awayId: away.getAttribute("id"),
+                        targetId: teamId ?? visitorId,
+                    };
+                    matchUpdateResult(result, context);
+                }
+                match.updated = true;
             });
         }
     }
@@ -1754,21 +1755,14 @@
         const inProgressMatches = [...matches].filter((match) => mazyarIsMatchInProgress(match.innerText));
         for (const match of inProgressMatches) {
             const mid = mazyarExtractMatchId(match.href);
-            const url = `http://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
-            GM_xmlhttpRequest({
-                method: "GET",
-                url,
-                context: { match },
-                onload: function (resp) {
-                    const parser = new DOMParser();
-                    const xmlDoc = parser.parseFromString(resp.responseText, "text/xml");
-                    if (!xmlDoc.querySelector("ManagerZone_Error")) {
-                        const home = xmlDoc.querySelector(`Team[field="home"]`).getAttribute("goals");
-                        const away = xmlDoc.querySelector(`Team[field="away"]`).getAttribute("goals");
-                        resp.context.match.innerText = home + " - " + away;
-                        resp.context.match.classList.add("mazyar-in-progress-result");
-                    }
-                },
+            const url = `https://${location.hostname}/xml/match_info.php?sport_id=${sport === "soccer" ? 1 : 2}&match_id=${mid}`;
+            mazyarFetchXml(url).then((xmlDoc) => {
+                if (xmlDoc && !xmlDoc.querySelector("ManagerZone_Error")) {
+                    const home = xmlDoc.querySelector(`Team[field="home"]`).getAttribute("goals");
+                    const away = xmlDoc.querySelector(`Team[field="away"]`).getAttribute("goals");
+                    match.innerText = home + " - " + away;
+                    match.classList.add("mazyar-in-progress-result-green");
+                }
             });
         }
     }
@@ -2421,31 +2415,21 @@
         });
     }
 
-    function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
+    async function trainersFetchSalaryAndWeeks(coachId, salaryCell, bonusCell, weeksCell) {
         const url = `https://${location.hostname}/?p=trainers&sub=offer&extra=freeagent&cid=${coachId}`;
-        GM_xmlhttpRequest({
-            method: "GET",
-            url,
-            onload: function (response) {
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(response.responseText, "text/html");
-                const salaryElement = doc.querySelector('td#salary_range nobr');
-                const weeksElement = doc.querySelector('td#weeks_range nobr');
-                const bonusElement = doc.querySelector("div#paper-content-wrapper > table  td.contract_paper:nth-child(2)");
-
-                const salaryText = salaryElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
-                salaryCell.textContent = salaryText ?? 'N/A';
-                salaryCell.style.fontStyle = 'normal';
-
-                const weeksText = weeksElement?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
-                weeksCell.textContent = weeksText ?? 'N/A';
-                weeksCell.style.fontStyle = 'normal';
-
-                const bonusText = bonusElement?.innerText?.trim()?.match(/\d+(.*?\d+)*/g)?.[0];
-                bonusCell.textContent = bonusText ?? 'N/A';
-                bonusCell.style.fontStyle = 'normal';
-            }
-        });
+        const doc = await mazyarFetchHtml(url);
+        const info = {};
+        if (doc) {
+            info.salary = doc.querySelector('td#salary_range nobr')?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+            info.weeks = doc.querySelector('td#weeks_range nobr')?.innerText?.trim()?.match(/\d+(.*?\d+)* -(.*?\d+)+/g)?.[0];
+            info.bonus = doc.querySelector("div#paper-content-wrapper > table  td.contract_paper:nth-child(2)")?.innerText?.trim()?.match(/\d+(.*?\d+)*/g)?.[0];
+        };
+        salaryCell.textContent = info.salary ?? 'N/A';
+        salaryCell.style.fontStyle = 'normal';
+        weeksCell.textContent = info.weeks ?? 'N/A';
+        weeksCell.style.fontStyle = 'normal';
+        bonusCell.textContent = info.bonus ?? 'N/A';
+        bonusCell.style.fontStyle = 'normal';
     }
 
     function trainersUpdateSalariesAndWeeks(table) {
@@ -2639,12 +2623,14 @@
         #deadlines = {}; // {pid1: {name, deadline}, ...}
         #db;
         #deadlineLockAcquired;
+        #updateInfo = { version: '', lastCheck: 0 };
 
         constructor(db) {
             this.#db = db;
             this.#fetchSettings();
             this.#fetchTransferOptions();
             this.#fetchFilters();
+            this.#fetchUpdateInfo();
 
             this.#sport = mazyarExtractSportType();
 
@@ -2656,6 +2642,40 @@
 
             if (!this.isTransferFiltersEnabled()) {
                 this.#resetTransferOptions();
+            }
+        }
+
+        // -------------------------------- Update -------------------------------------
+
+        #fetchUpdateInfo() {
+            this.#updateInfo = GM_getValue("update_info", { version: '', lastCheck: 0 });
+        }
+
+        #saveUpdateInfo() {
+            GM_setValue("update_info", this.#updateInfo);
+        }
+
+        async #checkForUpdate(menu) {
+            if (Date.now() - this.#updateInfo.lastCheck > (UPDATE_CHECK_INTERVAL_MINUTES * 60 * 10000)) {
+                this.#updateInfo.lastCheck = Date.now();
+                const url = GM_info.script.updateURL ?? "https://update.greasyfork.org/scripts/476290/Mazyar.meta.js";
+                await mazyarFetchHtmlWithGM(url, 7).then((doc) => {
+                    const text = doc?.body.innerText;
+                    const matched = RegExp(/@version\s+(\d+\.\d+)/).exec(text);
+                    if (matched?.[1]) {
+                        const current = this.#getVersionNumbers(CURRENT_VERSION);
+                        const latest = this.#getVersionNumbers(matched?.[1]);
+                        if (this.#isVersionGreaterThan(latest, current)) {
+                            this.#updateInfo.version = null;
+                        } else {
+                            this.#updateInfo.version = matched?.[1];
+                        }
+                    }
+                });
+                this.#saveUpdateInfo();
+            }
+            if (this.#updateInfo.version) {
+                menu.classList.add("mazyar-update-available");
             }
         }
 
@@ -3714,6 +3734,7 @@
                 this.#updateInProgressIconDisplay(live);
             });
             document.body?.appendChild(toolbar);
+            this.#checkForUpdate(menu);
         }
 
         #couldInjectInProgressResults() {
@@ -4136,19 +4157,16 @@
             const header = mazyarCreateMzStyledModalHeader(`MZY Settings (v${CURRENT_VERSION})`, () => {
                 this.#hideModal();
             });
-
+            const cleanTitle = `<i class="fa fa-exclamation-triangle" style="font-size: 1rem;"></i> Clean Install`;
             const body = this.#createModalBody();
             const days = mazyarCreateSettingsSectionButton("Days Settings");
             const transfer = mazyarCreateSettingsSectionButton("Transfer Settings");
             const miscellaneous = mazyarCreateSettingsSectionButton("Miscellaneous Settings");
+            const clean = mazyarCreateSettingsSectionButton(cleanTitle, { backgroundColor: "orange" });
             body.appendChild(days);
             body.appendChild(transfer);
             body.appendChild(miscellaneous);
-
-            const footer = this.#createModalFooter();
-            const clean = mazyarCreateMzStyledButton(`<i class="fa fa-exclamation-triangle" style="font-size: 0.9rem;"></i> Clean Install`, "red");
-            clean.style.marginTop = "15px";
-            footer.appendChild(clean);
+            body.appendChild(clean);
 
             transfer.addEventListener("click", () => {
                 this.#hideModal();
@@ -4170,7 +4188,13 @@
                 this.#displayCleanInstallMenu();
             });
 
-            this.#showModal([header, body, footer]);
+            if (this.#updateInfo.version) {
+                const url = GM_info.script.downloadURL ?? "https://update.greasyfork.org/scripts/476290/Mazyar.user.js";
+                const tip = mazyarCreateUpdateTip(this.#updateInfo.version, url);
+                body.appendChild(tip);
+            }
+
+            this.#showModal([header, body]);
         }
 
         #getSelectedHighLows(useScout) {

@@ -1,7 +1,7 @@
 /* ==UserStyle==
 @name         MazyarStyles
 @namespace    http://tampermonkey.net/
-@version      2.0
+@version      2.1
 @description  Styles used by Mazyar userscript
 @copyright    z7z from managerzone.com
 @author       z7z from managerzone.com
@@ -269,7 +269,7 @@ div.mazyar-transfer-control-area {
 }
 
 .mazyar-settings-section-button:hover {
-    background-color: blanchedalmond;
+    background-color: blanchedalmond !important;
 }
 
 .mazyar-cross-close-button {
@@ -303,6 +303,35 @@ div.mazyar-transfer-control-area {
     margin-left: 10px;
 }
 
+.mazyar-update-tip {
+    margin: 8px 5px 0px;
+    padding: 5px 0px;
+    width: 220px;
+    background-color: lightgreen;
+    border-radius: 4px;
+    border: 1px solid black;
+    text-align: center;
+}
+
+.mazyar-update-tip>button {
+    margin: 8px 5px 0px;
+    padding: 5px;
+    width: 120px;
+    font-weight: bold;
+    border-radius: 4px;
+    border: solid 1px black;
+    cursor: pointer;
+    background-color: ghostwhite;
+}
+
+.mazyar-update-tip>button:hover {
+    background-color: blanchedalmond !important;
+}
+
+.mazyar-update-tip>button>a {
+    text-decoration: none;
+}
+
 /* ------------------------- Animation ------------------------------ */
 
 .mazyar-donut {
@@ -334,21 +363,24 @@ div.mazyar-transfer-control-area {
     }
 }
 
-a.mazyar-in-progress-result {
+a.mazyar-in-progress-result-green {
     animation: mazyar-change-result-background 3s infinite;
 }
 
 @keyframes mazyar-change-result-background {
-    0% {
-        background-color: inherit;
-    }
-
     50% {
         background-color: lightgreen;
     }
+}
 
-    100% {
-        background-color: inherit;
+a.mazyar-in-progress-result-gray {
+    animation: mazyar-change-result-background-gray 8s infinite;
+}
+
+@keyframes mazyar-change-result-background-gray {
+    50% {
+        background-color: lightgray;
+        color: black;
     }
 }
 
@@ -375,15 +407,21 @@ a.mazyar-in-progress-result {
 }
 
 @keyframes mazyar-throb-deadline-monitor {
-    0% {
-        background-color: inherit;
-    }
-
     50% {
         background-color: yellow;
     }
+}
 
-    100% {
-        background-color: inherit;
+.mazyar-update-available {
+    animation: mazyar-update-available-green 4s infinite;
+}
+
+@keyframes mazyar-update-available-green {
+    50% {
+        color: green;
+    }
+
+    to {
+        transform: rotate(360deg);
     }
 }
