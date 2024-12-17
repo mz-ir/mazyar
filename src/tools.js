@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      2.0
+// @version      2.1
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
 // @license      MIT
+// @grant        GM_xmlhttpRequest
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
@@ -270,6 +271,24 @@ function mazyarGetNumberOfPlayers(players, ageLow = 0, ageHigh = 99) {
 }
 
 // ----------------------------------- Fetch ---------------------------------
+
+async function mazyarFetchHtmlWithGM(url, timeout = 10) {
+    try {
+        const response = await new Promise((resolve, reject) => {
+            GM_xmlhttpRequest({
+                url,
+                // timeout: timeout * 1000,
+                onload: (resp) => resolve(resp),
+                onerror: reject
+            });
+        });
+        const parser = new DOMParser();
+        return parser.parseFromString(response.responseText, "text/html");
+    } catch (error) {
+        console.warn(error);
+        return null;
+    }
+}
 
 async function mazyarFetchHtml(url) {
     return await fetch(url)
@@ -795,14 +814,23 @@ function mazyarCreateMzStyledButton(title, color = "", floatDirection = null) {
     return div;
 }
 
-function mazyarCreateSettingsSectionButton(text = "", style = { backgroundColor: null }) {
+function mazyarCreateSettingsSectionButton(html = "", style = { backgroundColor: null }) {
     const button = document.createElement("button");
-    button.innerText = text;
+    button.innerHTML = html;
     button.classList.add("mazyar-settings-section-button");
     if (style?.backgroundColor) {
         button.style.backgroundColor = style.backgroundColor;
     }
     return button;
+}
+
+function mazyarCreateUpdateTip(version, url) {
+    const div = document.createElement("div");
+    div.classList.add("mazyar-update-tip");
+    div.innerHTML = `
+    <span><b>Update Available!</b></span><br />
+    <button><a href="${url}" target="_blank">Install v${version}</a></button>`;
+    return div;
 }
 
 function mazyarCreateMzStyledCloseButton(closeCallback) {
