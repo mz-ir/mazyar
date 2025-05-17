@@ -3264,7 +3264,6 @@
             const players = [...results.children].filter((player) =>
                   player.classList.contains("playerContainer")
             );
-
             const deadlines = await this.#fetchDeadlinePlayersFromIndexedDb();
             const jobs = [];
             for (const player of players) {
