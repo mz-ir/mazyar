@@ -40,7 +40,7 @@
 
     const MAZYAR_CHANGELOG = {
         "4.4": [
-            "<b>[fix]</b> Update to get back the days in club and last trasnfer price after market updates by MZ",
+            "<b>[fix]</b> fixed transfer view after new managerzone transfer market update.",
         ],
         "4.3": [
             "<b>[fix]</b> wrong update indicator.",
@@ -3297,7 +3297,7 @@
                 this.#clearTransferFilters();
             }
             if (this.#mustUpdateDisplayForTransferSearchResults()) {
-                const results = document.getElementById("players_container");
+                const results = document.querySelector("#players_container > div");
                 if (results) {
                     const firstDivChild = results.querySelector(":scope > div");
                     if (firstDivChild) {
@@ -3322,19 +3322,22 @@
 
         async executeTransferTasks() {
             this.#injectHideButtonToTransferMarket();
-            this.updateDisplayForTransferSearchResults();
 
             const callback = (mutationsList) => {
                 if (mutationsList.find(mutation => mutation.type == "childList")) {
                     this.updateDisplayForTransferSearchResults();
                 }
             };
-            const target = document.getElementById("players_container");
-            if (target) {
-                const observer = new MutationObserver(callback);
-                const config = { childList: true };
-                observer.observe(target, config);
-            }
+            setInterval(() => {
+                const target = document.querySelector("#players_container > div");
+                if (target && !target.observed) {
+                    target.observed = true;
+                    this.updateDisplayForTransferSearchResults();
+                    const observer = new MutationObserver(callback);
+                    const config = { childList: true };
+                    observer.observe(target, config);
+                }
+            }, 1000);
         }
 
         #getSelectedScoutsOptionText() {
