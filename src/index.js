@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.3
+// @version      4.4
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.4": [
+            "<b>[fix]</b> transfer view after new managerzone transfer market update.",
+        ],
         "4.3": [
             "<b>[fix]</b> wrong update indicator.",
         ],
@@ -3294,7 +3297,7 @@
                 this.#clearTransferFilters();
             }
             if (this.#mustUpdateDisplayForTransferSearchResults()) {
-                const results = document.getElementById("players_container");
+                const results = document.querySelector("#players_container > div");
                 if (results) {
                     await this.#processTransferSearchResults(results);
                 }
@@ -3315,19 +3318,22 @@
 
         async executeTransferTasks() {
             this.#injectHideButtonToTransferMarket();
-            this.updateDisplayForTransferSearchResults();
 
             const callback = (mutationsList) => {
                 if (mutationsList.find(mutation => mutation.type == "childList")) {
                     this.updateDisplayForTransferSearchResults();
                 }
             };
-            const target = document.getElementById("players_container");
-            if (target) {
-                const observer = new MutationObserver(callback);
-                const config = { childList: true };
-                observer.observe(target, config);
-            }
+            setInterval(() => {
+                const target = document.querySelector("#players_container > div");
+                if (target && !target.observed) {
+                    target.observed = true;
+                    this.updateDisplayForTransferSearchResults();
+                    const observer = new MutationObserver(callback);
+                    const config = { childList: true };
+                    observer.observe(target, config);
+                }
+            }, 1000);
         }
 
         #getSelectedScoutsOptionText() {
