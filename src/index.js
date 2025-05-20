@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.4
+// @version      4.5
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.5": [
+            "<b>[new]</b> add comment icon to toolbar to open a modal to display all the comments.",
+        ],
         "4.4": [
             "<b>[fix]</b> fixed transfer view after new managerzone transfer market update.",
         ],
@@ -3011,9 +3014,38 @@
             return player?.comment ?? "";
         }
 
-        async #setPlayerCommentInIndexedDb(pid, comment) {
+        async #setPlayerCommentInIndexedDb(pid, comment, name = null) {
+            if (pid && comment) {
+                if (name) {
+                    await this.#db.comment.put({ pid, sport: this.#sport, comment, name });
+                } else {
+                    await this.#db.comment.update({ pid, sport: this.#sport }, { comment });
+                }
+            }
+        }
+
+        async #updatePlayerNameForCommentInIndexedDb(pid) {
+            const name = await mazyarFetchPlayerName(pid);
+            if (name) {
+                await this.#db.comment.update({ pid: pid, sport: this.#sport }, { name });
+            }
+            return name;
+        }
+
+        async #deleteAllComments() {
+            await this.#db.comment.where('sport').equals(this.#sport).delete()
+                .then((deletedCount) => {
+                    console.log(`Deleted ${deletedCount} records.`);
+                })
+                .catch((err) => {
+                    console.error("Error deleting records:", err);
+                });
+        }
+
+        async #deletePlayerCommentFromIndexedDb(pid) {
             if (pid) {
-                await this.#db.comment.put({ pid, sport: this.#sport, comment: comment ?? "" });
+                await this.#db.comment.delete([this.#sport, pid])
+                    .catch((err) => console.warn(err));
             }
         }
 
@@ -3433,6 +3465,7 @@
 
         async #addPlayerCommentIcon(player) {
             const playerId = mazyarExtractPlayerIdFromContainer(player);
+            const playerName = mazyarExtractPlayerNameFromContainer(player);
 
             const parent = document.createElement("span");
             parent.classList.add("player_icon_placeholder");
@@ -3460,7 +3493,7 @@
             }
 
             commentIcon.addEventListener("click", (event) => {
-                this.#displayPlayerComment(event?.target, playerId);
+                this.#displayPlayerComment(event?.target, playerId, playerName);
             });
 
             const whitespace = document.createTextNode(" ");
@@ -3720,12 +3753,15 @@
         }
 
         #addToolbar() {
-            const { toolbar, menu, transfer, note, live } = mazyarCreateToolbar();
+            const { toolbar, menu, transfer, note, comments, live } = mazyarCreateToolbar();
             menu.addEventListener("click", () => {
                 this.#displaySettingsMenu();
             });
             transfer.addEventListener("click", () => {
                 this.#displayTransferFilters();
+            });
+            comments.addEventListener("click", () => {
+                this.#displayPlayersCommentList();
             });
             note.addEventListener("click", () => {
                 if (this.#notebook.style.hide) {
@@ -4889,11 +4925,14 @@
             this.#showModal([header, body]);
         }
 
-        async #displayPlayerComment(target, playerId) {
+        async #displayPlayerComment(target, playerId, playerName, closeCallback = null) {
             this.#displayLoading("MZY Player Note");
 
             const header = mazyarCreateMzStyledModalHeader("MZY Player Note", () => {
                 this.#hideModal();
+                if (closeCallback) {
+                    closeCallback();
+                }
             });
 
             const body = this.#createModalBody();
@@ -4908,18 +4947,147 @@
             text.value = await this.#fetchPlayerCommentFromIndexedDb(playerId);
 
             save.addEventListener("click", async () => {
-                await this.#setPlayerCommentInIndexedDb(playerId, text.value);
                 if (text.value) {
+                    await this.#setPlayerCommentInIndexedDb(playerId, text.value, playerName);
                     target?.classList.remove("mazyar-player-comment-icon-inactive");
                     target?.classList.add("mazyar-player-comment-icon-active");
                 } else {
+                    await this.#deletePlayerCommentFromIndexedDb(playerId);
                     target?.classList.add("mazyar-player-comment-icon-inactive");
                     target?.classList.remove("mazyar-player-comment-icon-active");
                 }
                 this.#hideModal();
+                if (closeCallback) {
+                    closeCallback();
+                }
             });
 
             this.#showModal([header, body, footer]);
+        }
+
+        async #getAllPlayerComments() {
+            const players = await this.#db.comment.toArray()
+                .then((players) => {
+                    return players?.filter((player) => player.sport === this.#sport);
+                }
+                ).catch((err) => {
+                    console.warn(err);
+                    return [];
+                });
+            const jobs = [];
+            for (const player of players) {
+                if (!player.name) {
+                    jobs.push(this.#updatePlayerNameForCommentInIndexedDb(player.pid).then((name) => {
+                        player.name = name;
+                    }));
+                }
+            }
+            await Promise.all(jobs);
+            return players;
+        }
+
+        #commentsViewCreateTableBody(players = []) {
+            const tbody = document.createElement("tbody");
+
+            for (const player of players) {
+                const tr = document.createElement("tr");
+                const pid = document.createElement("td");
+                pid.innerText = player.pid;
+
+                const name = document.createElement("td");
+                name.innerHTML = `<a target="_blank" href="https://${location.hostname}/?p=players&pid=${player.pid}">${player.name ?? player.pid}</a>`;
+
+                const viewIcon = mazyarCreateCommentIcon("View the comment.", { fontSize: "1rem", margin: "0px 3px 0px 0px" });
+                viewIcon.style.color = "blue";
+                viewIcon.onclick = () => {
+                    this.#hideModal();
+                    this.#displayPlayerComment(null, player.pid, player.name, () => {
+                        this.#displayPlayersCommentList();
+                    });
+                };
+
+                const deleteIcon = mazyarCreateTrashIcon("Delete the comment.", { fontSize: "1rem", margin: "0px 3px 0px 0px" });
+                deleteIcon.onclick = () => {
+                    this.#deletePlayerCommentFromIndexedDb(player.pid);
+                    tbody.removeChild(tr);
+                    if (tbody.children.length === 0) {
+                        tbody.parentNode.dispatchEvent(new CustomEvent("destroy"));
+                    }
+                };
+
+                const del = document.createElement("td");
+                del.appendChild(deleteIcon);
+
+                const view = document.createElement("td");
+                view.appendChild(viewIcon);
+
+                tr.appendChild(del);
+                tr.appendChild(pid);
+                tr.appendChild(name);
+                tr.appendChild(view);
+                tbody.appendChild(tr);
+            }
+            return tbody;
+        }
+
+        #commentsCreateTable(comments, destroyCallback) {
+            const div = document.createElement("div");
+            div.classList.add("mazyar-modal-table-container");
+
+            const table = document.createElement("table");
+            const thead = mazyarCreateTableHeaderForCommentsView();
+            const tbody = this.#commentsViewCreateTableBody(comments);
+
+            table.classList.add("mazyar-table", "tablesorter", "hitlist", "marker");
+            table.style.margin = "0.5rem";
+
+            table.appendChild(thead);
+            table.appendChild(tbody);
+
+            table.addEventListener("destroy", destroyCallback);
+
+            div.appendChild(table);
+            return div;
+        }
+
+        async #displayPlayersCommentList() {
+            this.#displayLoading("MZY Comments");
+            const header = mazyarCreateMzStyledModalHeader("MZY Comments", () => {
+                this.#hideModal();
+            });
+
+            const body = this.#createModalBody();
+            // filters table is fully shown and scrollable only when it is structured like body > div > div > table
+            const listView = document.createElement("div");
+            const noListView = document.createElement("span");
+            body.appendChild(listView);
+            body.appendChild(noListView);
+
+            listView.classList.add("mazyar-flexbox-column");
+
+            noListView.innerText = "There is no comment to display";
+            noListView.style.display = "none";
+            noListView.style.margin = "1rem";
+
+            const comments = await this.#getAllPlayerComments();
+            if (comments.length > 0) {
+                const deleteAll = mazyarCreateDeleteAllFiltersButton("Delete all comments", async () => {
+                    await this.#deleteAllComments();
+                    listView.style.display = "none";
+                    noListView.style.display = "unset";
+                });
+                const table = this.#commentsCreateTable(comments, () => {
+                    // remove 'delete all' button if no filter is left
+                    listView.style.display = "none";
+                    noListView.style.display = "unset";
+                });
+                listView.appendChild(deleteAll);
+                listView.appendChild(table);
+            } else {
+                noListView.style.display = "unset";
+            }
+
+            this.#showModal([header, body]);
         }
 
         #getVersionNumbers(v) {
@@ -5147,6 +5315,7 @@
             player: "[sport+pid],ts,maxed,days,camp",
             hide: "[sport+pid],ts",
             deadline: "[sport+pid],ts,deadline,name,deadlineFull,latestBid,source,flag",
+            comment: "[sport+pid],comment,name",
         }).upgrade(trans => {
             return trans.table("scout").toCollection().modify(report => {
                 report.ts = 0;
