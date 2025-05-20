@@ -667,6 +667,20 @@ function mazyarCreateHideFromTransferIcon(title) {
     return span;
 }
 
+function mazyarCreateCommentIconForTransferResults(title) {
+    const icon = mazyarCreateCommentIcon(title, { fontSize: "1.1rem" });
+    icon.style.verticalAlign = "unset";
+    icon.style.padding = "3px";
+
+    const span = document.createElement("span");
+    span.classList.add("floatRight");
+    if (title) {
+        span.title = title;
+    }
+    span.appendChild(icon);
+    return span;
+}
+
 // -------------------------------- DOM Utils ------------------------------
 
 async function mazyarGetTransferHistory(url) {

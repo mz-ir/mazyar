@@ -23,8 +23,8 @@
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
-// @downloadURL https://update.greasyfork.org/scripts/476290/Mazyar.user.js
-// @updateURL https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
+// @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
+// @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
 // ==/UserScript==
 
 (async function () {
@@ -41,6 +41,7 @@
     const MAZYAR_CHANGELOG = {
         "4.5": [
             "<b>[new]</b> add comment icon to toolbar to open a modal to display all the comments.",
+            "<b>[new]</b> add comment icon to player profile in transfer market.",
         ],
         "4.4": [
             "<b>[fix]</b> fixed transfer view after new managerzone transfer market update.",
@@ -3291,6 +3292,26 @@
             });
         }
 
+        async #addCommentIconToPlayerInTransferMarket(player) {
+            if (player.commentIconInjected) {
+                return;
+            }
+            player.commentIconInjected = true;
+            const icon = mazyarCreateCommentIconForTransferResults("Add/See player's comment.");
+            const playerId = mazyarExtractPlayerIdFromContainer(player);
+            if (await this.#fetchPlayerCommentFromIndexedDb(playerId)) {
+                icon.classList.add("mazyar-player-comment-icon-active");
+            } else {
+                icon.classList.add("mazyar-player-comment-icon-inactive");
+            }
+            player.querySelector("h2.clearfix div")?.appendChild(icon);
+
+            icon.addEventListener("click", (event) => {
+                const playerName = mazyarExtractPlayerNameFromContainer(player);
+                this.#displayPlayerComment(event?.target, playerId, playerName);
+            });
+        }
+
         async #processTransferSearchResults(results) {
             const { lows, highs } = this.#getAcceptableHighsAndLows();
             const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
@@ -3301,6 +3322,7 @@
                 if (this.#isTransferDeadlineAlertEnabled()) {
                     this.#addDeadlineButtonToPlayerInTransferMarket(player, deadlines);
                 }
+                this.#addCommentIconToPlayerInTransferMarket(player);
                 jobs.push(this.#hidePlayerAccordingToHideList(player));
                 if (this.#doesTransferNeedPlayerProfile()) {
                     jobs.push(this.#updateProfileRelatedFieldsInTransfer(player));
