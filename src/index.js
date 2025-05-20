@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.3
+// @version      4.4
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -23,8 +23,8 @@
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
 // @supportURL   https://github.com/mz-ir/mazyar
-// @downloadURL  https://update.greasyfork.org/scripts/476290/Mazyar.user.js
-// @updateURL    https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
+// @downloadURL https://update.greasyfork.org/scripts/476290/Mazyar.user.js
+// @updateURL https://update.greasyfork.org/scripts/476290/Mazyar.meta.js
 // ==/UserScript==
 
 (async function () {
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.4": [
+            "<b>[fix]</b> Update to get back the days in club and last trasnfer price after market updates by MZ",
+        ],
         "4.3": [
             "<b>[fix]</b> wrong update indicator.",
         ],
@@ -3258,7 +3261,9 @@
 
         async #processTransferSearchResults(results) {
             const { lows, highs } = this.#getAcceptableHighsAndLows();
-            const players = [...results.children].filter((player) => player.classList.contains("playerContainer"));
+            const players = [...results.children].filter((player) =>
+                  player.classList.contains("playerContainer")
+            );
             const deadlines = await this.#fetchDeadlinePlayersFromIndexedDb();
             const jobs = [];
             for (const player of players) {
@@ -3296,7 +3301,11 @@
             if (this.#mustUpdateDisplayForTransferSearchResults()) {
                 const results = document.getElementById("players_container");
                 if (results) {
-                    await this.#processTransferSearchResults(results);
+                    const firstDivChild = results.querySelector(":scope > div");
+                    if (firstDivChild) {
+                        await this.#processTransferSearchResults(firstDivChild);
+                    }
+
                 }
             }
         }
