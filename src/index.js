@@ -3299,11 +3299,7 @@
             if (this.#mustUpdateDisplayForTransferSearchResults()) {
                 const results = document.querySelector("#players_container > div");
                 if (results) {
-                    const firstDivChild = results.querySelector(":scope > div");
-                    if (firstDivChild) {
-                        await this.#processTransferSearchResults(firstDivChild);
-                    }
-
+                    await this.#processTransferSearchResults(results);
                 }
             }
         }
