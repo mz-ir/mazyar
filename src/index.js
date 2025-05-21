@@ -2137,7 +2137,7 @@
 
     /* *********************** Transfer Agent ********************************** */
 
-    function isPlayerHasScoutReport(player) {
+    function hasPlayerScoutReport(player) {
         return !!player.querySelector("tr.scout_report_row.box_dark");
     }
 
@@ -3163,7 +3163,7 @@
         async #getPlayerScoutReportForSearchResult(players) {
             const jobs = [];
             for (const player of [...players.children]) {
-                if (player.classList.contains("playerContainer") && isPlayerHasScoutReport(player)) {
+                if (player.classList.contains("playerContainer") && hasPlayerScoutReport(player)) {
                     jobs.push(this.#fetchOrExtractPlayerScoutReport(player));
                 }
             }
@@ -3335,7 +3335,7 @@
                     jobs.push(this.#updateProfileRelatedFieldsInTransfer(player));
                 }
                 if (this.#areTransferScoutOptionsSelected()) {
-                    if (isPlayerHasScoutReport(player)) {
+                    if (hasPlayerScoutReport(player)) {
                         jobs.push(this.#fetchOrExtractPlayerScoutReport(player).then((report) => {
                             mazyarColorizeSkills(player, report);
                             this.#applyTransferFilters(report, lows, highs);
