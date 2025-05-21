@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.5
+// @version      4.6
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -17,7 +17,7 @@
 // @connect      self
 // @connect      update.greasyfork.org
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1592633/MazyarTools.js
+// @require      https://update.greasyfork.org/scripts/513041/1592718/MazyarTools.js
 // @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1504557/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.6": [
+            "<b>[fix]</b> fixed filters with scouted skills enabled after new managerzone transfer market update.",
+        ],
         "4.5": [
             "<b>[new]</b> add comment icon to toolbar to open a modal to display all the comments.",
             "<b>[new]</b> add comment icon to player profile in transfer market.",
@@ -2134,6 +2137,10 @@
 
     /* *********************** Transfer Agent ********************************** */
 
+    function hasPlayerScoutReport(player) {
+        return !!player.querySelector("tr.scout_report_row.box_dark");
+    }
+
     function transferGetInputValue(el) {
         if (el.type == "checkbox") {
             return el.checked ? 1 : 0;
@@ -3156,7 +3163,7 @@
         async #getPlayerScoutReportForSearchResult(players) {
             const jobs = [];
             for (const player of [...players.children]) {
-                if (player.classList.contains("playerContainer") && player.querySelector("span.scout_report > a")) {
+                if (player.classList.contains("playerContainer") && hasPlayerScoutReport(player)) {
                     jobs.push(this.#fetchOrExtractPlayerScoutReport(player));
                 }
             }
@@ -3328,7 +3335,7 @@
                     jobs.push(this.#updateProfileRelatedFieldsInTransfer(player));
                 }
                 if (this.#areTransferScoutOptionsSelected()) {
-                    if (player.querySelector("span.scout_report > a")) {
+                    if (hasPlayerScoutReport(player)) {
                         jobs.push(this.#fetchOrExtractPlayerScoutReport(player).then((report) => {
                             mazyarColorizeSkills(player, report);
                             this.#applyTransferFilters(report, lows, highs);
@@ -3688,7 +3695,7 @@
                 const searchResults = document.createElement("div");
                 searchResults.innerHTML = data.players;
                 if (filter.scout) {
-                    const playersReport = await this.#getPlayerScoutReportForSearchResult(searchResults);
+                    const playersReport = await this.#getPlayerScoutReportForSearchResult(searchResults.firstChild);
                     const { lows, highs } = this.#getAcceptableHighsAndLowsForFilter(filter.scout);
                     const scouted = playersReport.filter((report) => this.#isQualifiedForTransferScoutFilter(report, lows, highs));
                     scoutHits = scouted.length;
