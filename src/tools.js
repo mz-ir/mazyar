@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      2.1
+// @version      2.2
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -191,6 +191,20 @@ async function mazyarExtractPlayerProfile(playerId) {
             price,
             camp,
         };
+    }
+    return null;
+}
+
+function mazyarExtractPlayerNameFromContainer(player) {
+    return player?.querySelector("span.player_name")?.innerText;
+}
+
+async function mazyarFetchPlayerName(playerId) {
+    const url = `https://${location.hostname}/?p=players&pid=${playerId}`;
+    const doc = await mazyarFetchHtml(url);
+    if (doc) {
+        const profile = doc.getElementById("thePlayers_0");
+        return mazyarExtractPlayerNameFromContainer(profile);
     }
     return null;
 }
@@ -566,8 +580,16 @@ function mazyarCreateCogIcon(title = "") {
     return mazyarCreateIconFromFontAwesomeClass(["fa", "fa-cog"], title);
 }
 
-function mazyarCreateCommentIcon(title = "") {
-    return mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
+function mazyarCreateCommentIcon(title = "", style = null) {
+    const icon = mazyarCreateIconFromFontAwesomeClass(["fa-solid", "fa-comment"], title);
+    icon.style.cursor = "pointer";
+    if (style?.fontSize) {
+        icon.style.fontSize = style.fontSize;
+    }
+    if (style?.margin) {
+        icon.style.margin = style.margin;
+    }
+    return icon
 }
 
 function mazyarCreateSearchIcon(title = "") {
@@ -633,6 +655,20 @@ function mazyarCreateAddToDeadlineIcon(title, color) {
 
 function mazyarCreateHideFromTransferIcon(title) {
     const icon = mazyarCreateTrashIcon(title, { fontSize: "0.9rem" });
+    icon.style.verticalAlign = "unset";
+    icon.style.padding = "3px";
+
+    const span = document.createElement("span");
+    span.classList.add("floatRight");
+    if (title) {
+        span.title = title;
+    }
+    span.appendChild(icon);
+    return span;
+}
+
+function mazyarCreateCommentIconForTransferResults(title) {
+    const icon = mazyarCreateCommentIcon(title, { fontSize: "1.1rem" });
     icon.style.verticalAlign = "unset";
     icon.style.padding = "3px";
 
@@ -1010,7 +1046,7 @@ function mazyarCreateTableHeaderForFiltersView() {
     const name = document.createElement("th");
     name.classList.add("header");
     name.innerText = "Name";
-    name.title = "Filter' name";
+    name.title = "Filter name";
     name.style.textAlign = "left";
     name.style.textDecoration = "none";
     name.style.width = "11rem";
@@ -1045,11 +1081,53 @@ function mazyarCreateTableHeaderForFiltersView() {
     return thead;
 }
 
+
+function mazyarCreateTableHeaderForCommentsView() {
+    const tr = document.createElement("tr");
+
+    const pid = document.createElement("th");
+    pid.classList.add("header");
+    pid.innerText = "ID";
+    pid.title = "Player ID";
+    pid.style.textAlign = "left";
+    pid.style.textDecoration = "none";
+
+    const name = document.createElement("th");
+    name.classList.add("header");
+    name.innerText = "Name";
+    name.title = "Player Name";
+    name.style.textAlign = "left";
+    name.style.textDecoration = "none";
+    name.style.minWidth = "7rem";
+
+    const del = document.createElement("th");
+    del.classList.add("header");
+    del.innerHTML = " ";
+    del.style.textAlign = "center";
+    del.style.textDecoration = "none";
+
+    const view = document.createElement("th");
+    view.classList.add("header");
+    view.innerHTML = " ";
+    view.style.textAlign = "center";
+    view.style.textDecoration = "none";
+
+    tr.appendChild(del);
+    tr.appendChild(pid);
+    tr.appendChild(name);
+    tr.appendChild(view);
+
+    const thead = document.createElement("thead");
+    thead.appendChild(tr);
+    return thead;
+}
+
 function mazyarCreateToolbar() {
     const toolbar = document.createElement("div");
     const logo = document.createElement("span");
     const menu = mazyarCreateCogIcon("Settings");
     const note = mazyarCreateNoteIcon("Notebook");
+    const comments = mazyarCreateCommentIcon("Comments");
     const live = mazyarCreateSignalIcon("In Progress Results");
     const separator = document.createElement("span");
     const transfer = document.createElement("div");
@@ -1069,6 +1147,9 @@ function mazyarCreateToolbar() {
 
     note.style.fontSize = "large";
     note.style.marginTop = "5px";
+
+    comments.style.fontSize = "large";
+    comments.style.marginTop = "5px";
 
     live.style.fontSize = "large";
     live.style.marginTop = "5px";
@@ -1099,11 +1180,12 @@ function mazyarCreateToolbar() {
     toolbar.appendChild(logo);
     toolbar.appendChild(menu);
     toolbar.appendChild(note);
+    toolbar.appendChild(comments);
     toolbar.appendChild(live);
     toolbar.appendChild(separator);
     toolbar.appendChild(transfer);
 
-    return { toolbar, menu, transfer, note, live };
+    return { toolbar, menu, transfer, note, comments, live };
 }
 
 function mazyarCreateFiltersOverview(filters, label, labelColor = "black") {
