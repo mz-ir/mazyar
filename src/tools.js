@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      2.2
+// @version      2.3
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -140,7 +140,7 @@ function mazyarIsPlayerSentToCamp(doc) {
 }
 
 function mazyarExtractSkillNamesFromPlayerInfo(player) {
-    const skills = player?.querySelectorAll("table.player_skills > tbody > tr > td > span.clippable");
+    const skills = player?.querySelectorAll("table.player_skills > tbody > tr > td > span.skill_name > span:first-child");
     return [...skills].map((el) => el.innerText);
 }
 
