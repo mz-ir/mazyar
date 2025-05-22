@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Font Awesome On-Off Switch</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <style>
+        .switch {
+            font-size: 2rem;
+            cursor: pointer;
+            color: #4caf50;
+            transition: color 0.2s ease;
+        }
+
+        .switch.off {
+            color: #ccc;
+        }
+    </style>
+</head>
+
+<body>
+
+    <i id="toggleSwitch" class="fas fa-toggle-on switch"></i>
+
+    <script>
+        const toggle = document.getElementById('toggleSwitch');
+        toggle.addEventListener('click', () => {
+            const isOn = toggle.classList.contains('fa-toggle-on');
+            toggle.classList.toggle('fa-toggle-on', !isOn);
+            toggle.classList.toggle('fa-toggle-off', isOn);
+            toggle.classList.toggle('off', isOn);
+        });
+    </script>
+
+</body>
+
+</html>

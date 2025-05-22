@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Mazyar
 // @namespace    http://tampermonkey.net/
-// @version      4.6
+// @version      4.7
 // @description  Swiss Army knife for managerzone.com
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -39,6 +39,9 @@
     const DEADLINE_INTERVAL_SECONDS = 30;
 
     const MAZYAR_CHANGELOG = {
+        "4.7": [
+            "<b>[new]</b> add option to disable a transfer filter.",
+        ],
         "4.6": [
             "<b>[fix]</b> fixed filters with scouted skills enabled after new managerzone transfer market update.",
         ],
@@ -3596,19 +3599,21 @@
 
         #saveFilters() {
             GM_setValue("transfer_filters", {
-                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval }) => ({
+                soccer: this.#filters.soccer.map(({ id, name, params, scout, interval, disable }) => ({
                     id,
                     name,
                     params,
                     scout,
                     interval,
+                    disable,
                 })),
-                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval }) => ({
+                hockey: this.#filters.hockey.map(({ id, name, params, scout, interval, disable }) => ({
                     id,
                     name,
                     params,
                     scout,
                     interval,
+                    disable,
                 })),
             });
         }
@@ -3652,6 +3657,7 @@
                     params,
                     scout,
                     interval,
+                    disable: false,
                     id: mazyarGenerateUuidV4(),
                 };
                 filters.push(filter);
@@ -3731,7 +3737,7 @@
             return { totalHits, scoutHits };
         }
 
-        async refreshFilterHits(id = "") {
+        async #refreshFilterHits(id = "") {
             const filter = this.#getCurrentFilters().find((filter) => filter.id === id);
             if (filter) {
                 const { totalHits, scoutHits } = await this.#getFilterTotalHits(filter);
@@ -4378,7 +4384,7 @@
             this.#setFilterHitsInToolbar(-1);
             const filters = this.#getCurrentFilters();
             let total = 0;
-            for (const filter of filters) {
+            for (const filter of filters.filter((f) => !f.disable)) {
                 let { totalHits: hits, lastCheck } = await this.getFilterHitsFromIndexedDb(filter.id);
                 const needRefresh = this.#itsTimeToCheckFilter(filter, lastCheck);
                 if (!mazyarIsFilterHitsValid(hits) || forced || needRefresh) {
@@ -4481,15 +4487,20 @@
                 total.style.textAlign = "center";
                 scout.style.textAlign = "center";
 
-                this.getFilterHitsFromIndexedDb(filter.id).then(({ totalHits, scoutHits }) => {
-                    total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
-                    if (filter.scout) {
-                        scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
-                    } else {
-                        scout.innerHTML = "X";
-                    }
-                });
-                let scoutClickable = true;
+                if (filter.disable) {
+                    total.innerText = "-";
+                    scout.innerText = "-";
+                } else {
+                    this.getFilterHitsFromIndexedDb(filter.id).then(({ totalHits, scoutHits }) => {
+                        total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
+                        if (filter.scout) {
+                            scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                        } else {
+                            scout.innerHTML = "X";
+                        }
+                    });
+                }
+                let scoutClickable = !filter.disable;
                 if (filter.scout) {
                     scout.onclick = () => {
                         if (scoutClickable) {
@@ -4509,24 +4520,44 @@
                 };
 
                 const refresh = mazyarCreateRefreshIcon("Refresh filter hits.");
+                refresh.classList.toggle("mazyar-disabled-icon", filter.disable);
                 refresh.style.fontSize = "1.1rem";
                 refresh.onclick = async () => {
-                    scoutClickable = false;
-                    mazyarStartSpinning(refresh);
-                    total.replaceChildren(mazyarCreateLoadingIcon());
-                    scout.replaceChildren(mazyarCreateLoadingIcon());
-                    const { totalHits, scoutHits } = await this.refreshFilterHits(filter.id);
-                    total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
-                    if (filter.scout) {
-                        scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
-                    } else {
-                        scout.innerHTML = "X";
+                    if (!filter.disable) {
+                        scoutClickable = false;
+                        mazyarStartSpinning(refresh);
+                        total.replaceChildren(mazyarCreateLoadingIcon());
+                        scout.replaceChildren(mazyarCreateLoadingIcon());
+                        const { totalHits, scoutHits } = await this.#refreshFilterHits(filter.id);
+                        total.innerText = mazyarIsFilterHitsValid(totalHits) ? totalHits.toString() : "n/a";
+                        if (filter.scout) {
+                            scout.innerHTML = `<a style="cursor: pointer;">${mazyarIsFilterHitsValid(scoutHits) ? scoutHits.toString() : "n/a"}</a>`;
+                        } else {
+                            scout.innerHTML = "X";
+                        }
+                        mazyarStopSpinning(refresh);
+                        scoutClickable = true;
                     }
-                    mazyarStopSpinning(refresh);
-                    scoutClickable = true;
                 };
 
+                const disable = mazyarCreateToggleIcon("Disable/Enable the filter", !filter.disable);
+                disable.style.fontSize = "1.2rem";
+                disable.style.margin = "0px 3px";
+                disable.addEventListener('click', () => {
+                    filter.disable = !filter.disable;
+                    disable.classList.toggle('fa-toggle-on', !filter.disable);
+                    disable.classList.toggle('fa-toggle-off', filter.disable);
+                    this.#saveFilters();
+                    refresh.classList.toggle("mazyar-disabled-icon", filter.disable);
+                    if (filter.disable) {
+                        total.innerText = "-";
+                        scout.innerHTML = "-";
+                        scoutClickable = false;
+                    }
+                });
+
                 const tools = document.createElement("td");
+                tools.appendChild(disable);
                 tools.appendChild(del);
                 tools.appendChild(refresh);
 
@@ -4562,6 +4593,7 @@
         async #displayTransferFilters() {
             const header = mazyarCreateMzStyledModalHeader("MZY Transfer Filters", () => {
                 this.#hideModal();
+                this.#checkAllFilters(true);
             });
 
             const body = this.#createModalBody();

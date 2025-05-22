@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         MazyarTools
 // @namespace    http://tampermonkey.net/
-// @version      2.3
+// @version      2.4
 // @description  Mazyar Tools & Utilities
 // @copyright    z7z from managerzone.com
 // @author       z7z from managerzone.com
@@ -562,6 +562,10 @@ function mazyarCreateIconFromFontAwesomeClass(classes = [], title = "") {
         icon.title = title;
     }
     return icon;
+}
+
+function mazyarCreateToggleIcon(title, isOn) {
+    return mazyarCreateIconFromFontAwesomeClass(["fas", isOn ? "fa-toggle-on" : "fa-toggle-off"], title);
 }
 
 function mazyarCreateMoveIcon(title) {
