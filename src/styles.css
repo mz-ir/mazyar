@@ -1,7 +1,7 @@
 /* ==UserStyle==
 @name         MazyarStyles
 @namespace    http://tampermonkey.net/
-@version      2.1
+@version      2.2
 @description  Styles used by Mazyar userscript
 @copyright    z7z from managerzone.com
 @author       z7z from managerzone.com
@@ -330,6 +330,12 @@ div.mazyar-transfer-control-area {
 
 .mazyar-update-tip>button>a {
     text-decoration: none;
+}
+
+.mazyar-disabled-icon {
+    opacity: 0.4;
+    pointer-events: none;
+    cursor: not-allowed;
 }
 
 /* ------------------------- Animation ------------------------------ */
