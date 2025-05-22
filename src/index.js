@@ -17,8 +17,8 @@
 // @connect      self
 // @connect      update.greasyfork.org
 // @require      https://unpkg.com/dexie@4.0.8/dist/dexie.min.js
-// @require      https://update.greasyfork.org/scripts/513041/1592718/MazyarTools.js
-// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1504557/MazyarStyles.user.css
+// @require      https://update.greasyfork.org/scripts/513041/1593345/MazyarTools.js
+// @resource     MAZYAR_STYLES https://update.greasyfork.org/scripts/513029/1593343/MazyarStyles.user.css
 // @match        https://www.managerzone.com/*
 // @match        https://test.managerzone.com/*
 // @icon         https://www.google.com/s2/favicons?sz=64&domain=managerzone.com
